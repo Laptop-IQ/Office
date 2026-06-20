@@ -10,10 +10,16 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   ReceiptPercentIcon,
+  CurrencyRupeeIcon,
+  CircleStackIcon,
+  ClipboardDocumentListIcon,
+  PlusCircleIcon,
+  QueueListIcon,
 } from "@heroicons/react/24/outline";
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -23,18 +29,44 @@ export function Navbar() {
   };
 
   // Navigation items
-  const navItems = [
-    { name: "Home", path: "/", icon: HomeIcon },
-  ];
+  const navItems = [{ name: "Home", path: "/", icon: HomeIcon }];
 
-  const businessItems = [
-    { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
-    { name: "Food Bills", path: "/foodbills", icon: ReceiptPercentIcon },
-    { name: "Sales Report", path: "/DailySalesReport", icon: ChartBarIcon },
+  // Business items grouped by category
+  const businessCategories = [
     {
-      name: "Overdues",
-      path: "/OverduesDashboard",
-      icon: ChartBarIcon,
+      label: "Finance",
+      items: [
+        { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
+        { name: "Food Bills", path: "/foodbills", icon: ReceiptPercentIcon },
+        {
+          name: "Overdues",
+          path: "/OverduesDashboard",
+          icon: CurrencyRupeeIcon,
+        },
+      ],
+    },
+    {
+      label: "Sales & CRM",
+      items: [
+        { name: "Sales Report", path: "/DailySalesReport", icon: ChartBarIcon },
+        { name: "CRM Activity", path: "/Chemsalescrm", icon: PlusCircleIcon },
+      ],
+    },
+    {
+      label: "Management",
+      items: [
+        {
+          name: "Customer Lists",
+          path: "/Customerlistpage",
+          icon: QueueListIcon,
+        },
+        { name: "Stock List", path: "/Stockmanager", icon: CircleStackIcon },
+        {
+          name: "PDF Documents",
+          path: "/Pdfdocumentmanager",
+          icon: ClipboardDocumentListIcon,
+        },
+      ],
     },
   ];
 
@@ -90,7 +122,7 @@ export function Navbar() {
               </React.Fragment>
             ))}
 
-            {/* Business Dropdown */}
+            {/* Business Dropdown — categorized */}
             {user && (
               <div className="relative group">
                 <button className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center">
@@ -109,17 +141,30 @@ export function Navbar() {
                     />
                   </svg>
                 </button>
-                <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="py-1">
-                    {businessItems.map((item) => (
-                      <Link
-                        key={item.name}
-                        to={item.path}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600"
+
+                {/* Multi-column dropdown */}
+                <div className="absolute left-0 mt-2 w-auto min-w-max bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-100">
+                  <div className="flex divide-x divide-gray-100">
+                    {businessCategories.map((category) => (
+                      <div
+                        key={category.label}
+                        className="py-3 px-4 min-w-[160px]"
                       >
-                        <item.icon className="w-4 h-4 mr-2" />
-                        {item.name}
-                      </Link>
+                        {/* Category heading */}
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">
+                          {category.label}
+                        </p>
+                        {category.items.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.path}
+                            className="flex items-center px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-md"
+                          >
+                            <item.icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -130,7 +175,7 @@ export function Navbar() {
             {user ? (
               <div className="flex items-center space-x-3">
                 <Link
-                  to="/dashboard"
+                  to="/"
                   className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
@@ -217,22 +262,61 @@ export function Navbar() {
               </React.Fragment>
             ))}
 
+            {/* Mobile — Categorized Business Tools */}
             {user && (
               <>
                 <div className="border-t border-gray-200 my-2"></div>
-                <div className="px-3 py-2 text-sm font-semibold text-gray-500">
-                  Business Tools
-                </div>
-                {businessItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                  >
-                    <item.icon className="w-5 h-5 mr-2" />
-                    {item.name}
-                  </Link>
+
+                {businessCategories.map((category) => (
+                  <div key={category.label}>
+                    {/* Toggle category on mobile */}
+                    <button
+                      onClick={() =>
+                        setActiveCategory(
+                          activeCategory === category.label
+                            ? null
+                            : category.label,
+                        )
+                      }
+                      className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-500 uppercase tracking-wider"
+                    >
+                      <span>{category.label}</span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${
+                          activeCategory === category.label ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+
+                    {activeCategory === category.label && (
+                      <div className="ml-2 border-l border-gray-100 pl-2">
+                        {category.items.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.path}
+                            onClick={() => {
+                              setIsMobileMenuOpen(false);
+                              setActiveCategory(null);
+                            }}
+                            className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
+                          >
+                            <item.icon className="w-5 h-5 mr-2" />
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </>
             )}
@@ -241,20 +325,6 @@ export function Navbar() {
 
             {user ? (
               <>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/profile"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                >
-                  Profile
-                </Link>
                 <button
                   onClick={() => {
                     handleLogout();

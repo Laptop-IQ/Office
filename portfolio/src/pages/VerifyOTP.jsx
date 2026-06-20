@@ -79,7 +79,7 @@ const VerifyOTP = () => {
   const submitOtp = async (code) => {
     setLoading(true);
     const result = await verifyOTP(email, code);
-    if (result?.success) navigate("/dashboard");
+    if (result?.success) navigate("/");
     setLoading(false);
   };
 

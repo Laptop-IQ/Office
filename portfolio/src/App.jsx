@@ -23,7 +23,10 @@ import Register from "@/pages/Register";
 import VerifyOTP from "@/pages/VerifyOTP";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
-import Dashboard from "@/pages/Dashboard";
+import StockManager from "./components/Stockmanager";
+import PDFDocumentManager from "./components/Pdfdocumentmanager";
+import Chemsalescrm from "./components/Chemsalescrm";
+import Customerlistpage from "./components/Customerlistpage";
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -91,6 +94,23 @@ function App() {
             }
           />
           <Route
+            path="/Customerlistpage"
+            element={
+              <PrivateRoute>
+                <Customerlistpage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Chemsalescrm"
+            element={
+              <PrivateRoute>
+                <Chemsalescrm />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
             path="/OverduesDashboard"
             element={
               <PrivateRoute>
@@ -98,13 +118,19 @@ function App() {
               </PrivateRoute>
             }
           />
-
-          {/* Protected User Routes */}
           <Route
-            path="/dashboard"
+            path="/Stockmanager"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <StockManager />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/Pdfdocumentmanager"
+            element={
+              <PrivateRoute>
+                <PDFDocumentManager />
               </PrivateRoute>
             }
           />
