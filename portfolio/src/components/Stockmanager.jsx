@@ -1,39 +1,66 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 
-/* ─── Storage ─────────────────────────────────────────────────────────────── */
-const STORAGE_KEY = "chem_stock_v3";
-const load = () => {
+/* ─── Backend API config ─────────────────────────────────────────────────── */
+// .env me VITE_API_URL / REACT_APP_API_URL set karke yahan use karein,
+// abhi ke liye seedha localhost rakha hai.
+const API_BASE = "http://localhost:4000/api/stock";
+
+const getToken = () => localStorage.getItem("token");
+// Sirf JWT token localStorage me rehta hai (chhota & safe) — stock
+// data ab DB me jaata hai, browser me nahi.
+
+const apiHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${getToken()}`,
+});
+
+const loadData = async () => {
   try {
-    const r = localStorage.getItem(STORAGE_KEY);
-    return r ? JSON.parse(r) : null;
+    const res = await fetch(API_BASE, { headers: apiHeaders() });
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }
 };
-const save = (d) => {
+
+const saveData = async (d) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+    await fetch(API_BASE, {
+      method: "PUT",
+      headers: apiHeaders(),
+      body: JSON.stringify(d),
+    });
+  } catch {
+    // network fail — silently ignore, agla change pe retry ho jaayega
+  }
+};
+
+const clearRemoteData = async () => {
+  try {
+    await fetch(API_BASE, { method: "DELETE", headers: apiHeaders() });
   } catch {}
 };
 
-/* ─── Chemical category detection ─────────────────────────────────────────── */
+/* ─── Categories ──────────────────────────────────────────────────────────── */
 const CATEGORIES = {
-  ECOFAST: { label: "Ecofast Dye", color: "#0EA5E9", bg: "#E0F2FE" },
-  ECOSOL: { label: "Ecosol Dye", color: "#8B5CF6", bg: "#EDE9FE" },
-  ECOPLUS: { label: "Ecoplus Dye", color: "#8B5CF6", bg: "#EDE9FE" },
-  SAFEAUX: { label: "Safeaux Aux", color: "#F59E0B", bg: "#FEF3C7" },
-  DENIMOZ: { label: "Denimoz", color: "#10B981", bg: "#D1FAE5" },
-  SULFAID: { label: "Sulfaid", color: "#EF4444", bg: "#FEE2E2" },
-  OTHER: { label: "Other", color: "#6B7280", bg: "#F3F4F6" },
+  ECOFAST: { label: "Ecofast Dye", color: "#0369a1", bg: "#e0f2fe" },
+  ECOSOL: { label: "Ecosol Dye", color: "#7c3aed", bg: "#ede9fe" },
+  ECOPLUS: { label: "Ecoplus Dye", color: "#7c3aed", bg: "#ede9fe" },
+  SAFEAUX: { label: "Safeaux Aux", color: "#b45309", bg: "#fef3c7" },
+  DENIMOZ: { label: "Denimoz", color: "#065f46", bg: "#d1fae5" },
+  SULFAID: { label: "Sulfaid", color: "#b91c1c", bg: "#fee2e2" },
+  OTHER: { label: "Other", color: "#4b5563", bg: "#f3f4f6" },
 };
+
 const getCategory = (name) => {
   const u = (name || "").toUpperCase();
   for (const key of Object.keys(CATEGORIES)) if (u.includes(key)) return key;
   return "OTHER";
 };
 
-/* ─── Tabs ─────────────────────────────────────────────────────────────────── */
+/* ─── Tabs ────────────────────────────────────────────────────────────────── */
 const TABS = [
   { id: "sample", label: "Sample", icon: "🧪" },
   { id: "delhi", label: "Delhi", icon: "🏙" },
@@ -41,7 +68,7 @@ const TABS = [
   { id: "shadecard", label: "Shade Card", icon: "🎨" },
 ];
 
-/* ─── All columns definition ──────────────────────────────────────────────── */
+/* ─── Column definitions ──────────────────────────────────────────────────── */
 const ALL_COLUMNS = [
   { id: "idx", label: "#", default: true },
   { id: "name", label: "Product Name", default: true },
@@ -56,7 +83,9 @@ const ALL_COLUMNS = [
   { id: "actions", label: "Actions", default: true },
 ];
 
-/* ─── Seed data ────────────────────────────────────────────────────────────── */
+const LOCKED_COLS = ["name", "qty", "actions"];
+
+/* ─── Seed data (sirf agar backend me kuch na ho, first-time fallback) ──── */
 const SEED = {
   delhi: [
     {
@@ -69,8 +98,7 @@ const SEED = {
       batch: "BC-001",
       expiry: "2026-12-01",
       supplier: "ColorChem Ltd",
-      safetyNote: "Avoid skin contact",
-      reorderNote: "Min 5kg order",
+      reorderNote: "",
     },
     {
       id: 2,
@@ -82,7 +110,6 @@ const SEED = {
       batch: "BC-002",
       expiry: "2026-11-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -95,7 +122,6 @@ const SEED = {
       batch: "BC-003",
       expiry: "2027-01-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -108,7 +134,6 @@ const SEED = {
       batch: "BC-004",
       expiry: "2027-03-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -121,7 +146,6 @@ const SEED = {
       batch: "BC-005",
       expiry: "2026-09-30",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -134,7 +158,6 @@ const SEED = {
       batch: "BC-006",
       expiry: "2026-08-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "Urgent reorder",
     },
     {
@@ -147,7 +170,6 @@ const SEED = {
       batch: "BC-007",
       expiry: "2027-02-28",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -160,7 +182,6 @@ const SEED = {
       batch: "BC-008",
       expiry: "2027-04-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -173,7 +194,6 @@ const SEED = {
       batch: "BC-009",
       expiry: "2027-05-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -186,7 +206,6 @@ const SEED = {
       batch: "BC-010",
       expiry: "2027-06-01",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -199,7 +218,6 @@ const SEED = {
       batch: "BC-011",
       expiry: "2027-07-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -212,7 +230,6 @@ const SEED = {
       batch: "BC-012",
       expiry: "2026-10-31",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -225,7 +242,6 @@ const SEED = {
       batch: "BC-013",
       expiry: "2027-08-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -238,7 +254,6 @@ const SEED = {
       batch: "BC-014",
       expiry: "2027-09-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -251,7 +266,6 @@ const SEED = {
       batch: "BC-015",
       expiry: "2027-10-05",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -264,7 +278,6 @@ const SEED = {
       batch: "BC-016",
       expiry: "2027-11-01",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -277,7 +290,6 @@ const SEED = {
       batch: "BC-017",
       expiry: "2027-12-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -290,7 +302,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "Out of stock - urgent",
     },
     {
@@ -303,7 +314,6 @@ const SEED = {
       batch: "BC-019",
       expiry: "2027-02-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -316,7 +326,6 @@ const SEED = {
       batch: "BC-020",
       expiry: "2027-03-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -329,7 +338,6 @@ const SEED = {
       batch: "BC-021",
       expiry: "2026-11-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -342,7 +350,6 @@ const SEED = {
       batch: "BC-022",
       expiry: "2027-04-25",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -355,7 +362,6 @@ const SEED = {
       batch: "BC-023",
       expiry: "2027-05-30",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -368,7 +374,6 @@ const SEED = {
       batch: "BC-024",
       expiry: "2027-06-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -381,7 +386,6 @@ const SEED = {
       batch: "BC-025",
       expiry: "2026-09-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -394,7 +398,6 @@ const SEED = {
       batch: "BC-026",
       expiry: "2027-07-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -407,7 +410,6 @@ const SEED = {
       batch: "BC-027",
       expiry: "2027-08-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -420,7 +422,6 @@ const SEED = {
       batch: "BC-028",
       expiry: "2027-09-05",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -433,7 +434,6 @@ const SEED = {
       batch: "BC-029",
       expiry: "2027-10-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -446,7 +446,6 @@ const SEED = {
       batch: "BC-030",
       expiry: "2027-11-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -459,7 +458,6 @@ const SEED = {
       batch: "BC-031",
       expiry: "2027-12-01",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -472,7 +470,6 @@ const SEED = {
       batch: "SA-001",
       expiry: "2027-06-30",
       supplier: "AuxiPro India",
-      safetyNote: "Flammable - keep cool",
       reorderNote: "Bulk order 5L",
     },
     {
@@ -485,7 +482,6 @@ const SEED = {
       batch: "SA-002",
       expiry: "2026-12-15",
       supplier: "AuxiPro India",
-      safetyNote: "Eye irritant",
       reorderNote: "",
     },
     {
@@ -498,7 +494,6 @@ const SEED = {
       batch: "DZ-001",
       expiry: "2027-01-20",
       supplier: "DeniChem Co",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -511,7 +506,6 @@ const SEED = {
       batch: "SF-001",
       expiry: "2027-03-10",
       supplier: "SulfaChem",
-      safetyNote: "Oxidising agent",
       reorderNote: "",
     },
     {
@@ -524,7 +518,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "DeniChem Co",
-      safetyNote: "",
       reorderNote: "Out of stock",
     },
     {
@@ -537,7 +530,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "AuxiPro India",
-      safetyNote: "",
       reorderNote: "Out of stock",
     },
     {
@@ -550,7 +542,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "DeniChem Co",
-      safetyNote: "Corrosive",
       reorderNote: "",
     },
     {
@@ -563,7 +554,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "SulfaChem",
-      safetyNote: "Strong oxidiser",
       reorderNote: "",
     },
     {
@@ -576,7 +566,6 @@ const SEED = {
       batch: "NF-001",
       expiry: "2027-05-15",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -589,7 +578,6 @@ const SEED = {
       batch: "LD-001",
       expiry: "2027-07-01",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -602,7 +590,6 @@ const SEED = {
       batch: "ES-001",
       expiry: "2027-08-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -615,7 +602,6 @@ const SEED = {
       batch: "ES-002",
       expiry: "2027-09-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -628,7 +614,6 @@ const SEED = {
       batch: "ES-003",
       expiry: "2027-10-05",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -641,7 +626,6 @@ const SEED = {
       batch: "BC-045",
       expiry: "2027-11-20",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -654,7 +638,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "AuxiPro India",
-      safetyNote: "Eye irritant",
       reorderNote: "",
     },
     {
@@ -667,7 +650,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "AuxiPro India",
-      safetyNote: "Flammable",
       reorderNote: "",
     },
     {
@@ -680,7 +662,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "DeniChem Co",
-      safetyNote: "",
       reorderNote: "",
     },
   ],
@@ -695,7 +676,6 @@ const SEED = {
       batch: "DL-001",
       expiry: "2027-01-15",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -708,7 +688,6 @@ const SEED = {
       batch: "DL-002",
       expiry: "2026-11-30",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "Reorder soon",
     },
     {
@@ -721,7 +700,6 @@ const SEED = {
       batch: "DL-003",
       expiry: "2027-03-20",
       supplier: "AuxiPro India",
-      safetyNote: "",
       reorderNote: "",
     },
   ],
@@ -736,7 +714,6 @@ const SEED = {
       batch: "FB-001",
       expiry: "2027-02-10",
       supplier: "ColorChem Ltd",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -749,7 +726,6 @@ const SEED = {
       batch: "",
       expiry: "",
       supplier: "AuxiPro India",
-      safetyNote: "",
       reorderNote: "Out of stock",
     },
     {
@@ -762,7 +738,6 @@ const SEED = {
       batch: "FB-003",
       expiry: "2027-04-15",
       supplier: "SulfaChem",
-      safetyNote: "Oxidising agent",
       reorderNote: "",
     },
   ],
@@ -777,7 +752,6 @@ const SEED = {
       batch: "SC-001",
       expiry: "",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -790,7 +764,6 @@ const SEED = {
       batch: "SC-002",
       expiry: "",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -803,7 +776,6 @@ const SEED = {
       batch: "SC-003",
       expiry: "",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -816,7 +788,6 @@ const SEED = {
       batch: "SC-004",
       expiry: "",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
     {
@@ -829,12 +800,12 @@ const SEED = {
       batch: "SC-005",
       expiry: "",
       supplier: "",
-      safetyNote: "",
       reorderNote: "",
     },
   ],
 };
 
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
 const EMPTY_PRODUCT = {
   name: "",
   qty: "",
@@ -844,7 +815,6 @@ const EMPTY_PRODUCT = {
   batch: "",
   expiry: "",
   supplier: "",
-  safetyNote: "",
   reorderNote: "",
 };
 const genId = () => Date.now() + Math.floor(Math.random() * 9999);
@@ -878,7 +848,7 @@ const detectColumns = (headerRow) => {
   };
 };
 
-/* ─── PDF Export ─────────────────────────────────────────────────────────── */
+/* ─── PDF Export ──────────────────────────────────────────────────────────── */
 const exportPDF = (
   stocks,
   tab,
@@ -893,13 +863,11 @@ const exportPDF = (
           .filter((p) => p.qty <= p.minQty)
           .map((p) => ({ ...p, _tab: TABS.find((x) => x.id === t)?.label })),
       )
-    : stocks[tab] || [];
-
-  if (!filterLow && catFilter !== "ALL") {
-    data = data.filter(
-      (p) => (p.category || getCategory(p.name)) === catFilter,
-    );
-  }
+    : (stocks[tab] || []).filter((p) =>
+        catFilter === "ALL"
+          ? true
+          : (p.category || getCategory(p.name)) === catFilter,
+      );
 
   const title =
     customTitle ||
@@ -907,44 +875,37 @@ const exportPDF = (
       ? "Low Stock Report — All Locations"
       : `${tabLabel} · ${catFilter !== "ALL" ? CATEGORIES[catFilter]?.label || catFilter : "All Categories"}`);
 
+  const totalQty = data.reduce((s, p) => s + (p.qty || 0), 0);
+  const lowCount = data.filter((p) => p.qty <= p.minQty).length;
+  const outCount = data.filter((p) => p.qty === 0).length;
+
   const rows = data
     .map((p, i) => {
       const isLow = p.qty <= p.minQty,
         isZero = p.qty === 0;
       const cat = CATEGORIES[p.category || getCategory(p.name)];
-      const statusColor = isZero ? "#DC2626" : isLow ? "#D97706" : "#059669";
-      const statusText = isZero ? "OUT OF STOCK" : isLow ? "LOW" : "OK";
-      return `
-    <tr style="background:${i % 2 === 0 ? "#fff" : "#F9FAFB"}">
+      const sc = isZero ? "#DC2626" : isLow ? "#D97706" : "#059669";
+      const st = isZero ? "OUT OF STOCK" : isLow ? "LOW" : "OK";
+      return `<tr style="background:${i % 2 === 0 ? "#fff" : "#F9FAFB"}">
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:11px;color:#6B7280">${i + 1}</td>
       ${filterLow ? `<td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:11px">${p._tab || ""}</td>` : ""}
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:600;color:#111">${p.name}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:11px;text-align:center">
         <span style="background:${cat?.bg || "#F3F4F6"};color:${cat?.color || "#555"};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${cat?.label || p.category || ""}</span>
       </td>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:700;text-align:center;color:${statusColor}">${p.qty} ${p.unit || ""}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:700;text-align:center;color:${sc}">${p.qty} ${p.unit || ""}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:11px;text-align:center;color:#6B7280">${p.minQty} ${p.unit || ""}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:10px;text-align:center">
-        <span style="background:${isZero ? "#FEE2E2" : isLow ? "#FEF3C7" : "#D1FAE5"};color:${statusColor};padding:2px 8px;border-radius:10px;font-weight:700;font-size:10px">${statusText}</span>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:center">
+        <span style="background:${isZero ? "#FEE2E2" : isLow ? "#FEF3C7" : "#D1FAE5"};color:${sc};padding:2px 8px;border-radius:10px;font-weight:700;font-size:10px">${st}</span>
       </td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:10px;color:#DC2626">${p.reorderNote || ""}</td>
     </tr>`;
     })
     .join("");
 
-  const totalQty = data.reduce((s, p) => s + (p.qty || 0), 0);
-  const lowCount = data.filter((p) => p.qty <= p.minQty).length;
-  const outCount = data.filter((p) => p.qty === 0).length;
-
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-  <title>${title}</title>
-  <style>
-    @media print { body { margin: 0; } .no-print { display: none; } }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #fff; }
-    table { width: 100%; border-collapse: collapse; }
-    th { padding: 9px 10px; background: #0F172A; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing:.05em; text-align:left; }
-    .summary-box { display:inline-block; padding:10px 20px; border-radius:8px; margin-right:10px; margin-bottom:16px; }
-  </style></head><body>
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  <style>@media print{body{margin:0}.no-print{display:none}}body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#fff}table{width:100%;border-collapse:collapse}th{padding:9px 10px;background:#0F172A;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.05em;text-align:left}.sb{display:inline-block;padding:10px 20px;border-radius:8px;margin-right:10px;margin-bottom:16px}</style>
+  </head><body>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #0F172A">
     <div>
       <div style="font-size:22px;font-weight:900;color:#0F172A;letter-spacing:-.5px">⚗ Chemical Stock Report</div>
@@ -952,10 +913,10 @@ const exportPDF = (
     </div>
   </div>
   <div style="margin-bottom:16px">
-    <div class="summary-box" style="background:#EFF6FF;color:#1D4ED8"><strong style="font-size:20px">${data.length}</strong><br><span style="font-size:11px">Total Products</span></div>
-    <div class="summary-box" style="background:#ECFDF5;color:#065F46"><strong style="font-size:20px">${totalQty}</strong><br><span style="font-size:11px">Total Quantity</span></div>
-    <div class="summary-box" style="background:#FEF3C7;color:#92400E"><strong style="font-size:20px">${lowCount}</strong><br><span style="font-size:11px">Low Stock</span></div>
-    <div class="summary-box" style="background:#FEE2E2;color:#991B1B"><strong style="font-size:20px">${outCount}</strong><br><span style="font-size:11px">Out of Stock</span></div>
+    <div class="sb" style="background:#EFF6FF;color:#1D4ED8"><strong style="font-size:20px">${data.length}</strong><br><span style="font-size:11px">Total Products</span></div>
+    <div class="sb" style="background:#ECFDF5;color:#065F46"><strong style="font-size:20px">${totalQty}</strong><br><span style="font-size:11px">Total Quantity</span></div>
+    <div class="sb" style="background:#FEF3C7;color:#92400E"><strong style="font-size:20px">${lowCount}</strong><br><span style="font-size:11px">Low Stock</span></div>
+    <div class="sb" style="background:#FEE2E2;color:#991B1B"><strong style="font-size:20px">${outCount}</strong><br><span style="font-size:11px">Out of Stock</span></div>
   </div>
   <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:8px 20px;background:#0F172A;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">🖨 Print / Save PDF</button>
   <table>
@@ -973,13 +934,33 @@ const exportPDF = (
   w.document.close();
 };
 
-/* ─── Styles ─────────────────────────────────────────────────────────────── */
+/* ─── Sub-components ──────────────────────────────────────────────────────── */
+const FormField = ({ label, children }) => (
+  <div style={{ marginBottom: 12 }}>
+    <label
+      style={{
+        display: "block",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#6B7280",
+        textTransform: "uppercase",
+        letterSpacing: ".05em",
+        marginBottom: 4,
+      }}
+    >
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+/* ─── Inline styles ───────────────────────────────────────────────────────── */
 const S = {
   wrap: {
     fontFamily: "'Inter',system-ui,sans-serif",
     minHeight: "100vh",
     background: "#F1F5F9",
-    paddingBottom: 64,
+    paddingBottom: 72,
   },
   header: {
     background: "#0F172A",
@@ -999,51 +980,50 @@ const S = {
     flexWrap: "wrap",
     gap: 8,
   },
-  main: {
-    maxWidth: 1280,
-    margin: "0 auto",
-    padding: "20px 16px",
-    display: "flex",
-    gap: 20,
-  },
+  main: { maxWidth: 1280, margin: "0 auto", padding: "20px 16px" },
   card: {
     background: "#fff",
     borderRadius: 14,
     boxShadow: "0 1px 6px rgba(0,0,0,.07)",
     overflow: "hidden",
   },
-  tabBar: {
-    display: "flex",
-    gap: 4,
-    background: "#fff",
-    borderRadius: 12,
-    padding: 5,
-    boxShadow: "0 1px 4px rgba(0,0,0,.07)",
-    width: "fit-content",
-    flexWrap: "wrap",
-  },
-  btn: (bg, col, sm) => ({
-    padding: sm ? "7px 14px" : "9px 18px",
-    borderRadius: 9,
+
+  hdrBtn: (bg, col) => ({
+    padding: "6px 13px",
+    borderRadius: 8,
     border: "none",
     background: bg,
     color: col,
     cursor: "pointer",
-    fontSize: sm ? 11 : 13,
+    fontSize: 11,
     fontWeight: 700,
-    whiteSpace: "nowrap",
     display: "flex",
     alignItems: "center",
     gap: 5,
   }),
-  rowBtn: (bg, col) => ({
-    padding: "5px 11px",
-    borderRadius: 7,
-    border: `1.5px solid ${col}30`,
+  smBtn: (bg, col, border) => ({
+    padding: "7px 13px",
+    borderRadius: 8,
+    border: border || "none",
     background: bg,
     color: col,
     cursor: "pointer",
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: 700,
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    whiteSpace: "nowrap",
+    transition: "opacity .15s",
+  }),
+  rowBtn: (bg, col, border) => ({
+    padding: "5px 11px",
+    borderRadius: 7,
+    border: border,
+    background: bg,
+    color: col,
+    cursor: "pointer",
+    fontSize: 11,
     fontWeight: 600,
   }),
   input: (ac) => ({
@@ -1064,36 +1044,16 @@ const S = {
   }),
 };
 
-const FormField = ({ label, children }) => (
-  <div style={{ marginBottom: 12 }}>
-    <label
-      style={{
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#6B7280",
-        textTransform: "uppercase",
-        letterSpacing: ".05em",
-        marginBottom: 4,
-      }}
-    >
-      {label}
-    </label>
-    {children}
-  </div>
-);
-
 /* ══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════════════════ */
 export default function ChemicalStockManager() {
-  const saved = load();
-  const [stocks, setStocksRaw] = useState(saved?.stocks || SEED);
-  const [changeLog, setChangeLog] = useState(saved?.changeLog || []);
-  const [lastUpdated, setLastUpdated] = useState(saved?.lastUpdated || {});
-  const [companyName, setCompanyName] = useState(
-    saved?.companyName || "My Chemical Store",
-  );
+  const [stocks, setStocksRaw] = useState(SEED);
+  const [changeLog, setChangeLog] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState({});
+  const [companyName, setCompanyName] = useState("My Chemical Store");
+  const [isLoaded, setIsLoaded] = useState(false); // backend se first fetch ho gaya ya nahi
+  const [syncState, setSyncState] = useState("idle"); // idle | saving | saved | error
 
   const [activeTab, setActiveTab] = useState("sample");
   const [search, setSearch] = useState("");
@@ -1104,25 +1064,54 @@ export default function ChemicalStockManager() {
   const [newRow, setNewRow] = useState(EMPTY_PRODUCT);
   const [toastMsg, setToastMsg] = useState(null);
   const [importMode, setImportMode] = useState("manual");
-  const [showLog, setShowLog] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null);
   const [detailRow, setDetailRow] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [mobileTab, setMobileTab] = useState("stock");
-
-  // ── Column selector state ──
-  const defaultVisible = ALL_COLUMNS.filter((c) => c.default).map((c) => c.id);
-  const [visibleCols, setVisibleCols] = useState(defaultVisible);
   const [showColPicker, setShowColPicker] = useState(false);
-  const colPickerRef = useRef();
+  const [visibleCols, setVisibleCols] = useState(
+    ALL_COLUMNS.filter((c) => c.default).map((c) => c.id),
+  );
 
   const fileRef = useRef();
+  const colPickerRef = useRef();
 
+  const toast = useCallback((msg, type = "success") => {
+    setToastMsg({ msg, type });
+    setTimeout(() => setToastMsg(null), 3000);
+  }, []);
+
+  /* ── Initial load from backend (replaces old synchronous loadData()) ── */
   useEffect(() => {
-    save({ stocks, changeLog, lastUpdated, companyName });
-  }, [stocks, changeLog, lastUpdated, companyName]);
+    (async () => {
+      const saved = await loadData();
+      if (saved) {
+        setStocksRaw(saved.stocks || SEED);
+        setChangeLog(saved.changeLog || []);
+        setLastUpdated(saved.lastUpdated || {});
+        setCompanyName(saved.companyName || "My Chemical Store");
+      } else {
+        toast("Could not reach server, showing demo data", "error");
+      }
+      setIsLoaded(true);
+    })();
+  }, [toast]);
 
-  // Close col picker on outside click
+  /* ── Persist to backend (debounced, skips until first load is done) ── */
+  useEffect(() => {
+    if (!isLoaded) return;
+    setSyncState("saving");
+    const t = setTimeout(async () => {
+      try {
+        await saveData({ stocks, changeLog, lastUpdated, companyName });
+        setSyncState("saved");
+      } catch {
+        setSyncState("error");
+      }
+    }, 600); // debounce — qty +/- jaise rapid clicks pe baar baar call na ho
+    return () => clearTimeout(t);
+  }, [stocks, changeLog, lastUpdated, companyName, isLoaded]);
+
+  /* ── Close col-picker on outside click ── */
   useEffect(() => {
     const handler = (e) => {
       if (colPickerRef.current && !colPickerRef.current.contains(e.target))
@@ -1138,10 +1127,6 @@ export default function ChemicalStockManager() {
     );
   }, []);
 
-  const toast = (msg, type = "success") => {
-    setToastMsg({ msg, type });
-    setTimeout(() => setToastMsg(null), 3000);
-  };
   const logAction = (action, tab, details) => {
     const entry = { id: genId(), action, tab, details, time: nowStr() };
     setChangeLog((p) => [entry, ...p].slice(0, 200));
@@ -1150,19 +1135,14 @@ export default function ChemicalStockManager() {
 
   const current = stocks[activeTab] || [];
 
-  // ── Category counts for current tab ──
+  /* ── Derived counts ── */
   const catCounts = {};
+  const catLowCounts = {};
   current.forEach((p) => {
     const cat = p.category || getCategory(p.name);
     catCounts[cat] = (catCounts[cat] || 0) + 1;
+    if (p.qty <= p.minQty) catLowCounts[cat] = (catLowCounts[cat] || 0) + 1;
   });
-  const catLowCounts = {};
-  current
-    .filter((p) => p.qty <= p.minQty)
-    .forEach((p) => {
-      const cat = p.category || getCategory(p.name);
-      catLowCounts[cat] = (catLowCounts[cat] || 0) + 1;
-    });
 
   const filtered = current.filter((p) => {
     const ms =
@@ -1177,6 +1157,12 @@ export default function ChemicalStockManager() {
     return ms && ml && mc;
   });
 
+  const totalLow = Object.values(stocks)
+    .flat()
+    .filter((p) => p.qty <= p.minQty).length;
+  const tabLabel = TABS.find((t) => t.id === activeTab)?.label || "";
+
+  /* ── CRUD ── */
   const handleAdd = () => {
     if (!newRow.name.trim()) return toast("Product name required", "error");
     const p = {
@@ -1207,7 +1193,7 @@ export default function ChemicalStockManager() {
     }));
     const ch = [];
     if (prev.qty !== updated.qty) ch.push(`QT: ${prev.qty}→${updated.qty}`);
-    if (prev.name !== updated.name) ch.push(`Name changed`);
+    if (prev.name !== updated.name) ch.push("Name changed");
     logAction(
       "EDIT",
       activeTab,
@@ -1218,6 +1204,7 @@ export default function ChemicalStockManager() {
   };
 
   const handleDelete = (id) => setConfirmDel(current.find((p) => p.id === id));
+
   const confirmDelete = () => {
     setStocks((s) => ({
       ...s,
@@ -1241,6 +1228,7 @@ export default function ChemicalStockManager() {
     logAction("QTY", activeTab, `"${p.name}" QT: ${p.qty} → ${newQty}`);
   };
 
+  /* ── File import ── */
   const handleFile = useCallback(
     (e) => {
       const file = e.target.files[0];
@@ -1266,7 +1254,6 @@ export default function ChemicalStockManager() {
               batch: "",
               expiry: "",
               supplier: "",
-              safetyNote: "",
               reorderNote: "",
             }));
           if (!imported.length) return toast("No valid data found", "error");
@@ -1290,6 +1277,7 @@ export default function ChemicalStockManager() {
     [activeTab],
   );
 
+  /* ── Excel export ── */
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
       filtered.map((p, i) => ({
@@ -1304,50 +1292,12 @@ export default function ChemicalStockManager() {
       })),
     );
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws,
-      TABS.find((t) => t.id === activeTab)?.label,
-    );
+    XLSX.utils.book_append_sheet(wb, ws, tabLabel);
     XLSX.writeFile(wb, `${activeTab}_stock_${Date.now()}.xlsx`);
     toast("Excel exported ✓");
   };
 
-  const tabLabel = TABS.find((t) => t.id === activeTab)?.label || "";
-  const totalLow = Object.values(stocks)
-    .flat()
-    .filter((p) => p.qty <= p.minQty).length;
-  const allAlerts = Object.entries(stocks).flatMap(([tab, ps]) =>
-    ps
-      .filter((p) => p.qty <= p.minQty)
-      .map((p) => ({
-        ...p,
-        _tab: TABS.find((t) => t.id === tab)?.label,
-        _tabId: tab,
-      })),
-  );
-
-  const switchTab = (id) => {
-    setActiveTab(id);
-    setSearch("");
-    setCatFilter("ALL");
-    setShowLowOnly(false);
-    setEditRow(null);
-    setAddMode(false);
-  };
-
-  const isColVisible = (id) => visibleCols.includes(id);
-  const toggleCol = (id) => {
-    if (["name", "qty", "actions"].includes(id)) return; // always visible
-    setVisibleCols((v) =>
-      v.includes(id) ? v.filter((c) => c !== id) : [...v, id],
-    );
-  };
-
-  const drawerData = editRow || (addMode ? newRow : null);
-  const setDrawer = editRow ? setEditRow : setNewRow;
-
-  /* ── Low stock PDF for current filtered view ── */
+  /* ── Low PDF for current view ── */
   const exportLowPDF = () => {
     const lowData = filtered.filter((p) => p.qty <= p.minQty);
     if (!lowData.length)
@@ -1366,389 +1316,58 @@ export default function ChemicalStockManager() {
     );
   };
 
-  /* ─── Detail Modal ─── */
-  const DetailModal = detailRow && (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 201,
-        background: "rgba(0,0,0,.5)",
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) setDetailRow(null);
-      }}
-    >
+  /* ── Switch tab ── */
+  const switchTab = (id) => {
+    setActiveTab(id);
+    setSearch("");
+    setCatFilter("ALL");
+    setShowLowOnly(false);
+    setEditRow(null);
+    setAddMode(false);
+  };
+
+  /* ── Column helpers ── */
+  const isColVisible = (id) => visibleCols.includes(id);
+  const toggleCol = (id) => {
+    if (LOCKED_COLS.includes(id)) return;
+    setVisibleCols((v) =>
+      v.includes(id) ? v.filter((c) => c !== id) : [...v, id],
+    );
+  };
+
+  /* Drawer data binding */
+  const drawerData = editRow || (addMode ? newRow : null);
+  const setDrawer = editRow ? setEditRow : setNewRow;
+
+  /* ── Loading screen while first backend fetch is in-flight ── */
+  if (!isLoaded) {
+    return (
       <div
         style={{
-          background: "#fff",
-          borderRadius: "18px 18px 0 0",
-          width: "100%",
-          maxWidth: 520,
-          maxHeight: "85vh",
-          overflowY: "auto",
-          padding: 24,
-          boxSizing: "border-box",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#F1F5F9",
+          fontFamily: "'Inter',system-ui,sans-serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              fontSize: 15,
-              fontWeight: 800,
-              color: "#0F172A",
-            }}
-          >
-            {detailRow.name}
-          </h3>
-          <button
-            onClick={() => setDetailRow(null)}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: 22,
-              cursor: "pointer",
-              color: "#9CA3AF",
-            }}
-          >
-            ×
-          </button>
-        </div>
-        {[
-          ["Quantity", `${detailRow.qty} ${detailRow.unit || ""}`],
-          ["Min Quantity", `${detailRow.minQty} ${detailRow.unit || ""}`],
-          [
-            "Category",
-            CATEGORIES[detailRow.category]?.label || detailRow.category,
-          ],
-          ["Reorder Note", detailRow.reorderNote || "None"],
-        ].map(([k, v]) => (
-          <div
-            key={k}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "10px 0",
-              borderBottom: "1px solid #F3F4F6",
-            }}
-          >
-            <span style={{ fontSize: 12, color: "#6B7280", fontWeight: 600 }}>
-              {k}
-            </span>
-            <span
-              style={{
-                fontSize: 13,
-                color: "#111",
-                fontWeight: 500,
-                maxWidth: "60%",
-                textAlign: "right",
-              }}
-            >
-              {v}
-            </span>
+        <div style={{ textAlign: "center", color: "#64748B" }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>⚗</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>
+            Loading stock data…
           </div>
-        ))}
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <button
-            onClick={() => {
-              setEditRow({ ...detailRow });
-              setDetailRow(null);
-            }}
-            style={{
-              ...S.btn("#2563EB", "#fff"),
-              flex: 1,
-              justifyContent: "center",
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => {
-              handleDelete(detailRow.id);
-              setDetailRow(null);
-            }}
-            style={{
-              ...S.btn("#FEF2F2", "#DC2626"),
-              flex: 1,
-              justifyContent: "center",
-            }}
-          >
-            Delete
-          </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  /* ─── Confirm Delete ─── */
-  const ConfirmModal = confirmDel && (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 202,
-        background: "rgba(0,0,0,.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 16,
-          padding: 28,
-          width: "100%",
-          maxWidth: 340,
-          textAlign: "center",
-          boxShadow: "0 20px 60px rgba(0,0,0,.2)",
-        }}
-      >
-        <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
-        <p
-          style={{
-            fontWeight: 800,
-            fontSize: 15,
-            marginBottom: 6,
-            color: "#0F172A",
-          }}
-        >
-          Delete Product?
-        </p>
-        <p
-          style={{
-            color: "#555",
-            fontSize: 13,
-            marginBottom: 24,
-            lineHeight: 1.5,
-          }}
-        >
-          "{confirmDel.name}" permanently remove ho jaayega.
-        </p>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={() => setConfirmDel(null)}
-            style={{
-              ...S.btn("#F1F5F9", "#374151"),
-              flex: 1,
-              justifyContent: "center",
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmDelete}
-            style={{
-              ...S.btn("#EF4444", "#fff"),
-              flex: 1,
-              justifyContent: "center",
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ─── Settings Modal ─── */
-  const SettingsModal = showSettings && (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 202,
-        background: "rgba(0,0,0,.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 16,
-          padding: 28,
-          width: "100%",
-          maxWidth: 380,
-          boxShadow: "0 20px 60px rgba(0,0,0,.2)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <h3 style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-            ⚙ Settings
-          </h3>
-          <button
-            onClick={() => setShowSettings(false)}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: 22,
-              cursor: "pointer",
-              color: "#9CA3AF",
-            }}
-          >
-            ×
-          </button>
-        </div>
-        <FormField label="Company / Store Name">
-          <input
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            style={S.input("#2563EB")}
-          />
-        </FormField>
-        <div
-          style={{
-            marginTop: 16,
-            paddingTop: 16,
-            borderTop: "1px solid #F3F4F6",
-          }}
-        >
-          <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>
-            ⚠ Danger Zone
-          </p>
-          <button
-            onClick={() => {
-              if (window.confirm("Sab data delete hoga! Sure?")) {
-                localStorage.removeItem(STORAGE_KEY);
-                window.location.reload();
-              }
-            }}
-            style={{
-              ...S.btn("#FEF2F2", "#DC2626"),
-              width: "100%",
-              justifyContent: "center",
-            }}
-          >
-            🗑 Clear All Data
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ─── Column Picker Dropdown ─── */
-  const ColPicker = showColPicker && (
-    <div
-      ref={colPickerRef}
-      style={{
-        position: "absolute",
-        top: "calc(100% + 6px)",
-        right: 0,
-        zIndex: 150,
-        background: "#fff",
-        borderRadius: 12,
-        boxShadow: "0 8px 32px rgba(0,0,0,.15)",
-        padding: "12px 0",
-        minWidth: 200,
-        border: "1.5px solid #E2E8F0",
-      }}
-    >
-      <div
-        style={{
-          padding: "0 14px 8px",
-          fontSize: 10,
-          fontWeight: 800,
-          color: "#94A3B8",
-          textTransform: "uppercase",
-          letterSpacing: ".06em",
-        }}
-      >
-        Columns
-      </div>
-      {ALL_COLUMNS.map((col) => {
-        const locked = ["name", "qty", "actions"].includes(col.id);
-        const checked = isColVisible(col.id);
-        return (
-          <label
-            key={col.id}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "7px 14px",
-              cursor: locked ? "not-allowed" : "pointer",
-              background: "transparent",
-              userSelect: "none",
-            }}
-            onMouseEnter={(e) => {
-              if (!locked) e.currentTarget.style.background = "#F8FAFC";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <div
-              onClick={() => !locked && toggleCol(col.id)}
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: 4,
-                border: `2px solid ${checked ? "#2563EB" : "#D1D5DB"}`,
-                background: checked ? "#2563EB" : "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                opacity: locked ? 0.4 : 1,
-              }}
-            >
-              {checked && (
-                <span
-                  style={{
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    lineHeight: 1,
-                  }}
-                >
-                  ✓
-                </span>
-              )}
-            </div>
-            <span
-              style={{
-                fontSize: 12,
-                color: locked ? "#94A3B8" : "#374151",
-                fontWeight: checked ? 600 : 400,
-              }}
-            >
-              {col.label}{" "}
-              {locked && (
-                <span style={{ fontSize: 9, color: "#CBD5E1" }}>(fixed)</span>
-              )}
-            </span>
-          </label>
-        );
-      })}
-    </div>
-  );
-
-  /* ─── Render ─── */
+  /* ─────────────────────────────────────────────────────────────────────────
+     RENDER
+  ──────────────────────────────────────────────────────────────────────── */
   return (
     <div style={S.wrap}>
-      {/* Toast */}
+      {/* ── Toast ── */}
       {toastMsg && (
         <div
           style={{
@@ -1763,13 +1382,16 @@ export default function ChemicalStockManager() {
             fontSize: 13,
             fontWeight: 700,
             boxShadow: "0 4px 20px rgba(0,0,0,.18)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
           {toastMsg.type === "error" ? "✕" : "✓"} {toastMsg.msg}
         </div>
       )}
 
-      {/* Edit/Add Modal */}
+      {/* ── Edit / Add Drawer ── */}
       <div
         style={{
           display: editRow || addMode ? "flex" : "none",
@@ -1815,7 +1437,7 @@ export default function ChemicalStockManager() {
                 color: "#0F172A",
               }}
             >
-              {editRow ? "Edit Product" : "Add Product"}
+              {editRow ? "✏ Edit Product" : "＋ Add Product"}
             </h3>
             <button
               onClick={() => {
@@ -1823,12 +1445,17 @@ export default function ChemicalStockManager() {
                 setAddMode(false);
               }}
               style={{
-                background: "none",
+                background: "#F1F5F9",
                 border: "none",
-                fontSize: 22,
+                borderRadius: 8,
+                width: 30,
+                height: 30,
                 cursor: "pointer",
+                fontSize: 18,
                 color: "#9CA3AF",
-                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               ×
@@ -1913,6 +1540,38 @@ export default function ChemicalStockManager() {
                 </select>
               </FormField>
               <div style={{ gridColumn: "1/-1" }}>
+                <FormField label="Batch No.">
+                  <input
+                    value={drawerData.batch || ""}
+                    onChange={(e) =>
+                      setDrawer((r) => ({ ...r, batch: e.target.value }))
+                    }
+                    style={S.input()}
+                    placeholder="e.g. BC-001"
+                  />
+                </FormField>
+              </div>
+              <FormField label="Expiry Date">
+                <input
+                  type="date"
+                  value={drawerData.expiry || ""}
+                  onChange={(e) =>
+                    setDrawer((r) => ({ ...r, expiry: e.target.value }))
+                  }
+                  style={S.input()}
+                />
+              </FormField>
+              <FormField label="Supplier">
+                <input
+                  value={drawerData.supplier || ""}
+                  onChange={(e) =>
+                    setDrawer((r) => ({ ...r, supplier: e.target.value }))
+                  }
+                  style={S.input()}
+                  placeholder="Supplier name"
+                />
+              </FormField>
+              <div style={{ gridColumn: "1/-1" }}>
                 <FormField label="Reorder Note">
                   <input
                     value={drawerData.reorderNote || ""}
@@ -1930,10 +1589,15 @@ export default function ChemicalStockManager() {
             <button
               onClick={editRow ? handleSaveEdit : handleAdd}
               style={{
-                ...S.btn("#2563EB", "#fff"),
                 flex: 1,
-                justifyContent: "center",
-                padding: 12,
+                padding: 13,
+                borderRadius: 10,
+                border: "none",
+                background: "#2563EB",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               {editRow ? "💾 Save Changes" : "✚ Add Product"}
@@ -1943,22 +1607,383 @@ export default function ChemicalStockManager() {
                 setEditRow(null);
                 setAddMode(false);
               }}
-              style={{ ...S.btn("#F1F5F9", "#374151"), padding: 12 }}
+              style={{
+                padding: "13px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: "#F1F5F9",
+                color: "#374151",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
             >
               Cancel
             </button>
           </div>
         </div>
       </div>
-      {DetailModal}
-      {ConfirmModal}
-      {SettingsModal}
+
+      {/* ── Detail Modal ── */}
+      {detailRow && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 201,
+            background: "rgba(0,0,0,.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDetailRow(null);
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "18px 18px 0 0",
+              width: "100%",
+              maxWidth: 520,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              padding: 24,
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: "#0F172A",
+                }}
+              >
+                {detailRow.name}
+              </h3>
+              <button
+                onClick={() => setDetailRow(null)}
+                style={{
+                  background: "#F1F5F9",
+                  border: "none",
+                  borderRadius: 8,
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#9CA3AF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            {(() => {
+              const cat =
+                CATEGORIES[detailRow.category || getCategory(detailRow.name)];
+              const isLow = detailRow.qty <= detailRow.minQty,
+                isZero = detailRow.qty === 0;
+              const fields = [
+                ["Quantity", `${detailRow.qty} ${detailRow.unit || ""}`],
+                ["Min Quantity", `${detailRow.minQty} ${detailRow.unit || ""}`],
+                ["Category", cat?.label || detailRow.category],
+                [
+                  "Status",
+                  isZero ? "Out of Stock" : isLow ? "Low Stock" : "OK",
+                ],
+                ...(detailRow.batch ? [["Batch", detailRow.batch]] : []),
+                ...(detailRow.expiry ? [["Expiry", detailRow.expiry]] : []),
+                ...(detailRow.supplier
+                  ? [["Supplier", detailRow.supplier]]
+                  : []),
+                ["Reorder Note", detailRow.reorderNote || "None"],
+              ];
+              return fields.map(([k, v]) => (
+                <div
+                  key={k}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "10px 0",
+                    borderBottom: "1px solid #F3F4F6",
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 12, color: "#6B7280", fontWeight: 600 }}
+                  >
+                    {k}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "#111",
+                      fontWeight: 500,
+                      maxWidth: "60%",
+                      textAlign: "right",
+                    }}
+                  >
+                    {v}
+                  </span>
+                </div>
+              ));
+            })()}
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button
+                onClick={() => {
+                  setEditRow({ ...detailRow });
+                  setDetailRow(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#2563EB",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                ✏ Edit
+              </button>
+              <button
+                onClick={() => {
+                  handleDelete(detailRow.id);
+                  setDetailRow(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#FEF2F2",
+                  color: "#DC2626",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🗑 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirm Delete ── */}
+      {confirmDel && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 202,
+            background: "rgba(0,0,0,.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 28,
+              width: "100%",
+              maxWidth: 340,
+              textAlign: "center",
+              boxShadow: "0 20px 60px rgba(0,0,0,.2)",
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
+            <p
+              style={{
+                fontWeight: 800,
+                fontSize: 15,
+                marginBottom: 6,
+                color: "#0F172A",
+              }}
+            >
+              Delete Product?
+            </p>
+            <p
+              style={{
+                color: "#555",
+                fontSize: 13,
+                marginBottom: 24,
+                lineHeight: 1.5,
+              }}
+            >
+              "{confirmDel.name}" permanently remove ho jaayega.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setConfirmDel(null)}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 9,
+                  border: "none",
+                  background: "#F1F5F9",
+                  color: "#374151",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 9,
+                  border: "none",
+                  background: "#EF4444",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Settings Modal ── */}
+      {showSettings && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 202,
+            background: "rgba(0,0,0,.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSettings(false);
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 28,
+              width: "100%",
+              maxWidth: 380,
+              boxShadow: "0 20px 60px rgba(0,0,0,.2)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <h3 style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
+                ⚙ Settings
+              </h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                style={{
+                  background: "#F1F5F9",
+                  border: "none",
+                  borderRadius: 8,
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#9CA3AF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <FormField label="Company / Store Name">
+              <input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                style={S.input("#2563EB")}
+              />
+            </FormField>
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: "1px solid #F3F4F6",
+              }}
+            >
+              <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 12 }}>
+                ⚠ Danger Zone
+              </p>
+              <button
+                onClick={async () => {
+                  if (window.confirm("Sab data delete hoga! Sure?")) {
+                    await clearRemoteData();
+                    window.location.reload();
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: 11,
+                  borderRadius: 9,
+                  border: "none",
+                  background: "#FEF2F2",
+                  color: "#DC2626",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🗑 Clear All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div style={S.header}>
         <div style={S.hdrInner}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 24 }}>⚗</span>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                background: "rgba(255,255,255,.1)",
+                borderRadius: 9,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+              }}
+            >
+              ⚗
+            </div>
             <div>
               <div
                 style={{
@@ -1971,7 +1996,12 @@ export default function ChemicalStockManager() {
                 {companyName}
               </div>
               <div style={{ fontSize: 10, color: "#64748B" }}>
-                Chemical Stock Manager · Auto-saved
+                Chemical Stock Manager ·{" "}
+                {syncState === "saving"
+                  ? "Syncing…"
+                  : syncState === "error"
+                    ? "Sync failed"
+                    : "Synced to server"}
               </div>
             </div>
           </div>
@@ -1983,16 +2013,17 @@ export default function ChemicalStockManager() {
               flexWrap: "wrap",
             }}
           >
+            {/* Low badge in header instead of sidebar */}
             {totalLow > 0 && (
               <span
                 style={{
-                  background: "#FEF2F2",
-                  color: "#DC2626",
+                  background: "#7f1d1d",
+                  color: "#fca5a5",
                   fontSize: 11,
                   fontWeight: 700,
-                  padding: "4px 10px",
+                  padding: "4px 11px",
                   borderRadius: 20,
-                  border: "1.5px solid #FECACA",
+                  border: "1px solid #991b1b",
                 }}
               >
                 ⚠ {totalLow} Low
@@ -2000,7 +2031,7 @@ export default function ChemicalStockManager() {
             )}
             <button
               onClick={() => exportPDF(stocks, activeTab, tabLabel, true)}
-              style={S.btn("#DC2626", "#fff", true)}
+              style={S.hdrBtn("#7f1d1d", "#fca5a5")}
             >
               📄 PDF Alert
             </button>
@@ -2008,13 +2039,13 @@ export default function ChemicalStockManager() {
               onClick={() =>
                 exportPDF(stocks, activeTab, tabLabel, false, catFilter)
               }
-              style={S.btn("#F59E0B", "#0F172A", true)}
+              style={S.hdrBtn("#78350f", "#fcd34d")}
             >
               📄 PDF Report
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              style={S.btn("#1E293B", "#94A3B8", true)}
+              style={S.hdrBtn("rgba(255,255,255,.08)", "#94A3B8")}
             >
               ⚙
             </button>
@@ -2022,899 +2053,865 @@ export default function ChemicalStockManager() {
         </div>
       </div>
 
+      {/* ── Main ── */}
       <div style={S.main}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Tabs */}
-          <div style={{ ...S.tabBar, marginBottom: 16 }}>
-            {TABS.map((t) => {
-              const low =
-                stocks[t.id]?.filter((p) => p.qty <= p.minQty).length || 0;
-              const act = activeTab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => switchTab(t.id)}
-                  style={{
-                    padding: "7px 14px",
-                    borderRadius: 9,
-                    border: "none",
-                    cursor: "pointer",
-                    background: act ? "#0F172A" : "transparent",
-                    color: act ? "#fff" : "#64748B",
-                    fontWeight: act ? 700 : 500,
-                    fontSize: 13,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    transition: "all .12s",
-                  }}
-                >
-                  {t.icon} {t.label}
-                  {low > 0 && (
-                    <span
-                      style={{
-                        background: act ? "rgba(255,255,255,.2)" : "#FEE2E2",
-                        color: act ? "#fff" : "#DC2626",
-                        fontSize: 9,
-                        fontWeight: 800,
-                        padding: "1px 5px",
-                        borderRadius: 8,
-                      }}
-                    >
-                      {low}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Stats strip */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginBottom: 16,
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              {
-                l: "Products",
-                v: current.length,
-                bg: "#EFF6FF",
-                col: "#1D4ED8",
-              },
-              {
-                l: "Total QT",
-                v: current.reduce((s, p) => s + p.qty, 0),
-                bg: "#ECFDF5",
-                col: "#065F46",
-              },
-              {
-                l: "Low Stock",
-                v: current.filter((p) => p.qty <= p.minQty).length,
-                bg: "#FEF3C7",
-                col: "#92400E",
-              },
-              {
-                l: "Out of Stock",
-                v: current.filter((p) => p.qty === 0).length,
-                bg: "#FEE2E2",
-                col: "#991B1B",
-              },
-            ].map((s) => (
-              <div
-                key={s.l}
+        {/* Tabs */}
+        <div
+          style={{
+            display: "flex",
+            gap: 4,
+            background: "#fff",
+            borderRadius: 12,
+            padding: 5,
+            boxShadow: "0 1px 4px rgba(0,0,0,.07)",
+            width: "fit-content",
+            flexWrap: "wrap",
+            marginBottom: 16,
+          }}
+        >
+          {TABS.map((t) => {
+            const low = (stocks[t.id] || []).filter(
+              (p) => p.qty <= p.minQty,
+            ).length;
+            const act = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => switchTab(t.id)}
                 style={{
-                  background: s.bg,
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  flex: "1 1 80px",
-                }}
-              >
-                <div style={{ fontSize: 20, fontWeight: 900, color: s.col }}>
-                  {s.v}
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: s.col + "99",
-                    fontWeight: 600,
-                    marginTop: 1,
-                  }}
-                >
-                  {s.l}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Controls ── */}
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginBottom: 12,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
-            {/* Search */}
-            <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
-              <span
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#94A3B8",
-                  fontSize: 14,
-                }}
-              >
-                🔍
-              </span>
-              <input
-                type="text"
-                placeholder="Search name, batch, supplier…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ ...S.input(), paddingLeft: 32, fontSize: 12 }}
-              />
-            </div>
-
-            {/* ── Category filter with counts ── */}
-            <div style={{ position: "relative" }}>
-              <select
-                value={catFilter}
-                onChange={(e) => setCatFilter(e.target.value)}
-                style={{
-                  ...S.input(),
-                  width: "auto",
-                  fontSize: 12,
-                  padding: "8px 10px",
-                  appearance: "auto",
-                  minWidth: 160,
-                  paddingRight: 28,
-                  color: "#0F172A",
-                  fontWeight: catFilter !== "ALL" ? 700 : 400,
-                  borderColor:
-                    catFilter !== "ALL"
-                      ? CATEGORIES[catFilter]?.color + "80"
-                      : "#E5E7EB",
-                  background:
-                    catFilter !== "ALL" ? CATEGORIES[catFilter]?.bg : "#fff",
-                }}
-              >
-                <option value="ALL">All Categories ({current.length})</option>
-                {Object.entries(CATEGORIES).map(([k, v]) => {
-                  const count = catCounts[k] || 0;
-                  if (!count) return null;
-                  const lowC = catLowCounts[k] || 0;
-                  return (
-                    <option key={k} value={k}>
-                      {v.label} ({count}
-                      {lowC > 0 ? ` ⚠${lowC}` : ""})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {/* Low-only toggle */}
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 12,
-                color: "#555",
-                cursor: "pointer",
-                userSelect: "none",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <div
-                onClick={() => setShowLowOnly((v) => !v)}
-                style={{
-                  width: 34,
-                  height: 18,
+                  padding: "7px 14px",
                   borderRadius: 9,
-                  background: showLowOnly ? "#EF4444" : "#D1D5DB",
-                  position: "relative",
+                  border: "none",
                   cursor: "pointer",
-                  transition: "background .2s",
+                  background: act ? "#0F172A" : "transparent",
+                  color: act ? "#fff" : "#64748B",
+                  fontWeight: act ? 700 : 500,
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
                 }}
               >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 2,
-                    left: showLowOnly ? 17 : 2,
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: "#fff",
-                    transition: "left .2s",
-                    boxShadow: "0 1px 3px rgba(0,0,0,.2)",
-                  }}
-                />
-              </div>
-              Low only
-            </label>
+                {t.icon} {t.label}
+                {low > 0 && (
+                  <span
+                    style={{
+                      background: act ? "rgba(255,255,255,.2)" : "#FEE2E2",
+                      color: act ? "#fff" : "#DC2626",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: "1px 5px",
+                      borderRadius: 8,
+                    }}
+                  >
+                    {low}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-            {/* ── Low Stock PDF button ── */}
-            <button
-              onClick={exportLowPDF}
-              style={{
-                ...S.btn("#FEF2F2", "#DC2626", true),
-                border: "1.5px solid #FECACA",
-                whiteSpace: "nowrap",
-              }}
-            >
-              📄 Low PDF
-            </button>
-
-            {/* Import mode toggle */}
+        {/* Stats strip */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          {[
+            {
+              l: "Products",
+              v: current.length,
+              bg: "#EFF6FF",
+              col: "#1D4ED8",
+              icon: "📦",
+            },
+            {
+              l: "Total QT",
+              v: current.reduce((s, p) => s + p.qty, 0),
+              bg: "#ECFDF5",
+              col: "#065F46",
+              icon: "📊",
+            },
+            {
+              l: "Low Stock",
+              v: current.filter((p) => p.qty <= p.minQty).length,
+              bg: "#FEF3C7",
+              col: "#92400E",
+              icon: "⚠",
+            },
+            {
+              l: "Out of Stock",
+              v: current.filter((p) => p.qty === 0).length,
+              bg: "#FEE2E2",
+              col: "#991B1B",
+              icon: "🚫",
+            },
+          ].map((s) => (
             <div
+              key={s.l}
               style={{
-                display: "flex",
-                borderRadius: 8,
-                border: "1.5px solid #E2E8F0",
+                background: s.bg,
+                borderRadius: 12,
+                padding: "12px 16px",
+                flex: "1 1 80px",
+                position: "relative",
                 overflow: "hidden",
               }}
             >
-              {["manual", "excel"].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setImportMode(m)}
-                  style={{
-                    padding: "7px 12px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    background: importMode === m ? "#0F172A" : "#fff",
-                    color: importMode === m ? "#fff" : "#64748B",
-                  }}
-                >
-                  {m === "manual" ? "✏ Manual" : "📊 Excel"}
-                </button>
-              ))}
-            </div>
-            {importMode === "excel" && (
-              <button
-                onClick={() => fileRef.current.click()}
-                style={S.btn("#0F172A", "#fff", true)}
-              >
-                ↑ Upload
-              </button>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              style={{ display: "none" }}
-              onChange={handleFile}
-            />
-            <button
-              onClick={exportExcel}
-              style={S.btn("#059669", "#fff", true)}
-            >
-              ↓ Excel
-            </button>
-
-            {/* ── Column Picker Button ── */}
-            <div style={{ position: "relative" }} ref={colPickerRef}>
-              <button
-                onClick={() => setShowColPicker((v) => !v)}
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.col }}>
+                {s.v}
+              </div>
+              <div
                 style={{
-                  ...S.btn(
-                    showColPicker ? "#0F172A" : "#F1F5F9",
-                    showColPicker ? "#fff" : "#374151",
-                    true,
-                  ),
+                  fontSize: 10,
+                  color: s.col + "99",
+                  fontWeight: 700,
+                  marginTop: 2,
+                  textTransform: "uppercase",
+                  letterSpacing: ".04em",
+                }}
+              >
+                {s.l}
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: 28,
+                  opacity: 0.12,
+                }}
+              >
+                {s.icon}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Controls */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {/* Search */}
+          <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+            <span
+              style={{
+                position: "absolute",
+                left: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#94A3B8",
+                fontSize: 14,
+              }}
+            >
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Search name, batch, supplier…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ ...S.input(), paddingLeft: 32, fontSize: 12 }}
+            />
+          </div>
+
+          {/* Category filter */}
+          <select
+            value={catFilter}
+            onChange={(e) => setCatFilter(e.target.value)}
+            style={{
+              ...S.input(),
+              width: "auto",
+              fontSize: 12,
+              padding: "8px 10px",
+              appearance: "auto",
+              minWidth: 165,
+              paddingRight: 28,
+              fontWeight: catFilter !== "ALL" ? 700 : 400,
+              borderColor:
+                catFilter !== "ALL"
+                  ? CATEGORIES[catFilter]?.color + "80"
+                  : "#E5E7EB",
+              background:
+                catFilter !== "ALL" ? CATEGORIES[catFilter]?.bg : "#fff",
+            }}
+          >
+            <option value="ALL">All Categories ({current.length})</option>
+            {Object.entries(CATEGORIES).map(([k, v]) => {
+              const count = catCounts[k] || 0;
+              if (!count) return null;
+              const lc = catLowCounts[k] || 0;
+              return (
+                <option key={k} value={k}>
+                  {v.label} ({count}
+                  {lc > 0 ? ` ⚠${lc}` : ""})
+                </option>
+              );
+            })}
+          </select>
+
+          {/* Low toggle */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: "#555",
+              cursor: "pointer",
+              userSelect: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <div
+              onClick={() => setShowLowOnly((v) => !v)}
+              style={{
+                width: 34,
+                height: 18,
+                borderRadius: 9,
+                background: showLowOnly ? "#EF4444" : "#D1D5DB",
+                position: "relative",
+                cursor: "pointer",
+                transition: "background .2s",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  left: showLowOnly ? 17 : 2,
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  transition: "left .2s",
+                  boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+                }}
+              />
+            </div>
+            Low only
+          </label>
+
+          {/* Low PDF */}
+          <button
+            onClick={exportLowPDF}
+            style={S.smBtn("#FEF2F2", "#DC2626", "1.5px solid #FECACA")}
+          >
+            📄 Low PDF
+          </button>
+
+          {/* Import mode */}
+          <div
+            style={{
+              display: "flex",
+              borderRadius: 8,
+              border: "1.5px solid #E2E8F0",
+              overflow: "hidden",
+            }}
+          >
+            {["manual", "excel"].map((m) => (
+              <button
+                key={m}
+                onClick={() => setImportMode(m)}
+                style={{
+                  padding: "7px 12px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: importMode === m ? "#0F172A" : "#fff",
+                  color: importMode === m ? "#fff" : "#64748B",
+                }}
+              >
+                {m === "manual" ? "✏ Manual" : "📊 Excel"}
+              </button>
+            ))}
+          </div>
+          {importMode === "excel" && (
+            <button
+              onClick={() => fileRef.current.click()}
+              style={S.smBtn("#0F172A", "#fff", "none")}
+            >
+              ↑ Upload
+            </button>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            style={{ display: "none" }}
+            onChange={handleFile}
+          />
+
+          {/* Excel export */}
+          <button
+            onClick={exportExcel}
+            style={S.smBtn("#065f46", "#6ee7b7", "none")}
+          >
+            ↓ Excel
+          </button>
+
+          {/* Column picker */}
+          <div style={{ position: "relative" }} ref={colPickerRef}>
+            <button
+              onClick={() => setShowColPicker((v) => !v)}
+              style={{
+                ...S.smBtn(
+                  showColPicker ? "#0F172A" : "#F1F5F9",
+                  showColPicker ? "#fff" : "#374151",
+                  "1.5px solid #E2E8F0",
+                ),
+              }}
+            >
+              ⊞ Cols
+              <span
+                style={{
+                  background: showColPicker
+                    ? "rgba(255,255,255,.2)"
+                    : "#E2E8F0",
+                  color: showColPicker ? "#fff" : "#374151",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  padding: "1px 5px",
+                  borderRadius: 6,
+                }}
+              >
+                {visibleCols.length}
+              </span>
+            </button>
+            {showColPicker && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  zIndex: 150,
+                  background: "#fff",
+                  borderRadius: 12,
+                  boxShadow: "0 8px 32px rgba(0,0,0,.15)",
+                  padding: "10px 0",
+                  minWidth: 200,
                   border: "1.5px solid #E2E8F0",
                 }}
               >
-                ⊞ Columns
-                <span
+                <div
                   style={{
-                    background: showColPicker
-                      ? "rgba(255,255,255,.2)"
-                      : "#E2E8F0",
-                    color: showColPicker ? "#fff" : "#374151",
-                    fontSize: 9,
-                    fontWeight: 800,
-                    padding: "1px 5px",
-                    borderRadius: 6,
-                  }}
-                >
-                  {visibleCols.length}
-                </span>
-              </button>
-              {ColPicker}
-            </div>
-
-            <button
-              onClick={() => {
-                setAddMode(true);
-                setNewRow(EMPTY_PRODUCT);
-              }}
-              style={S.btn("#2563EB", "#fff", true)}
-            >
-              ＋ Add
-            </button>
-          </div>
-
-          {lastUpdated[activeTab] && (
-            <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10 }}>
-              💾 Auto-saved · Last:{" "}
-              <strong style={{ color: "#64748B" }}>
-                {lastUpdated[activeTab]}
-              </strong>
-              {catFilter !== "ALL" && (
-                <span
-                  style={{
-                    marginLeft: 10,
-                    background: CATEGORIES[catFilter]?.bg,
-                    color: CATEGORIES[catFilter]?.color,
-                    padding: "2px 8px",
-                    borderRadius: 8,
+                    padding: "0 14px 8px",
                     fontSize: 10,
-                    fontWeight: 700,
+                    fontWeight: 800,
+                    color: "#94A3B8",
+                    textTransform: "uppercase",
+                    letterSpacing: ".06em",
                   }}
                 >
-                  {CATEGORIES[catFilter]?.label} · {catCounts[catFilter] || 0}{" "}
-                  products
-                  {catLowCounts[catFilter]
-                    ? ` · ⚠ ${catLowCounts[catFilter]} low`
-                    : ""}
-                </span>
-              )}
-            </p>
-          )}
-
-          {/* ── Table ── */}
-          <div style={{ ...S.card, display: "block", overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 12,
-                minWidth: 400,
-              }}
-            >
-              <thead>
-                <tr style={{ background: "#0F172A" }}>
-                  {ALL_COLUMNS.filter((c) => isColVisible(c.id)).map(
-                    (col, i) => (
-                      <th
-                        key={col.id}
+                  Columns
+                </div>
+                {ALL_COLUMNS.map((col) => {
+                  const locked = LOCKED_COLS.includes(col.id);
+                  const checked = isColVisible(col.id);
+                  return (
+                    <div
+                      key={col.id}
+                      onClick={() => !locked && toggleCol(col.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "7px 14px",
+                        cursor: locked ? "not-allowed" : "pointer",
+                        userSelect: "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!locked)
+                          e.currentTarget.style.background = "#F8FAFC";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <div
                         style={{
-                          padding: "10px 12px",
-                          color: "#94A3B8",
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: ".06em",
-                          textAlign: ["qty", "minQty", "status"].includes(
-                            col.id,
-                          )
-                            ? "center"
-                            : col.id === "actions"
-                              ? "right"
-                              : "left",
-                          whiteSpace: "nowrap",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 4,
+                          border: `2px solid ${checked ? "#2563EB" : "#D1D5DB"}`,
+                          background: checked ? "#2563EB" : "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          opacity: locked ? 0.4 : 1,
+                        }}
+                      >
+                        {checked && (
+                          <span
+                            style={{
+                              color: "#fff",
+                              fontSize: 10,
+                              fontWeight: 900,
+                              lineHeight: 1,
+                            }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: locked ? "#94A3B8" : "#374151",
+                          fontWeight: checked ? 600 : 400,
                         }}
                       >
                         {col.label}
-                      </th>
-                    ),
-                  )}
+                        {locked && (
+                          <span style={{ fontSize: 9, color: "#CBD5E1" }}>
+                            {" "}
+                            (fixed)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Add product */}
+          <button
+            onClick={() => {
+              setAddMode(true);
+              setNewRow(EMPTY_PRODUCT);
+            }}
+            style={S.smBtn("#2563EB", "#fff", "none")}
+          >
+            ＋ Add
+          </button>
+        </div>
+
+        {/* Save bar */}
+        {lastUpdated[activeTab] && (
+          <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10 }}>
+            💾 {syncState === "saving" ? "Syncing…" : "Saved to server"} · Last:{" "}
+            <strong style={{ color: "#64748B" }}>
+              {lastUpdated[activeTab]}
+            </strong>
+            {catFilter !== "ALL" && (
+              <span
+                style={{
+                  marginLeft: 10,
+                  background: CATEGORIES[catFilter]?.bg,
+                  color: CATEGORIES[catFilter]?.color,
+                  padding: "2px 8px",
+                  borderRadius: 8,
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {CATEGORIES[catFilter]?.label} · {catCounts[catFilter] || 0}{" "}
+                products
+                {catLowCounts[catFilter]
+                  ? ` · ⚠ ${catLowCounts[catFilter]} low`
+                  : ""}
+              </span>
+            )}
+          </p>
+        )}
+
+        {/* Table */}
+        <div style={{ ...S.card, display: "block", overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 12,
+              minWidth: 420,
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#0F172A" }}>
+                {ALL_COLUMNS.filter((c) => isColVisible(c.id)).map((col) => (
+                  <th
+                    key={col.id}
+                    style={{
+                      padding: "10px 12px",
+                      color: "#94A3B8",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: ".06em",
+                      whiteSpace: "nowrap",
+                      textAlign: ["qty", "minQty", "status"].includes(col.id)
+                        ? "center"
+                        : col.id === "actions"
+                          ? "right"
+                          : "left",
+                    }}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={visibleCols.length}
+                    style={{
+                      padding: "48px 12px",
+                      textAlign: "center",
+                      color: "#94A3B8",
+                      fontSize: 13,
+                    }}
+                  >
+                    {showLowOnly
+                      ? "✅ No low-stock items here"
+                      : "No products found"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={visibleCols.length}
-                      style={{
-                        padding: "40px 12px",
-                        textAlign: "center",
-                        color: "#94A3B8",
-                        fontSize: 13,
-                      }}
-                    >
-                      {showLowOnly
-                        ? "✅ No low-stock items here"
-                        : "No products found"}
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((p, idx) => {
-                  const isLow = p.qty <= p.minQty,
-                    isZero = p.qty === 0;
-                  const cat = CATEGORIES[p.category || getCategory(p.name)];
-                  const rowBg = isZero ? "#FFF5F5" : isLow ? "#FFFBEB" : "#fff";
-                  return (
-                    <tr
-                      key={p.id}
-                      style={{
-                        background: rowBg,
-                        borderTop: "1px solid #F1F5F9",
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#F8FAFC")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = rowBg)
-                      }
-                      onClick={() => setDetailRow(p)}
-                    >
-                      {isColVisible("idx") && (
-                        <td style={S.td()}>
-                          <span style={{ color: "#94A3B8", fontSize: 11 }}>
-                            {idx + 1}
-                          </span>
-                        </td>
-                      )}
-                      {isColVisible("name") && (
-                        <td style={S.td()}>
-                          <div
-                            style={{
-                              fontWeight: 700,
-                              color: "#0F172A",
-                              fontSize: 12,
-                            }}
-                          >
-                            {p.name}
-                          </div>
-                          {p.reorderNote && !isColVisible("reorderNote") && (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "#D97706",
-                                marginTop: 2,
-                              }}
-                            >
-                              ↺ {p.reorderNote}
-                            </div>
-                          )}
-                        </td>
-                      )}
-                      {isColVisible("category") && (
-                        <td style={S.td("center")}>
-                          <span
-                            style={{
-                              background: cat?.bg || "#F3F4F6",
-                              color: cat?.color || "#555",
-                              padding: "2px 8px",
-                              borderRadius: 10,
-                              fontSize: 10,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {cat?.label || p.category}
-                          </span>
-                        </td>
-                      )}
-                      {isColVisible("batch") && (
-                        <td
-                          style={{ ...S.td(), fontSize: 11, color: "#64748B" }}
-                        >
-                          {p.batch || (
-                            <span style={{ color: "#CBD5E1" }}>—</span>
-                          )}
-                        </td>
-                      )}
-                      {isColVisible("expiry") && (
-                        <td
+              )}
+              {filtered.map((p, idx) => {
+                const isLow = p.qty <= p.minQty,
+                  isZero = p.qty === 0;
+                const cat = CATEGORIES[p.category || getCategory(p.name)];
+                const rowBg = isZero ? "#FFF5F5" : isLow ? "#FFFBEB" : "#fff";
+                const qtyCol = isZero
+                  ? "#DC2626"
+                  : isLow
+                    ? "#D97706"
+                    : "#0F172A";
+                return (
+                  <tr
+                    key={p.id}
+                    style={{
+                      background: rowBg,
+                      borderTop: "1px solid #F1F5F9",
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#F8FAFC")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = rowBg)
+                    }
+                    onClick={() => setDetailRow(p)}
+                  >
+                    {isColVisible("idx") && (
+                      <td style={S.td()}>
+                        <span style={{ color: "#94A3B8", fontSize: 11 }}>
+                          {idx + 1}
+                        </span>
+                      </td>
+                    )}
+                    {isColVisible("name") && (
+                      <td style={S.td()}>
+                        <div
                           style={{
-                            ...S.td(),
-                            fontSize: 11,
-                            color:
-                              p.expiry && new Date(p.expiry) < new Date()
-                                ? "#DC2626"
-                                : "#64748B",
-                          }}
-                        >
-                          {p.expiry || (
-                            <span style={{ color: "#CBD5E1" }}>—</span>
-                          )}
-                        </td>
-                      )}
-                      {isColVisible("supplier") && (
-                        <td
-                          style={{ ...S.td(), fontSize: 11, color: "#64748B" }}
-                        >
-                          {p.supplier || (
-                            <span style={{ color: "#CBD5E1" }}>—</span>
-                          )}
-                        </td>
-                      )}
-                      {isColVisible("qty") && (
-                        <td
-                          style={S.td("center")}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 4,
-                            }}
-                          >
-                            <button
-                              onClick={() => nudgeQty(p.id, -1)}
-                              style={{
-                                width: 22,
-                                height: 22,
-                                borderRadius: 5,
-                                border: "1px solid #E2E8F0",
-                                background: "#F8FAFC",
-                                cursor: "pointer",
-                                fontSize: 14,
-                                color: "#555",
-                                lineHeight: 1,
-                              }}
-                            >
-                              −
-                            </button>
-                            <span
-                              style={{
-                                fontWeight: 800,
-                                fontSize: 13,
-                                color: isZero
-                                  ? "#DC2626"
-                                  : isLow
-                                    ? "#D97706"
-                                    : "#0F172A",
-                                minWidth: 30,
-                                textAlign: "center",
-                              }}
-                            >
-                              {p.qty}
-                            </span>
-                            <button
-                              onClick={() => nudgeQty(p.id, +1)}
-                              style={{
-                                width: 22,
-                                height: 22,
-                                borderRadius: 5,
-                                border: "1px solid #E2E8F0",
-                                background: "#F8FAFC",
-                                cursor: "pointer",
-                                fontSize: 14,
-                                color: "#555",
-                                lineHeight: 1,
-                              }}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 9,
-                              color: "#94A3B8",
-                              textAlign: "center",
-                            }}
-                          >
-                            {p.unit}
-                          </div>
-                        </td>
-                      )}
-                      {isColVisible("minQty") && (
-                        <td
-                          style={{
-                            ...S.td("center"),
-                            color: "#64748B",
+                            fontWeight: 700,
+                            color: "#0F172A",
                             fontSize: 12,
                           }}
                         >
-                          {p.minQty} {p.unit}
-                        </td>
-                      )}
-                      {isColVisible("status") && (
-                        <td style={S.td("center")}>
+                          {p.name}
+                        </div>
+                        {p.reorderNote && !isColVisible("reorderNote") && (
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#D97706",
+                              marginTop: 2,
+                            }}
+                          >
+                            ↺ {p.reorderNote}
+                          </div>
+                        )}
+                      </td>
+                    )}
+                    {isColVisible("category") && (
+                      <td style={S.td("center")}>
+                        <span
+                          style={{
+                            background: cat?.bg || "#F3F4F6",
+                            color: cat?.color || "#555",
+                            padding: "2px 8px",
+                            borderRadius: 10,
+                            fontSize: 10,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {cat?.label || p.category}
+                        </span>
+                      </td>
+                    )}
+                    {isColVisible("batch") && (
+                      <td style={{ ...S.td(), fontSize: 11, color: "#64748B" }}>
+                        {p.batch || <span style={{ color: "#CBD5E1" }}>—</span>}
+                      </td>
+                    )}
+                    {isColVisible("expiry") && (
+                      <td
+                        style={{
+                          ...S.td(),
+                          fontSize: 11,
+                          color:
+                            p.expiry && new Date(p.expiry) < new Date()
+                              ? "#DC2626"
+                              : "#64748B",
+                        }}
+                      >
+                        {p.expiry || (
+                          <span style={{ color: "#CBD5E1" }}>—</span>
+                        )}
+                      </td>
+                    )}
+                    {isColVisible("supplier") && (
+                      <td style={{ ...S.td(), fontSize: 11, color: "#64748B" }}>
+                        {p.supplier || (
+                          <span style={{ color: "#CBD5E1" }}>—</span>
+                        )}
+                      </td>
+                    )}
+                    {isColVisible("qty") && (
+                      <td
+                        style={S.td("center")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <button
+                            onClick={() => nudgeQty(p.id, -1)}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 5,
+                              border: "1px solid #E2E8F0",
+                              background: "#F8FAFC",
+                              cursor: "pointer",
+                              fontSize: 14,
+                              color: "#555",
+                              lineHeight: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            −
+                          </button>
                           <span
                             style={{
-                              background: isZero
-                                ? "#FEE2E2"
-                                : isLow
-                                  ? "#FEF3C7"
-                                  : "#D1FAE5",
-                              color: isZero
-                                ? "#991B1B"
-                                : isLow
-                                  ? "#92400E"
-                                  : "#065F46",
-                              padding: "3px 8px",
-                              borderRadius: 10,
-                              fontSize: 10,
                               fontWeight: 800,
+                              fontSize: 13,
+                              color: qtyCol,
+                              minWidth: 30,
+                              textAlign: "center",
                             }}
                           >
-                            {isZero ? "✕ Out" : isLow ? "⚠ Low" : "✓ OK"}
+                            {p.qty}
                           </span>
-                        </td>
-                      )}
-                      {isColVisible("reorderNote") && (
-                        <td
+                          <button
+                            onClick={() => nudgeQty(p.id, +1)}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 5,
+                              border: "1px solid #E2E8F0",
+                              background: "#F8FAFC",
+                              cursor: "pointer",
+                              fontSize: 14,
+                              color: "#555",
+                              lineHeight: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div
                           style={{
-                            ...S.td(),
-                            fontSize: 11,
-                            color: "#D97706",
-                            maxWidth: 160,
+                            fontSize: 9,
+                            color: "#94A3B8",
+                            textAlign: "center",
                           }}
                         >
-                          {p.reorderNote || ""}
-                        </td>
-                      )}
-                      {isColVisible("actions") && (
-                        <td
-                          style={S.td("right")}
-                          onClick={(e) => e.stopPropagation()}
+                          {p.unit}
+                        </div>
+                      </td>
+                    )}
+                    {isColVisible("minQty") && (
+                      <td
+                        style={{
+                          ...S.td("center"),
+                          color: "#64748B",
+                          fontSize: 12,
+                        }}
+                      >
+                        {p.minQty} {p.unit}
+                      </td>
+                    )}
+                    {isColVisible("status") && (
+                      <td style={S.td("center")}>
+                        <span
+                          style={{
+                            background: isZero
+                              ? "#FEE2E2"
+                              : isLow
+                                ? "#FEF3C7"
+                                : "#D1FAE5",
+                            color: isZero
+                              ? "#991B1B"
+                              : isLow
+                                ? "#92400E"
+                                : "#065F46",
+                            padding: "3px 8px",
+                            borderRadius: 10,
+                            fontSize: 10,
+                            fontWeight: 800,
+                          }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: 5,
-                              justifyContent: "flex-end",
-                            }}
+                          {isZero ? "✕ Out" : isLow ? "⚠ Low" : "✓ OK"}
+                        </span>
+                      </td>
+                    )}
+                    {isColVisible("reorderNote") && (
+                      <td
+                        style={{
+                          ...S.td(),
+                          fontSize: 11,
+                          color: "#D97706",
+                          maxWidth: 160,
+                        }}
+                      >
+                        {p.reorderNote || ""}
+                      </td>
+                    )}
+                    {isColVisible("actions") && (
+                      <td
+                        style={S.td("right")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 5,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <button
+                            onClick={() => setEditRow({ ...p })}
+                            style={S.rowBtn(
+                              "#EFF6FF",
+                              "#1D4ED8",
+                              "1.5px solid #BFDBFE",
+                            )}
                           >
-                            <button
-                              onClick={() => setEditRow({ ...p })}
-                              style={S.rowBtn("#EFF6FF", "#1D4ED8")}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(p.id)}
-                              style={S.rowBtn("#FEF2F2", "#DC2626")}
-                            >
-                              Del
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p.id)}
+                            style={S.rowBtn(
+                              "#FEF2F2",
+                              "#DC2626",
+                              "1.5px solid #FECACA",
+                            )}
+                          >
+                            Del
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-            {/* Footer */}
+          {/* Table footer */}
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#F8FAFC",
+              borderTop: "1px solid #E5E7EB",
+              display: "flex",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 11, color: "#64748B" }}>
+              {filtered.length} of {current.length} products
+              {search && (
+                <span style={{ color: "#2563EB" }}> · "{search}"</span>
+              )}
+              {catFilter !== "ALL" && (
+                <span style={{ color: CATEGORIES[catFilter]?.color }}>
+                  {" "}
+                  · {CATEGORIES[catFilter]?.label}
+                </span>
+              )}
+            </span>
             <div
               style={{
-                padding: "10px 14px",
-                background: "#F8FAFC",
-                borderTop: "1px solid #E5E7EB",
                 display: "flex",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 6,
+                gap: 14,
+                fontSize: 11,
+                color: "#64748B",
               }}
             >
-              <span style={{ fontSize: 11, color: "#64748B" }}>
-                {filtered.length} of {current.length} products
-                {search && (
-                  <span style={{ color: "#2563EB" }}> · "{search}"</span>
-                )}
-                {catFilter !== "ALL" && (
-                  <span style={{ color: CATEGORIES[catFilter]?.color }}>
-                    {" "}
-                    · {CATEGORIES[catFilter]?.label}
-                  </span>
-                )}
+              <span>
+                QT:{" "}
+                <strong style={{ color: "#0F172A" }}>
+                  {filtered.reduce((s, p) => s + p.qty, 0)}
+                </strong>
               </span>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 14,
-                  fontSize: 11,
-                  color: "#64748B",
-                }}
-              >
-                <span>
-                  QT:{" "}
-                  <strong style={{ color: "#0F172A" }}>
-                    {filtered.reduce((s, p) => s + p.qty, 0)}
-                  </strong>
-                </span>
-                <span style={{ color: "#DC2626" }}>
-                  Low:{" "}
-                  <strong>
-                    {filtered.filter((p) => p.qty <= p.minQty).length}
-                  </strong>
-                </span>
-                <span style={{ color: "#7C3AED" }}>
-                  Out:{" "}
-                  <strong>{filtered.filter((p) => p.qty === 0).length}</strong>
-                </span>
-              </div>
+              <span style={{ color: "#DC2626" }}>
+                Low:{" "}
+                <strong>
+                  {filtered.filter((p) => p.qty <= p.minQty).length}
+                </strong>
+              </span>
+              <span style={{ color: "#7C3AED" }}>
+                Out:{" "}
+                <strong>{filtered.filter((p) => p.qty === 0).length}</strong>
+              </span>
             </div>
           </div>
-
-          {importMode === "excel" && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: "12px 16px",
-                background: "#EFF6FF",
-                borderRadius: 10,
-                border: "1.5px solid #BFDBFE",
-                fontSize: 11,
-                color: "#1E40AF",
-              }}
-            >
-              <strong>📊 Excel Format:</strong> S.N | Product Name | QT — ya —
-              Product Name | QT | Min QT
-            </div>
-          )}
         </div>
 
-        {/* ── Sidebar: Alerts ── */}
-        {allAlerts.length > 0 && (
-          <div style={{ width: 280, flexShrink: 0 }}>
-            <div style={S.card}>
-              <div
-                style={{
-                  padding: "12px 14px",
-                  background: "#FEF2F2",
-                  borderBottom: "1px solid #FEE2E2",
-                }}
-              >
-                <span
-                  style={{ fontWeight: 800, fontSize: 13, color: "#991B1B" }}
-                >
-                  🚨 Alerts ({allAlerts.length})
-                </span>
-              </div>
-              <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                {allAlerts.slice(0, 20).map((p) => (
-                  <div
-                    key={p.id}
-                    style={{
-                      padding: "10px 14px",
-                      borderBottom: "1px solid #F3F4F6",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 12,
-                        color: "#0F172A",
-                        marginBottom: 2,
-                      }}
-                    >
-                      {p.name}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#64748B" }}>
-                      {p._tab} · {p.qty} {p.unit || ""}
-                    </div>
-                    {p.reorderNote && (
-                      <div
-                        style={{ fontSize: 10, color: "#D97706", marginTop: 2 }}
-                      >
-                        ↺ {p.reorderNote}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {showLog && (
-              <div style={{ ...S.card, marginTop: 16 }}>
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    background: "#F8FAFC",
-                    borderBottom: "1px solid #E5E7EB",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{ fontWeight: 800, fontSize: 13, color: "#374151" }}
-                  >
-                    📋 Change Log
-                  </span>
-                  <button
-                    onClick={() => setShowLog(false)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#9CA3AF",
-                      fontSize: 18,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {changeLog.length === 0 ? (
-                    <p
-                      style={{
-                        padding: "24px 14px",
-                        textAlign: "center",
-                        color: "#9CA3AF",
-                        fontSize: 12,
-                      }}
-                    >
-                      No changes yet
-                    </p>
-                  ) : (
-                    changeLog.map((e) => {
-                      const cols = {
-                        ADD: ["#D1FAE5", "#065F46"],
-                        DELETE: ["#FEE2E2", "#991B1B"],
-                        IMPORT: ["#DBEAFE", "#1E40AF"],
-                        EDIT: ["#FEF3C7", "#92400E"],
-                        QTY: ["#F0FDF4", "#166534"],
-                      };
-                      const [bg, col] = cols[e.action] || [
-                        "#F3F4F6",
-                        "#374151",
-                      ];
-                      return (
-                        <div
-                          key={e.id}
-                          style={{
-                            padding: "10px 14px",
-                            borderBottom: "1px solid #F3F4F6",
-                          }}
-                        >
-                          <div
-                            style={{ display: "flex", gap: 6, marginBottom: 3 }}
-                          >
-                            <span
-                              style={{
-                                background: bg,
-                                color: col,
-                                fontSize: 9,
-                                fontWeight: 800,
-                                padding: "2px 6px",
-                                borderRadius: 5,
-                              }}
-                            >
-                              {e.action}
-                            </span>
-                            <span style={{ fontSize: 10, color: "#94A3B8" }}>
-                              {TABS.find((t) => t.id === e.tab)?.label}
-                            </span>
-                          </div>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: 11,
-                              color: "#374151",
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {e.details}
-                          </p>
-                          <p
-                            style={{
-                              margin: "3px 0 0",
-                              fontSize: 10,
-                              color: "#94A3B8",
-                            }}
-                          >
-                            {e.time}
-                          </p>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
+        {importMode === "excel" && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "12px 16px",
+              background: "#EFF6FF",
+              borderRadius: 10,
+              border: "1.5px solid #BFDBFE",
+              fontSize: 11,
+              color: "#1E40AF",
+            }}
+          >
+            <strong>📊 Excel Format:</strong> S.N | Product Name | QT — ya —
+            Product Name | QT | Min QT
           </div>
         )}
       </div>
@@ -2936,8 +2933,8 @@ export default function ChemicalStockManager() {
           { id: "stock", icon: "📦", label: "Stock" },
           {
             id: "alerts",
-            icon: "🚨",
-            label: `Alerts${allAlerts.length > 0 ? " (" + allAlerts.length + ")" : ""}`,
+            icon: "⚠",
+            label: totalLow > 0 ? `Alerts (${totalLow})` : "Alerts",
           },
           { id: "add", icon: "＋", label: "Add" },
           { id: "pdf", icon: "📄", label: "PDF" },
@@ -2951,17 +2948,37 @@ export default function ChemicalStockManager() {
                 setNewRow(EMPTY_PRODUCT);
               } else if (item.id === "pdf")
                 exportPDF(stocks, activeTab, tabLabel, false, catFilter);
-              else if (item.id === "log") setShowLog((v) => !v);
-              else setMobileTab(item.id);
+              else if (item.id === "log") {
+                if (!changeLog.length) {
+                  toast("No changes yet", "error");
+                  return;
+                }
+                const rows = changeLog
+                  .slice(0, 50)
+                  .map((e) => {
+                    const cols = {
+                      ADD: ["#D1FAE5", "#065F46"],
+                      DELETE: ["#FEE2E2", "#991B1B"],
+                      IMPORT: ["#DBEAFE", "#1E40AF"],
+                      EDIT: ["#FEF3C7", "#92400E"],
+                      QTY: ["#F0FDF4", "#166534"],
+                    };
+                    const [bg, col] = cols[e.action] || ["#F3F4F6", "#374151"];
+                    return `<tr><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6"><span style="background:${bg};color:${col};font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">${e.action}</span></td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${TABS.find((t) => t.id === e.tab)?.label || e.tab}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${e.details}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#94a3b8;white-space:nowrap">${e.time}</td></tr>`;
+                  })
+                  .join("");
+                const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Change Log</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th{padding:8px 10px;background:#0F172A;color:#fff;font-size:10px;text-transform:uppercase;text-align:left}</style></head><body><h2 style="color:#0F172A">📋 Change Log</h2><table><thead><tr><th>Action</th><th>Location</th><th>Details</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+                const w = window.open("", "_blank", "width=900,height=700");
+                w.document.write(html);
+                w.document.close();
+              } else if (item.id === "alerts")
+                exportPDF(stocks, activeTab, tabLabel, true);
             }}
             style={{
               flex: 1,
               background: "none",
               border: "none",
-              color:
-                mobileTab === item.id || (item.id === "log" && showLog)
-                  ? "#F59E0B"
-                  : "#64748B",
+              color: "#64748B",
               cursor: "pointer",
               padding: "10px 4px 8px",
               display: "flex",
@@ -2971,18 +2988,20 @@ export default function ChemicalStockManager() {
             }}
           >
             <span style={{ fontSize: 18 }}>{item.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 700 }}>{item.label}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: "#64748B" }}>
+              {item.label}
+            </span>
           </button>
         ))}
       </div>
 
       <style>{`
         * { box-sizing: border-box; }
-        input[type=number]::-webkit-inner-spin-button { opacity:.6; }
-        ::-webkit-scrollbar { width:4px; height:4px; }
-        ::-webkit-scrollbar-track { background:#F1F5F9; }
-        ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
         input, select, textarea { color: #000 !important; }
+        input[type=number]::-webkit-inner-spin-button { opacity: .6; }
       `}</style>
     </div>
   );
