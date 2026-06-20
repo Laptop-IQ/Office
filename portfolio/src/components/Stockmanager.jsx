@@ -4,7 +4,8 @@ import * as XLSX from "xlsx";
 /* ─── Backend API config ─────────────────────────────────────────────────── */
 // .env me VITE_API_URL / REACT_APP_API_URL set karke yahan use karein,
 // abhi ke liye seedha localhost rakha hai.
-const API_BASE = "http://localhost:4000/api/stock";
+
+const API_BASE = `${import.meta.env.VITE_API_URL}/stock`;
 
 const getToken = () => localStorage.getItem("token");
 // Sirf JWT token localStorage me rehta hai (chhota & safe) — stock
