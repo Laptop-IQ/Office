@@ -55,6 +55,7 @@ const Register = () => {
       password: formData.password,
     });
     if (result?.success) {
+      // Pass email via state so OTP page can use it
       navigate("/verify-otp", { state: { email: formData.email } });
     }
     setLoading(false);
