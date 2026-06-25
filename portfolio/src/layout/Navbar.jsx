@@ -66,6 +66,11 @@ export function Navbar() {
           path: "/Pdfdocumentmanager",
           icon: ClipboardDocumentListIcon,
         },
+        {
+          name: "Notepad",
+          path: "/notepad",
+          icon: ClipboardDocumentListIcon,
+        },
       ],
     },
   ];

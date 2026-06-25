@@ -1,15 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 
-/* ─── Backend API config ─────────────────────────────────────────────────── */
-// .env me VITE_API_URL / REACT_APP_API_URL set karke yahan use karein,
-// abhi ke liye seedha localhost rakha hai.
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/stock`;
 
 const getToken = () => localStorage.getItem("token");
-// Sirf JWT token localStorage me rehta hai (chhota & safe) — stock
-// data ab DB me jaata hai, browser me nahi.
 
 const apiHeaders = () => ({
   "Content-Type": "application/json",
@@ -34,7 +29,6 @@ const saveData = async (d) => {
       body: JSON.stringify(d),
     });
   } catch {
-    // network fail — silently ignore, agla change pe retry ho jaayega
   }
 };
 

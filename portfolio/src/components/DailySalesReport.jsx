@@ -5,12 +5,10 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 
-// ─── API Base URL ─────────────────────────────────────────────────────────────
 const API = import.meta.env.VITE_API_BASE_URL;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const DISTRIBUTOR_OPTIONS = ["Supple", "Shree Jee Traders"];
 
 const PROJECT_STAGE_OPTIONS = [
@@ -43,16 +41,8 @@ const stageColor = (stage) => {
   );
 };
 
-const todayISO = () => {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const EMPTY_RECORD = {
-  date: todayISO(),
+  date: "",
   area: "",
   distributor: "",
   customer: "",
@@ -78,7 +68,6 @@ const EMPTY_CUSTOMER = {
   abp: "",
 };
 
-// ─── API Helper ───────────────────────────────────────────────────────────────
 const getToken = () => localStorage.getItem("token") || "";
 
 const apiFetch = async (path, options = {}) => {
@@ -95,7 +84,6 @@ const apiFetch = async (path, options = {}) => {
   return data;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const toNum = (v) => {
   if (v === "" || v === undefined || v === null) return 0;
   const n = parseFloat(v);
@@ -120,9 +108,25 @@ const fmtDate = (d) => {
   if (!d) return "";
   return new Date(d).toLocaleDateString("en-IN", {
     day: "numeric",
-    month: "short",
+    month: "long",
     year: "numeric",
   });
+};
+
+// ─── Date Filter Helpers ──────────────────────────────────────────────────────
+const getWeekRange = (weeksBack) => {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - weeksBack * 7);
+  return { start, end };
+};
+
+const toISO = (d) => d.toISOString().slice(0, 10);
+
+const inRange = (dateStr, start, end) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return d >= start && d <= end;
 };
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
@@ -154,8 +158,8 @@ const injectGlobalStyles = () => {
     .dsr-btn-danger:hover { background: #FEE2E2 !important; color: #BE123C !important; }
     .dsr-btn-edit:hover { background: #EEF6FF !important; color: #1D4ED8 !important; }
     .dsr-btn-export:hover { background: #065F46 !important; }
-    .dsr-record-card { transition: box-shadow 0.15s ease, transform 0.15s ease; }
-    .dsr-record-card:hover { box-shadow: 0 4px 16px rgba(11,46,78,0.10) !important; transform: translateY(-1px); }
+    .dsr-record-card { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+    .dsr-record-card:hover { box-shadow: 0 6px 24px rgba(11,46,78,0.12) !important; transform: translateY(-2px); }
     .dsr-customer-row { transition: background 0.12s; }
     .dsr-customer-row:hover { background: #F0FDFA !important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity: 1 !important; }
@@ -166,6 +170,103 @@ const injectGlobalStyles = () => {
     .dsr-nav-action:hover { background: rgba(255,255,255,0.10) !important; }
     .dsr-topbar-btn:hover { background: rgba(255,255,255,0.15) !important; }
     .dsr-topbar-btn:active { background: rgba(255,255,255,0.25) !important; }
+
+    /* Export Dropdown */
+    .dsr-export-dropdown { position: relative; display: inline-flex; flex-shrink: 0; }
+    .dsr-export-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #fff;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 8px;
+      min-width: 240px;
+      z-index: 200;
+      box-shadow: 0 8px 32px rgba(11,46,78,0.14);
+    }
+    .dsr-export-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.12s;
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+    }
+    .dsr-export-menu-item:hover { background: #F0FDF4; color: #047857; }
+    .dsr-export-menu-item.active { background: #F0FDF4; color: #047857; font-weight: 700; }
+    .dsr-export-divider { height: 1px; background: #F3F4F6; margin: 6px 0; }
+    .dsr-export-custom-row {
+      padding: 10px 12px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .dsr-export-custom-row label { font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .dsr-export-custom-inputs { display: flex; gap: 6px; align-items: center; }
+    .dsr-export-custom-inputs input { flex: 1; height: 32px; padding: 0 8px; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 12px; }
+
+    /* Expanded card */
+    .dsr-card-expanded {
+      border: 1.5px solid #00B8A2 !important;
+      box-shadow: 0 8px 32px rgba(0,184,162,0.12) !important;
+    }
+    .dsr-expand-btn {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 6px;
+      border: 1px solid #E5E7EB;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #6B7280;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dsr-expand-btn:hover { background: #EEF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+    .dsr-expand-btn.expanded { background: #EEF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+
+    /* Expanded detail section */
+    .dsr-card-detail-section {
+      overflow: hidden;
+      transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease;
+      max-height: 0;
+      opacity: 0;
+    }
+    .dsr-card-detail-section.open {
+      max-height: 800px;
+      opacity: 1;
+    }
+
+    /* Filter chips */
+    .dsr-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid #E5E7EB;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .dsr-filter-chip:hover { border-color: #00B8A2; color: #00B8A2; background: #F0FDFA; }
+    .dsr-filter-chip.active { background: #00B8A2; color: #fff; border-color: #00B8A2; }
 
     .dsr-cust-banner {
       background: #F0FDFA;
@@ -216,15 +317,12 @@ const injectGlobalStyles = () => {
     .ei-import-btn { animation: ei-pulse 2s ease-out 1; }
     .ei-import-btn:hover { background: #059669 !important; }
 
-    /* ExcelImporter styles */
     .ei-input { transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
     .ei-input:focus { border-color: #00B8A2 !important; box-shadow: 0 0 0 3px rgba(0,184,162,0.15) !important; }
     .ei-row-new { background: #F0FDF4; }
     .ei-row-dup { background: #FFF7ED; }
-    .ei-row-skip { background: #F9FAFB; opacity: 0.6; }
     .ei-row-new td:first-child { border-left: 3px solid #10B981; }
     .ei-row-dup td:first-child { border-left: 3px solid #F59E0B; }
-    .ei-row-skip td:first-child { border-left: 3px solid #D1D5DB; }
     .ei-check:checked { accent-color: #00B8A2; }
     .ei-btn-primary { background: #00B8A2; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.15s, transform 0.1s; }
     .ei-btn-primary:hover:not(:disabled) { background: #009e8c; transform: translateY(-1px); }
@@ -239,7 +337,6 @@ const injectGlobalStyles = () => {
     .ei-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
     .ei-badge-new { background: #D1FAE5; color: #065F46; }
     .ei-badge-dup { background: #FEF3C7; color: #92400E; }
-    .ei-badge-skip { background: #F3F4F6; color: #9CA3AF; }
     .ei-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: flex; align-items: center; gap: 8px; }
     @media (max-width: 640px) { .ei-desktop-only { display: none !important; } }
 
@@ -247,7 +344,7 @@ const injectGlobalStyles = () => {
       .dsr-layout { display: grid !important; grid-template-columns: 220px 1fr !important; min-height: 100vh !important; }
       .dsr-sidebar { display: flex !important; }
       .dsr-mobile-tabbar { display: none !important; }
-      .dsr-main { padding: 28px 32px !important; max-width: 760px !important; }
+      .dsr-main { padding: 28px 32px !important; max-width: 800px !important; }
       .dsr-header { padding: 20px 24px !important; margin-bottom: 20px !important; }
       .dsr-metrics-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
       .dsr-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -323,7 +420,6 @@ const ExcelImporter = ({
           const wb = XLSX.read(e.target.result, { type: "array" });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-
           let headerRowIdx = 0;
           for (let i = 0; i < Math.min(5, raw.length); i++) {
             if (raw[i].some((cell) => String(cell).trim() === "Customer")) {
@@ -331,10 +427,8 @@ const ExcelImporter = ({
               break;
             }
           }
-
           const headers = raw[headerRowIdx].map((h) => String(h).trim());
           const dataRows = raw.slice(headerRowIdx + 1);
-
           const seenInFile = {};
           dataRows.forEach((row, i) => {
             const custIdx = headers.indexOf("Customer");
@@ -342,7 +436,6 @@ const ExcelImporter = ({
               custIdx >= 0 ? String(row[custIdx] || "").trim() : "";
             if (custName) seenInFile[custName] = i;
           });
-
           const parsed = [];
           dataRows.forEach((row, i) => {
             const obj = {};
@@ -350,11 +443,9 @@ const ExcelImporter = ({
               const key = EI_COL_MAP[h];
               if (key) obj[key] = row[j];
             });
-
             const name = String(obj.name || "").trim();
             if (!name) return;
             if (seenInFile[name] !== i) return;
-
             const normalized = {
               name,
               area: String(obj.area || "").trim(),
@@ -367,13 +458,11 @@ const ExcelImporter = ({
               abp: toNum(obj.abp),
               ytd: toNum(obj.ytd),
             };
-
             const isDup = !!existingCustomers[name];
             normalized._isDup = isDup;
             normalized._status = isDup ? "dup" : "new";
             parsed.push(normalized);
           });
-
           setRows(parsed);
           const sel = {};
           parsed.forEach((r, idx) => {
@@ -396,23 +485,21 @@ const ExcelImporter = ({
     const file = e.dataTransfer.files[0];
     if (file) parseFile(file);
   };
-
   const handleFileChange = (e) => {
     if (e.target.files[0]) parseFile(e.target.files[0]);
   };
-
   const toggleRow = (idx) => setSelected((p) => ({ ...p, [idx]: !p[idx] }));
-  const selectAll = () => {
-    const sel = {};
-    rows.forEach((r, i) => {
-      sel[i] = r._status !== "skip";
-    });
-    setSelected(sel);
-  };
   const selectAllNew = () => {
     const sel = {};
     rows.forEach((r, i) => {
       sel[i] = !r._isDup;
+    });
+    setSelected(sel);
+  };
+  const selectAll = () => {
+    const sel = {};
+    rows.forEach((r, i) => {
+      sel[i] = r._status !== "skip";
     });
     setSelected(sel);
   };
@@ -433,12 +520,10 @@ const ExcelImporter = ({
       showEiToast("Koi customer select nahi kiya.", "error");
       return;
     }
-
     setImporting(true);
-    let successCount = 0;
-    let failCount = 0;
+    let successCount = 0,
+      failCount = 0;
     const importedCustomers = {};
-
     for (const r of selectedRows) {
       const payload = {
         name: r.name,
@@ -451,7 +536,6 @@ const ExcelImporter = ({
         exAux: r.exAux,
         abp: r.abp,
       };
-
       try {
         if (r._isDup && dupAction === "overwrite") {
           const existingId = existingCustomers[r.name]?._id;
@@ -471,12 +555,8 @@ const ExcelImporter = ({
             if (res.ok && data.data) {
               importedCustomers[r.name] = data.data;
               successCount++;
-            } else {
-              failCount++;
-            }
-          } else {
-            failCount++;
-          }
+            } else failCount++;
+          } else failCount++;
         } else if (!r._isDup) {
           const res = await fetch(`${apiBase}/api/dsr/customers`, {
             method: "POST",
@@ -490,26 +570,20 @@ const ExcelImporter = ({
           if (res.ok && data.data) {
             Object.assign(importedCustomers, data.data);
             successCount++;
-          } else {
-            failCount++;
-          }
+          } else failCount++;
         }
       } catch {
         failCount++;
       }
     }
-
     setImporting(false);
     setDone(true);
-
     if (successCount > 0) {
       showEiToast(
         `${successCount} customer${successCount > 1 ? "s" : ""} import ho gaye!${failCount > 0 ? ` (${failCount} fail)` : ""}`,
       );
       if (onImportDone) onImportDone(importedCustomers);
-    } else {
-      showEiToast("Import fail ho gaya.", "error");
-    }
+    } else showEiToast("Import fail ho gaya.", "error");
   };
 
   return (
@@ -536,7 +610,6 @@ const ExcelImporter = ({
           {eiToast.type === "error" ? "✕" : "✓"} {eiToast.msg}
         </div>
       )}
-
       <div
         style={{
           background: "#fff",
@@ -550,7 +623,6 @@ const ExcelImporter = ({
           overflow: "hidden",
         }}
       >
-        {/* Header */}
         <div
           style={{
             background: "linear-gradient(135deg, #0B2E4E, #185FA5)",
@@ -609,8 +681,6 @@ const ExcelImporter = ({
             ✕
           </button>
         </div>
-
-        {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
           {rows.length === 0 && (
             <div
@@ -659,30 +729,8 @@ const ExcelImporter = ({
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
-              <div
-                style={{
-                  marginTop: 20,
-                  padding: "12px 16px",
-                  background: "#EFF6FF",
-                  borderRadius: 10,
-                  border: "1px solid #BFDBFE",
-                  textAlign: "left",
-                  fontSize: 11,
-                  color: "#1D4ED8",
-                  lineHeight: 1.6,
-                }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                  📋 Expected columns:
-                </div>
-                Customer · Area · Distributor · Project Stage · Potential - Dyes
-                (Rs L/mth) · Potential - Aux (Rs L/mth) · Existing Bus: Dyes (Rs
-                L/mth) · Existing Bus: Aux (Rs L/mth) · ABP AM26 (Rs L) · YTD
-                Sale till end of Prev Mth (Rs L)
-              </div>
             </div>
           )}
-
           {rows.length > 0 && (
             <>
               <div
@@ -704,7 +752,7 @@ const ExcelImporter = ({
                     fontWeight: 700,
                   }}
                 >
-                  ✦ {newCount} Naye customers
+                  ✦ {newCount} Naye
                 </div>
                 {dupCount > 0 && (
                   <div
@@ -717,7 +765,7 @@ const ExcelImporter = ({
                       fontWeight: 700,
                     }}
                   >
-                    ⚠ {dupCount} Already exist
+                    ⚠ {dupCount} Exist
                   </div>
                 )}
                 <div
@@ -726,7 +774,6 @@ const ExcelImporter = ({
                   {selectedRows.length} selected
                 </div>
               </div>
-
               {dupCount > 0 && (
                 <div
                   style={{
@@ -746,7 +793,7 @@ const ExcelImporter = ({
                       marginBottom: 8,
                     }}
                   >
-                    ⚠ Already existing customers ke liye:
+                    ⚠ Duplicates ke liye:
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {["skip", "overwrite"].map((val) => (
@@ -759,20 +806,10 @@ const ExcelImporter = ({
                           cursor: "pointer",
                           padding: "5px 12px",
                           borderRadius: 6,
-                          border: `1px solid ${dupAction === val ? (val === "skip" ? "#F59E0B" : "#F97316") : "#E5E7EB"}`,
-                          background:
-                            dupAction === val
-                              ? val === "skip"
-                                ? "#FEF3C7"
-                                : "#FFF7ED"
-                              : "#fff",
+                          border: `1px solid ${dupAction === val ? "#F59E0B" : "#E5E7EB"}`,
+                          background: dupAction === val ? "#FEF3C7" : "#fff",
                           fontWeight: dupAction === val ? 700 : 400,
-                          color:
-                            dupAction === val
-                              ? val === "skip"
-                                ? "#92400E"
-                                : "#C2410C"
-                              : "#374151",
+                          color: dupAction === val ? "#92400E" : "#374151",
                         }}
                       >
                         <input
@@ -783,22 +820,12 @@ const ExcelImporter = ({
                           onChange={() => setDupAction(val)}
                           className="ei-check"
                         />
-                        {val === "skip"
-                          ? "Skip karo (recommended)"
-                          : "Overwrite karo"}
+                        {val === "skip" ? "Skip (recommended)" : "Overwrite"}
                       </label>
                     ))}
                   </div>
-                  {dupAction === "overwrite" && (
-                    <div
-                      style={{ fontSize: 11, color: "#C2410C", marginTop: 6 }}
-                    >
-                      ⚠ Selected duplicate customers ka data replace ho jaayega.
-                    </div>
-                  )}
                 </div>
               )}
-
               <div
                 style={{
                   display: "flex",
@@ -812,14 +839,14 @@ const ExcelImporter = ({
                   onClick={selectAllNew}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  ✓ Sirf naye select karo
+                  ✓ Sirf naye
                 </button>
                 <button
                   className="ei-btn-secondary"
                   onClick={selectAll}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  ✓ Sab select karo
+                  ✓ Sab select
                 </button>
                 <button
                   className="ei-btn-secondary"
@@ -829,7 +856,6 @@ const ExcelImporter = ({
                   ✕ Deselect all
                 </button>
               </div>
-
               <div
                 style={{
                   border: "1px solid #E5E7EB",
@@ -844,9 +870,7 @@ const ExcelImporter = ({
                       <th style={{ width: 36 }}></th>
                       <th>Customer</th>
                       <th>Area</th>
-                      <th className="ei-desktop-only">Distributor</th>
                       <th className="ei-desktop-only">Pot. Dyes</th>
-                      <th className="ei-desktop-only">Pot. Aux</th>
                       <th className="ei-desktop-only">ABP</th>
                       <th>Status</th>
                     </tr>
@@ -854,15 +878,16 @@ const ExcelImporter = ({
                   <tbody>
                     {rows.map((r, idx) => {
                       const isSelected = !!selected[idx];
-                      const rowClass = r._isDup
-                        ? "ei-row-dup"
-                        : isSelected
-                          ? "ei-row-new"
-                          : "";
                       return (
                         <tr
                           key={idx}
-                          className={rowClass}
+                          className={
+                            r._isDup
+                              ? "ei-row-dup"
+                              : isSelected
+                                ? "ei-row-new"
+                                : ""
+                          }
                           style={{ cursor: "pointer" }}
                           onClick={() => toggleRow(idx)}
                         >
@@ -879,36 +904,14 @@ const ExcelImporter = ({
                           <td style={{ fontWeight: 600, color: "#0B2E4E" }}>
                             {r.name}
                           </td>
-                          <td style={{ color: "#374151" }}>{r.area}</td>
-                          <td
-                            className="ei-desktop-only"
-                            style={{ color: "#374151" }}
-                          >
-                            {r.distributor}
-                          </td>
-                          <td
-                            className="ei-desktop-only"
-                            style={{ color: "#374151" }}
-                          >
-                            ₹{r.potDyes}L
-                          </td>
-                          <td
-                            className="ei-desktop-only"
-                            style={{ color: "#374151" }}
-                          >
-                            ₹{r.potAux}L
-                          </td>
-                          <td
-                            className="ei-desktop-only"
-                            style={{ color: "#374151" }}
-                          >
-                            ₹{r.abp}L
-                          </td>
+                          <td>{r.area}</td>
+                          <td className="ei-desktop-only">₹{r.potDyes}L</td>
+                          <td className="ei-desktop-only">₹{r.abp}L</td>
                           <td>
                             <span
                               className={`ei-badge ${r._isDup ? "ei-badge-dup" : "ei-badge-new"}`}
                             >
-                              {r._isDup ? "⚠ Duplicate" : "✦ New"}
+                              {r._isDup ? "⚠ Dup" : "✦ New"}
                             </span>
                           </td>
                         </tr>
@@ -917,7 +920,6 @@ const ExcelImporter = ({
                   </tbody>
                 </table>
               </div>
-
               <div style={{ textAlign: "center", marginTop: 12 }}>
                 <button
                   className="ei-btn-secondary"
@@ -935,8 +937,6 @@ const ExcelImporter = ({
             </>
           )}
         </div>
-
-        {/* Footer */}
         <div
           style={{
             padding: "14px 20px",
@@ -974,7 +974,7 @@ const ExcelImporter = ({
                 style={{ flex: 2, height: 42, fontSize: 14 }}
               >
                 {importing
-                  ? `⏳ Import ho raha hai… (${selectedRows.length})`
+                  ? `⏳ Import ho raha hai…`
                   : rows.length === 0
                     ? "📂 Pehle file upload karo"
                     : `📥 ${selectedRows.length} Customers Import karo`}
@@ -983,6 +983,178 @@ const ExcelImporter = ({
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+// ─── Export Dropdown Component ────────────────────────────────────────────────
+const EXPORT_OPTIONS = [
+  { id: "all", label: "All records", icon: "📊", weeks: null },
+  { id: "custom", label: "Custom range", icon: "🗓", weeks: null },
+];
+
+const ExportDropdown = ({ records, onExport }) => {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleExport = (optId) => {
+    const opt = EXPORT_OPTIONS.find((o) => o.id === optId);
+    let filtered = records;
+    if (opt?.weeks) {
+      const { start, end } = getWeekRange(opt.weeks);
+      filtered = records.filter((r) => inRange(r.date, start, end));
+    } else if (optId === "custom" && customStart && customEnd) {
+      const start = new Date(customStart);
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      filtered = records.filter((r) => inRange(r.date, start, end));
+    }
+    onExport(filtered, opt?.label || "Custom");
+    setOpen(false);
+  };
+
+  return (
+    <div className="dsr-export-dropdown" ref={ref}>
+      <button
+        className="dsr-btn-export"
+        onClick={() => setOpen((p) => !p)}
+        style={{
+          background: "#047857",
+          color: "#fff",
+          border: "none",
+          height: 38,
+          padding: "0 14px",
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          whiteSpace: "nowrap",
+          transition: "background 0.15s",
+        }}
+      >
+        ⬇ Export {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div className="dsr-export-menu">
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#9CA3AF",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              padding: "2px 12px 6px",
+            }}
+          >
+            Export range
+          </div>
+          {EXPORT_OPTIONS.filter((o) => o.id !== "custom").map((opt) => (
+            <button
+              key={opt.id}
+              className={`dsr-export-menu-item${selected === opt.id ? " active" : ""}`}
+              onClick={() => {
+                setSelected(opt.id);
+                handleExport(opt.id);
+              }}
+            >
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+              {opt.weeks && (
+                <span
+                  style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}
+                >
+                  {
+                    records.filter((r) =>
+                      inRange(
+                        r.date,
+                        ...Object.values(getWeekRange(opt.weeks)),
+                      ),
+                    ).length
+                  }{" "}
+                  records
+                </span>
+              )}
+              {!opt.weeks && opt.id === "all" && (
+                <span
+                  style={{ marginLeft: "auto", fontSize: 10, color: "#9CA3AF" }}
+                >
+                  {records.length} records
+                </span>
+              )}
+            </button>
+          ))}
+          <div className="dsr-export-divider" />
+          <div className="dsr-export-custom-row">
+            <label>Custom date range</label>
+            <div className="dsr-export-custom-inputs">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="dsr-input"
+                style={{
+                  flex: 1,
+                  height: 32,
+                  padding: "0 8px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+              />
+              <span style={{ fontSize: 11, color: "#9CA3AF" }}>to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="dsr-input"
+                style={{
+                  flex: 1,
+                  height: 32,
+                  padding: "0 8px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+              />
+            </div>
+            <button
+              onClick={() => {
+                setSelected("custom");
+                handleExport("custom");
+              }}
+              disabled={!customStart || !customEnd}
+              style={{
+                marginTop: 4,
+                height: 32,
+                background: customStart && customEnd ? "#047857" : "#E5E7EB",
+                color: customStart && customEnd ? "#fff" : "#9CA3AF",
+                border: "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: customStart && customEnd ? "pointer" : "not-allowed",
+                transition: "background 0.15s",
+              }}
+            >
+              Export Custom Range
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1068,7 +1240,6 @@ const CustomerLastRecord = ({ record }) => {
   );
 };
 
-// ─── Last-hint pill ───────────────────────────────────────────────────────────
 const LastHint = ({ value, onUse }) => {
   if (!value) return null;
   return (
@@ -1087,7 +1258,6 @@ const LastHint = ({ value, onUse }) => {
   );
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
 const MetricCard = ({ label, value, sub, accent }) => (
   <div
     style={{
@@ -1166,7 +1336,6 @@ const inputStyle = {
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
 };
-
 const inputHighlightStyle = {
   ...inputStyle,
   borderColor: "#F59E0B",
@@ -1216,7 +1385,6 @@ const FormSelect = ({
   </div>
 );
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
 const Toast = ({ msg, type }) => {
   if (!msg) return null;
   return (
@@ -1245,14 +1413,16 @@ const Toast = ({ msg, type }) => {
   );
 };
 
-// ─── Record Card ──────────────────────────────────────────────────────────────
+// ─── Enhanced Record Card with Expand/Collapse ────────────────────────────────
 const RecordCard = ({ record, onDelete }) => {
+  const [expanded, setExpanded] = useState(false);
   const color = pctColor(record.pct);
   const sc = stageColor(record.stage);
   const id = record._id || record.id;
+
   return (
     <div
-      className="dsr-record-card"
+      className={`dsr-record-card${expanded ? " dsr-card-expanded" : ""}`}
       style={{
         background: "#fff",
         border: "1px solid #E5E7EB",
@@ -1261,14 +1431,15 @@ const RecordCard = ({ record, onDelete }) => {
         borderLeft: `4px solid ${sc.border}`,
       }}
     >
-      <div style={{ padding: "14px 14px 12px 14px" }}>
+      {/* Main visible content */}
+      <div style={{ padding: "14px 14px 0 14px" }}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
             gap: 8,
-            marginBottom: 6,
+            marginBottom: 8,
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -1285,24 +1456,40 @@ const RecordCard = ({ record, onDelete }) => {
               {record.customer}
             </div>
             <div style={{ fontSize: 11, color: "#8A9BB0", marginTop: 2 }}>
-              {record.date} · {record.area}
+              {fmtDate(record.date)} · {record.area}
             </div>
           </div>
-          <span
+          <div
             style={{
-              fontSize: 10,
-              padding: "3px 9px",
-              borderRadius: 20,
-              fontWeight: 600,
-              background: "#EEF6FF",
-              color: "#1D4ED8",
-              border: "1px solid #BFDBFE",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
               flexShrink: 0,
             }}
           >
-            {record.distributor}
-          </span>
+            <span
+              style={{
+                fontSize: 10,
+                padding: "3px 9px",
+                borderRadius: 20,
+                fontWeight: 600,
+                background: "#EEF6FF",
+                color: "#1D4ED8",
+                border: "1px solid #BFDBFE",
+              }}
+            >
+              {record.distributor}
+            </span>
+            <button
+              className={`dsr-expand-btn${expanded ? " expanded" : ""}`}
+              onClick={() => setExpanded((p) => !p)}
+            >
+              {expanded ? "▲ Collapse" : "▼ Expand"}
+            </button>
+          </div>
         </div>
+
+        {/* Objective & Outcome – always visible */}
         {record.objective && (
           <div
             style={{
@@ -1312,7 +1499,7 @@ const RecordCard = ({ record, onDelete }) => {
               lineHeight: 1.4,
               background: "#F0FDF4",
               borderRadius: 6,
-              padding: "5px 9px",
+              padding: "6px 10px",
               borderLeft: "3px solid #10B981",
             }}
           >
@@ -1337,11 +1524,11 @@ const RecordCard = ({ record, onDelete }) => {
             style={{
               fontSize: 12,
               color: "#374151",
-              marginBottom: 6,
+              marginBottom: 8,
               lineHeight: 1.4,
               background: "#EFF6FF",
               borderRadius: 6,
-              padding: "5px 9px",
+              padding: "6px 10px",
               borderLeft: "3px solid #3B82F6",
             }}
           >
@@ -1361,57 +1548,15 @@ const RecordCard = ({ record, onDelete }) => {
             {record.outcome}
           </div>
         )}
-        <div
-          className="dsr-record-detail-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: "6px 14px",
-            padding: "10px 12px",
-            background: "#F9FAFB",
-            borderRadius: 8,
-            marginBottom: 10,
-          }}
-        >
-          {[
-            ["Pot. Dyes", record.potDyes],
-            ["Pot. Aux", record.potAux],
-            ["Ex. Dyes", record.exDyes],
-            ["Ex. Aux", record.exAux],
-            ["ABP AM26", record.abp],
-            ["YTD Sale", record.ytd],
-          ].map(([key, val]) => (
-            <div key={key}>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: "#9CA3AF",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {key}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: key === "YTD Sale" ? "#7C3AED" : "#111827",
-                  marginTop: 1,
-                }}
-              >
-                ₹{val}L
-              </div>
-            </div>
-          ))}
-        </div>
+
+        {/* Compact summary row — always visible */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             gap: 8,
+            paddingBottom: 12,
           }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1453,9 +1598,9 @@ const RecordCard = ({ record, onDelete }) => {
             </div>
             <div
               style={{
-                height: 4,
+                height: 5,
                 background: "#E5E7EB",
-                borderRadius: 2,
+                borderRadius: 3,
                 overflow: "hidden",
               }}
             >
@@ -1464,7 +1609,7 @@ const RecordCard = ({ record, onDelete }) => {
                   height: "100%",
                   width: `${Math.min(record.pct, 100)}%`,
                   background: color,
-                  borderRadius: 2,
+                  borderRadius: 3,
                   transition: "width 0.5s ease",
                 }}
               />
@@ -1491,6 +1636,180 @@ const RecordCard = ({ record, onDelete }) => {
           </button>
         </div>
       </div>
+
+      {/* Expandable detail section */}
+      <div className={`dsr-card-detail-section${expanded ? " open" : ""}`}>
+        <div
+          style={{
+            margin: "0 14px",
+            borderTop: "1px dashed #E5E7EB",
+            paddingTop: 12,
+            paddingBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#8A9BB0",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: 10,
+            }}
+          >
+            💰 Financial Details (₹ Lakhs)
+          </div>
+          <div
+            className="dsr-record-detail-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: "10px 14px",
+              padding: "12px 14px",
+              background: "#F9FAFB",
+              borderRadius: 10,
+              border: "1px solid #F3F4F6",
+            }}
+          >
+            {[
+              ["Pot. Dyes", record.potDyes, "#2563EB"],
+              ["Pot. Aux", record.potAux, "#7C3AED"],
+              ["Ex. Dyes", record.exDyes, "#0F766E"],
+              ["Ex. Aux", record.exAux, "#0F766E"],
+              ["ABP AM26", record.abp, "#B45309"],
+              ["YTD Sale", record.ytd, "#7C3AED"],
+            ].map(([key, val, clr]) => (
+              <div
+                key={key}
+                style={{
+                  textAlign: "center",
+                  padding: "8px 6px",
+                  background: "#fff",
+                  borderRadius: 8,
+                  border: "1px solid #F3F4F6",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: "#9CA3AF",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 4,
+                  }}
+                >
+                  {key}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: clr }}>
+                  ₹{val}L
+                </div>
+              </div>
+            ))}
+          </div>
+          <div
+            style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
+            <div
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: "8px 12px",
+                background: "#F0FDF4",
+                borderRadius: 8,
+                border: "1px solid #A7F3D0",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "#6B7280",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Total Potential
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#047857",
+                  marginTop: 2,
+                }}
+              >
+                ₹{(toNum(record.potDyes) + toNum(record.potAux)).toFixed(2)}
+                L/mth
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: "8px 12px",
+                background: "#EFF6FF",
+                borderRadius: 8,
+                border: "1px solid #BFDBFE",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "#6B7280",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Total Existing
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#1D4ED8",
+                  marginTop: 2,
+                }}
+              >
+                ₹{(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: "8px 12px",
+                background: "#FFF7ED",
+                borderRadius: 8,
+                border: "1px solid #FDE68A",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "#6B7280",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                YTD vs ABP
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: color,
+                  marginTop: 2,
+                }}
+              >
+                {record.pct}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1501,34 +1820,6 @@ const TABS = [
   { id: "add", icon: "➕", label: "Add Record" },
   { id: "customers", icon: "🏪", label: "Customers" },
 ];
-
-const NavActionBtn = ({ icon, label, onClick }) => (
-  <button
-    className="dsr-nav-action"
-    onClick={onClick}
-    title={label}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 9,
-      width: "100%",
-      padding: "9px 12px",
-      borderRadius: 8,
-      border: "none",
-      cursor: "pointer",
-      marginBottom: 2,
-      fontSize: 12,
-      fontWeight: 500,
-      color: "rgba(255,255,255,0.55)",
-      background: "transparent",
-      textAlign: "left",
-      transition: "background 0.15s, color 0.15s",
-    }}
-  >
-    <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
-    <span>{label}</span>
-  </button>
-);
 
 const Sidebar = ({ active, onChange, recordCount }) => (
   <div
@@ -1550,24 +1841,10 @@ const Sidebar = ({ active, onChange, recordCount }) => (
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "linear-gradient(135deg, #00B8A2, #0284C7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 18,
-            flexShrink: 0,
-          }}
-        >
-          📊
-        </div>
+        
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
-            DSR — VS
+            DSR
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
             Sales Management
@@ -1623,36 +1900,6 @@ const Sidebar = ({ active, onChange, recordCount }) => (
     </nav>
     <div
       style={{
-        padding: "10px 10px 6px",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.25)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          padding: "0 12px",
-          marginBottom: 6,
-        }}
-      >
-        Navigation
-      </div>
-      <NavActionBtn
-        icon="🏠"
-        label="Home"
-        onClick={() => onChange("records")}
-      />
-      <NavActionBtn
-        icon="←"
-        label="Go Back"
-        onClick={() => window.history.back()}
-      />
-    </div>
-    <div
-      style={{
         padding: "12px 20px",
         borderTop: "1px solid rgba(255,255,255,0.08)",
       }}
@@ -1668,7 +1915,6 @@ const Sidebar = ({ active, onChange, recordCount }) => (
   </div>
 );
 
-// ─── Mobile Tab Bar ───────────────────────────────────────────────────────────
 const MobileTabBar = ({ active, onChange, recordCount }) => (
   <div
     className="dsr-mobile-tabbar"
@@ -1686,7 +1932,6 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
   >
     <button
       onClick={() => window.history.back()}
-      title="Go Back"
       style={{
         flex: 1,
         border: "none",
@@ -1701,7 +1946,7 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
       }}
     >
       <span style={{ fontSize: 20 }}>←</span>
-      <span style={{ fontSize: 9, letterSpacing: "0.03em" }}>Back</span>
+      <span style={{ fontSize: 9 }}>Back</span>
     </button>
     {TABS.map((t) => (
       <button
@@ -1722,13 +1967,7 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
         }}
       >
         <span style={{ fontSize: 20 }}>{t.icon}</span>
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: active === t.id ? 700 : 400,
-            letterSpacing: "0.03em",
-          }}
-        >
+        <span style={{ fontSize: 9, fontWeight: active === t.id ? 700 : 400 }}>
           {t.label}
         </span>
         {t.id === "records" && recordCount > 0 && (
@@ -1770,20 +2009,11 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
       }}
     >
       <span style={{ fontSize: 20 }}>🏠</span>
-      <span
-        style={{
-          fontSize: 9,
-          fontWeight: active === "records" ? 700 : 400,
-          letterSpacing: "0.03em",
-        }}
-      >
-        Home
-      </span>
+      <span style={{ fontSize: 9 }}>Home</span>
     </button>
   </div>
 );
 
-// ─── Section Card ─────────────────────────────────────────────────────────────
 const SectionCard = ({ title, children, style }) => (
   <div
     style={{
@@ -1825,12 +2055,10 @@ const CustomerModal = ({
 }) => {
   const [name, setName] = useState(editName || "");
   const [data, setData] = useState(initialData || EMPTY_CUSTOMER);
-
   useEffect(() => {
     setName(editName || "");
     setData(initialData || EMPTY_CUSTOMER);
   }, [editName, initialData]);
-
   const handleChange = (e) => {
     const { name: field, value } = e.target;
     setData((prev) => ({ ...prev, [field]: value }));
@@ -1907,7 +2135,6 @@ const CustomerModal = ({
             ✕
           </button>
         </div>
-
         <div style={{ marginBottom: 12 }}>
           <FieldLabel required>Customer name</FieldLabel>
           <input
@@ -1918,24 +2145,7 @@ const CustomerModal = ({
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter full name"
           />
-          {isEdit && name.trim() !== editName && name.trim() !== "" && (
-            <div
-              style={{
-                fontSize: 10,
-                color: "#D97706",
-                background: "#FEF3C7",
-                border: "1px solid #FDE68A",
-                borderRadius: 6,
-                padding: "4px 8px",
-                marginTop: 4,
-              }}
-            >
-              ✏️ Naam badlega: <strong>{editName}</strong> →{" "}
-              <strong>{name.trim()}</strong>
-            </div>
-          )}
         </div>
-
         <div
           className="dsr-grid2"
           style={{
@@ -1968,7 +2178,6 @@ const CustomerModal = ({
             ))}
           </FormSelect>
         </div>
-
         <FormSelect
           label="Project stage"
           required
@@ -1983,7 +2192,6 @@ const CustomerModal = ({
             </option>
           ))}
         </FormSelect>
-
         <div
           style={{
             fontSize: 10,
@@ -2007,6 +2215,7 @@ const CustomerModal = ({
         >
           <FormInput
             label="Potential Dyes /mth"
+            required
             type="number"
             name="potDyes"
             value={data.potDyes}
@@ -2015,6 +2224,7 @@ const CustomerModal = ({
           />
           <FormInput
             label="Potential Aux /mth"
+            required
             type="number"
             name="potAux"
             value={data.potAux}
@@ -2038,7 +2248,7 @@ const CustomerModal = ({
             placeholder="0"
           />
           <div style={{ gridColumn: "1 / -1", marginBottom: 12 }}>
-            <FieldLabel>ABP AM26</FieldLabel>
+            <FieldLabel required>ABP AM26</FieldLabel>
             <input
               className="dsr-input"
               style={inputStyle}
@@ -2050,7 +2260,6 @@ const CustomerModal = ({
             />
           </div>
         </div>
-
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           {isEdit && (
             <button
@@ -2068,7 +2277,6 @@ const CustomerModal = ({
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
-                transition: "background 0.15s",
                 flexShrink: 0,
               }}
             >
@@ -2137,6 +2345,9 @@ const DailySalesReport = () => {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [modalSaving, setModalSaving] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [filterStart, setFilterStart] = useState("");
+  const [filterEnd, setFilterEnd] = useState("");
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -2185,22 +2396,19 @@ const DailySalesReport = () => {
     return customerLastRecord[name] || null;
   }, [newRecord.customer, customers, customerLastRecord]);
 
-  const avgPct = records.length
-    ? (records.reduce((s, r) => s + (r.pct || 0), 0) / records.length).toFixed(
-        1,
-      )
-    : "0.0";
-  const totalPot = records
-    .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
-    .toFixed(1);
-  const totalYTD = records.reduce((s, r) => s + toNum(r.ytd), 0).toFixed(1);
-  const today = new Date().toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  // Filter records based on active filter
+  const filteredByDate = useMemo(() => {
+    if (activeFilter === "all") return records;
+    if (activeFilter === "custom" && filterStart && filterEnd) {
+      const start = new Date(filterStart);
+      const end = new Date(filterEnd);
+      end.setHours(23, 59, 59, 999);
+      return records.filter((r) => inRange(r.date, start, end));
+    }
+    return records;
+  }, [records, activeFilter, filterStart, filterEnd]);
 
-  const filteredRecords = records.filter((r) => {
+  const filteredRecords = filteredByDate.filter((r) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -2209,6 +2417,24 @@ const DailySalesReport = () => {
       r.distributor.toLowerCase().includes(q) ||
       (r.objective && r.objective.toLowerCase().includes(q))
     );
+  });
+
+  const avgPct = filteredByDate.length
+    ? (
+        filteredByDate.reduce((s, r) => s + (r.pct || 0), 0) /
+        filteredByDate.length
+      ).toFixed(1)
+    : "0.0";
+  const totalPot = filteredByDate
+    .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
+    .toFixed(1);
+  const totalYTD = filteredByDate
+    .reduce((s, r) => s + toNum(r.ytd), 0)
+    .toFixed(1);
+  const today = new Date().toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 
   const handleRecordChange = (e) => {
@@ -2238,14 +2464,16 @@ const DailySalesReport = () => {
         exAux: c.exAux || "",
         abp: c.abp || "",
       }));
-    } else {
-      setNewRecord((prev) => ({ ...prev, customer: val }));
-    }
+    } else setNewRecord((prev) => ({ ...prev, customer: val }));
   };
 
   const addRecord = async () => {
     const { date, area, distributor, customer } = newRecord;
-    if (!date || !area || !distributor || !customer) {
+    if (!date) {
+      showToast("Date fill karo (required).", "error");
+      return;
+    }
+    if (!area || !distributor || !customer) {
       showToast("Date, Area, Distributor aur Customer zaroori hain.", "error");
       return;
     }
@@ -2291,24 +2519,139 @@ const DailySalesReport = () => {
     }
   };
 
-  const exportToExcel = async () => {
-    try {
-      const res = await fetch(`${API}/api/dsr/records/export/excel`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) throw new Error("Export failed");
-      const blob = await res.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `DSR_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-      showToast("Excel download ho raha hai!");
-    } catch (err) {
-      showToast(err.message, "error");
+  // ─── Enhanced Export with center alignment (xlsx-js-style) ──────────────────
+  const NUMERIC_HEADERS = [
+    "Potential Dyes (Rs L/mth)",
+    "Potential Aux (Rs L/mth)",
+    "Existing Dyes (Rs L/mth)",
+    "Existing Aux (Rs L/mth)",
+    "ABP AM26 (Rs L)",
+    "YTD Sale Prev Mth (Rs L)",
+    "YTD vs ABP %",
+  ];
+
+  const HEADER_STYLE = {
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+    fill: { fgColor: { rgb: "0B2E4E" } },
+    alignment: { horizontal: "center", vertical: "center", wrapText: false },
+    border: {
+      bottom: { style: "thin", color: { rgb: "00B8A2" } },
+    },
+  };
+
+  const NUM_CELL_STYLE = {
+    alignment: { horizontal: "center", vertical: "center" },
+    font: { sz: 11 },
+  };
+
+  const TEXT_CELL_STYLE = {
+    alignment: { horizontal: "left", vertical: "center" },
+    font: { sz: 11 },
+  };
+
+  const doExport = (recordsToExport, label = "All") => {
+    const sorted = [...recordsToExport].sort(
+      (a, b) => new Date(a.date) - new Date(b.date),
+    );
+    const exportData = sorted.map((r) => ({
+      Date: r.date
+        ? new Date(r.date).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : "",
+      Customer: r.customer,
+      Area: r.area,
+      Distributor: r.distributor,
+      "Project Stage": r.stage,
+      Objective: r.objective,
+      "Visit Outcome": r.outcome,
+      "Potential Dyes (Rs L/mth)": toNum(r.potDyes),
+      "Potential Aux (Rs L/mth)": toNum(r.potAux),
+      "Existing Dyes (Rs L/mth)": toNum(r.exDyes),
+      "Existing Aux (Rs L/mth)": toNum(r.exAux),
+      "ABP AM26 (Rs L)": toNum(r.abp),
+      "YTD Sale Prev Mth (Rs L)": toNum(r.ytd),
+      "YTD vs ABP %": r.pct || 0,
+    }));
+
+    if (exportData.length === 0) {
+      showToast("Is range mein koi record nahi hai.", "error");
+      return;
     }
+
+    const colKeys = Object.keys(exportData[0]);
+    const numericSet = new Set(NUMERIC_HEADERS);
+
+    // Build worksheet manually cell-by-cell so styles apply correctly
+    const ws = {};
+
+    // Header row (R=0)
+    colKeys.forEach((key, C) => {
+      const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+      ws[addr] = { v: key, t: "s", s: HEADER_STYLE };
+    });
+
+    // Data rows (R=1..n)
+    exportData.forEach((row, rowIdx) => {
+      colKeys.forEach((key, C) => {
+        const addr = XLSX.utils.encode_cell({ r: rowIdx + 1, c: C });
+        const val = row[key];
+        const isNum = numericSet.has(key);
+        ws[addr] = {
+          v: val,
+          t: isNum ? "n" : "s",
+          s: isNum ? NUM_CELL_STYLE : TEXT_CELL_STYLE,
+        };
+      });
+    });
+
+    // Set worksheet range
+    ws["!ref"] = XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: exportData.length, c: colKeys.length - 1 },
+    });
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 18 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 30 },
+      { wch: 36 },
+      { wch: 36 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 24 },
+      { wch: 14 },
+    ];
+
+    // Row height for header
+    ws["!rows"] = [{ hpt: 20 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DSR Records");
+
+    const filename = `DSR_${label.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const outBlob = new Blob(
+      [XLSX.write(wb, { bookType: "xlsx", type: "array" })],
+      {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    );
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(outBlob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    showToast(`Excel download ho raha hai! (${exportData.length} records)`);
   };
 
   const openAddCustomer = () => {
@@ -2341,7 +2684,26 @@ const DailySalesReport = () => {
       showToast("Project stage select karo.", "error");
       return;
     }
-
+    if (
+      data.potDyes === "" ||
+      data.potDyes === null ||
+      data.potDyes === undefined
+    ) {
+      showToast("Potential Dyes /mth daalo (required).", "error");
+      return;
+    }
+    if (
+      data.potAux === "" ||
+      data.potAux === null ||
+      data.potAux === undefined
+    ) {
+      showToast("Potential Aux /mth daalo (required).", "error");
+      return;
+    }
+    if (data.abp === "" || data.abp === null || data.abp === undefined) {
+      showToast("ABP AM26 daalo (required).", "error");
+      return;
+    }
     const payload = {
       name,
       area: data.area,
@@ -2353,14 +2715,13 @@ const DailySalesReport = () => {
       exAux: toNum(data.exAux),
       abp: toNum(data.abp),
     };
-
     try {
       setModalSaving(true);
       if (modalMode === "edit") {
         const nameChanged = name !== editingCustomer;
         const oldId = customers[editingCustomer]?._id;
         if (!oldId) {
-          showToast("Customer ID nahi mila. Page refresh karo.", "error");
+          showToast("Customer ID nahi mila.", "error");
           return;
         }
         const res = await apiFetch(`/api/dsr/customers/${oldId}`, {
@@ -2384,20 +2745,6 @@ const DailySalesReport = () => {
           };
           return next;
         });
-        if (newRecord.customer === editingCustomer) {
-          setNewRecord((prev) => ({
-            ...prev,
-            customer: updated.name,
-            area: updated.area || prev.area,
-            distributor: updated.distributor || prev.distributor,
-            stage: updated.stage || prev.stage,
-            potDyes: updated.potDyes ?? prev.potDyes,
-            potAux: updated.potAux ?? prev.potAux,
-            exDyes: updated.exDyes ?? prev.exDyes,
-            exAux: updated.exAux ?? prev.exAux,
-            abp: updated.abp ?? prev.abp,
-          }));
-        }
         showToast(
           nameChanged
             ? `Naam update: ${editingCustomer} → ${updated.name}`
@@ -2411,7 +2758,7 @@ const DailySalesReport = () => {
         const newCust = res.data;
         setCustomers((prev) => ({ ...prev, ...newCust }));
         const custData = newCust[name];
-        if (custData) {
+        if (custData)
           setNewRecord((prev) => ({
             ...prev,
             customer: name,
@@ -2424,7 +2771,6 @@ const DailySalesReport = () => {
             exAux: custData.exAux,
             abp: custData.abp,
           }));
-        }
         showToast(`${name} add ho gaya!`);
       }
       closeModal();
@@ -2436,12 +2782,7 @@ const DailySalesReport = () => {
   };
 
   const handleDeleteCustomer = async (name) => {
-    if (
-      !window.confirm(
-        `"${name}" ko delete karein? Iske saare records bhi hat sakte hain.`,
-      )
-    )
-      return;
+    if (!window.confirm(`"${name}" ko delete karein?`)) return;
     const id = customers[name]?._id;
     if (!id) {
       showToast("Customer ID nahi mila.", "error");
@@ -2472,6 +2813,8 @@ const DailySalesReport = () => {
   const customerList = Object.keys(customers).sort();
   const lr = selectedCustomerLastRecord;
 
+  const FILTER_CHIPS = [{ id: "all", label: "All", count: records.length }];
+
   return (
     <div
       className="dsr-layout"
@@ -2493,7 +2836,7 @@ const DailySalesReport = () => {
         className="dsr-main"
         style={{
           padding: "16px 16px 80px",
-          maxWidth: 480,
+          maxWidth: 520,
           margin: "0 auto",
           width: "100%",
         }}
@@ -2503,7 +2846,7 @@ const DailySalesReport = () => {
           className="dsr-header"
           style={{
             background: "linear-gradient(135deg, #0B2E4E 0%, #185FA5 100%)",
-            borderRadius: 12,
+            borderRadius: 14,
             padding: "16px",
             marginBottom: 16,
             display: "flex",
@@ -2511,42 +2854,8 @@ const DailySalesReport = () => {
             gap: 12,
           }}
         >
-          <button
-            className="dsr-topbar-btn"
-            onClick={() => window.history.back()}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.08)",
-              color: "#fff",
-              fontSize: 16,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-          >
-            ←
-          </button>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #00B8A2, #0284C7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 20,
-              flexShrink: 0,
-            }}
-          >
-            📊
-          </div>
+
+          
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1
               style={{
@@ -2559,7 +2868,7 @@ const DailySalesReport = () => {
                 textOverflow: "ellipsis",
               }}
             >
-              Daily Sales Report — VS
+              Daily Sales Report
             </h1>
             <p
               style={{
@@ -2591,7 +2900,6 @@ const DailySalesReport = () => {
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              transition: "background 0.15s, color 0.15s",
             }}
           >
             🏠
@@ -2609,15 +2917,19 @@ const DailySalesReport = () => {
           }}
         >
           <MetricCard
-            label="Total records"
-            value={records.length}
+            label={
+              activeFilter === "all"
+                ? "Total records"
+                : `Records (${FILTER_CHIPS.find((f) => f.id === activeFilter)?.label || "filtered"})`
+            }
+            value={filteredByDate.length}
             sub={today}
             accent="#3B82F6"
           />
           <MetricCard
             label="Avg. YTD vs ABP"
             value={`${avgPct}%`}
-            sub="all customers"
+            sub="filtered period"
             accent="#00B8A2"
           />
           <MetricCard
@@ -2637,6 +2949,83 @@ const DailySalesReport = () => {
         {/* RECORDS TAB */}
         {activeTab === "records" && (
           <>
+            {/* Filter chips */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                marginBottom: 12,
+                overflowX: "auto",
+                paddingBottom: 4,
+              }}
+            >
+              {FILTER_CHIPS.map((chip) => (
+                <button
+                  key={chip.id}
+                  className={`dsr-filter-chip${activeFilter === chip.id ? " active" : ""}`}
+                  onClick={() => setActiveFilter(chip.id)}
+                >
+                  {chip.label}
+                  <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 400 }}>
+                    ({chip.count})
+                  </span>
+                </button>
+              ))}
+              <button
+                className={`dsr-filter-chip${activeFilter === "custom" ? " active" : ""}`}
+                onClick={() => setActiveFilter("custom")}
+              >
+                🗓 Custom
+              </button>
+            </div>
+
+            {/* Custom date inputs */}
+            {activeFilter === "custom" && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 12,
+                  alignItems: "center",
+                  background: "#F0FDFA",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #99F6E4",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#0F766E",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  From
+                </span>
+                <input
+                  type="date"
+                  value={filterStart}
+                  onChange={(e) => setFilterStart(e.target.value)}
+                  className="dsr-input"
+                  style={{ ...inputStyle, height: 34, flex: 1 }}
+                />
+                <span
+                  style={{ fontSize: 11, color: "#0F766E", fontWeight: 600 }}
+                >
+                  To
+                </span>
+                <input
+                  type="date"
+                  value={filterEnd}
+                  onChange={(e) => setFilterEnd(e.target.value)}
+                  className="dsr-input"
+                  style={{ ...inputStyle, height: 34, flex: 1 }}
+                />
+              </div>
+            )}
+
+            {/* Search + Export */}
             <div
               style={{
                 display: "flex",
@@ -2667,30 +3056,51 @@ const DailySalesReport = () => {
                   style={{ ...inputStyle, paddingLeft: 34 }}
                 />
               </div>
-              <button
-                className="dsr-btn-export"
-                onClick={exportToExcel}
+              <ExportDropdown records={filteredByDate} onExport={doExport} />
+            </div>
+
+            {/* Result count badge */}
+            {(activeFilter !== "all" || searchQuery) && (
+              <div
                 style={{
-                  background: "#047857",
-                  color: "#fff",
-                  border: "none",
-                  height: 38,
-                  padding: "0 14px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
+                  marginBottom: 10,
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  transition: "background 0.15s",
+                  gap: 8,
                 }}
               >
-                ⬇ Export
-              </button>
-            </div>
+                <span style={{ fontSize: 12, color: "#6B7280" }}>Showing</span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#047857",
+                    background: "#D1FAE5",
+                    padding: "2px 10px",
+                    borderRadius: 20,
+                  }}
+                >
+                  {filteredRecords.length} records
+                </span>
+                {activeFilter !== "all" && (
+                  <button
+                    onClick={() => setActiveFilter("all")}
+                    style={{
+                      fontSize: 11,
+                      color: "#6B7280",
+                      background: "transparent",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 20,
+                      padding: "2px 8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕ Clear filter
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div
                 style={{
@@ -2717,7 +3127,7 @@ const DailySalesReport = () => {
                   No records found
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Try a different search, or add a new record
+                  Try a different filter or search
                 </div>
               </div>
             ) : (
@@ -2753,12 +3163,31 @@ const DailySalesReport = () => {
                   <FieldLabel required>Date</FieldLabel>
                   <input
                     className="dsr-input"
-                    style={inputStyle}
+                    style={{
+                      ...inputStyle,
+                      borderColor: !newRecord.date ? "#F59E0B" : "#D1D5DB",
+                      background: !newRecord.date ? "#FFFBEB" : "#FAFAFA",
+                    }}
                     type="date"
                     name="date"
                     value={newRecord.date}
                     onChange={handleRecordChange}
                   />
+                  {!newRecord.date && (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "#B45309",
+                        marginTop: 3,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>📅</span>
+                      <span>Date manually select karo</span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <FieldLabel required>Customer</FieldLabel>
@@ -2872,7 +3301,6 @@ const DailySalesReport = () => {
                 )}
               </div>
             </SectionCard>
-
             <SectionCard title="💰 Numbers (₹ Lakhs)">
               <div
                 className="dsr-grid2"
@@ -2959,7 +3387,6 @@ const DailySalesReport = () => {
                 jaayenge.
               </div>
             </SectionCard>
-
             <button
               className="dsr-btn-primary"
               onClick={addRecord}
@@ -2979,7 +3406,6 @@ const DailySalesReport = () => {
                 justifyContent: "center",
                 gap: 8,
                 marginBottom: 12,
-                transition: "background 0.15s, transform 0.1s",
               }}
             >
               {loading ? "⏳ Saving…" : "✚ Save record"}
@@ -3001,7 +3427,7 @@ const DailySalesReport = () => {
               }}
             >
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2E4E" }}>
-                🏪 Customer Master
+                🏪 Customer Master{" "}
                 <span
                   style={{
                     fontSize: 11,
@@ -3030,7 +3456,6 @@ const DailySalesReport = () => {
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
-                    transition: "background 0.15s",
                   }}
                 >
                   📥 Excel Import
@@ -3050,38 +3475,12 @@ const DailySalesReport = () => {
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
-                    transition: "background 0.15s",
                   }}
                 >
-                  ＋ Add customer
+                  ＋ Add
                 </button>
               </div>
             </div>
-
-            {customerList.length === 0 && (
-              <div
-                style={{
-                  padding: "10px 12px",
-                  background: "#F0FDF4",
-                  border: "1px solid #A7F3D0",
-                  borderLeft: "4px solid #10B981",
-                  borderRadius: 10,
-                  marginBottom: 14,
-                  fontSize: 12,
-                  color: "#065F46",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 18 }}>💡</span>
-                <span>
-                  Ek saath bahut saare customers add karne hain?{" "}
-                  <strong>Excel Import</strong> button use karo upar!
-                </span>
-              </div>
-            )}
-
             {customerList.length === 0 ? (
               <div
                 style={{
@@ -3176,7 +3575,6 @@ const DailySalesReport = () => {
                       <button
                         className="dsr-btn-edit"
                         onClick={() => openEditCustomer(name)}
-                        title="Edit customer"
                         style={{
                           height: 30,
                           width: 30,
@@ -3189,7 +3587,6 @@ const DailySalesReport = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          transition: "background 0.15s, color 0.15s",
                         }}
                       >
                         ✏️
@@ -3197,7 +3594,6 @@ const DailySalesReport = () => {
                       <button
                         className="dsr-btn-danger"
                         onClick={() => handleDeleteCustomer(name)}
-                        title="Delete customer"
                         style={{
                           height: 30,
                           width: 30,
@@ -3210,7 +3606,6 @@ const DailySalesReport = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          transition: "background 0.15s",
                         }}
                       >
                         🗑
@@ -3257,7 +3652,6 @@ const DailySalesReport = () => {
         />
       )}
 
-      {/* ExcelImporter — inline, no separate file needed */}
       {showImporter && (
         <ExcelImporter
           existingCustomers={customers}

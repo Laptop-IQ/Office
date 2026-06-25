@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/react-in-jsx-scope */
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -27,6 +29,10 @@ import StockManager from "./components/Stockmanager";
 import PDFDocumentManager from "./components/Pdfdocumentmanager";
 import Chemsalescrm from "./components/Chemsalescrm";
 import Customerlistpage from "./components/Customerlistpage";
+import Notepad from "./components/Notepad";
+import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
+import PriceListApp from "./components/priceList";
+import CommandLibrary from "./components/CommandLibrary";
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -134,6 +140,39 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/pricelist"
+            element={
+              <PrivateRoute>
+                <PriceListApp />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/notepad"
+            element={
+              <PrivateRoute>
+                <Notepad />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/copypaste"
+            element={
+              <PrivateRoute>
+                <CommandLibrary />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/purchase"
+            element={
+              <PrivateRoute>
+                <SFDyesPurchaseOrder />
+              </PrivateRoute>
+            }
+          />
+         
         </Routes>
       </BrowserRouter>
     </AuthProvider>

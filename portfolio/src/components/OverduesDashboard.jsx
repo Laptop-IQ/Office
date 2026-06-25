@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import * as XLSX from "xlsx";
 
 // ── Live Due Days Calculator ───────────────────────────────────────────────
 const calcDueDays = (dated) => {
@@ -25,7 +26,7 @@ const parseXLSX = (file) =>
           raw: false,
           dateNF: "yyyy-mm-dd",
         });
-        const cleaned = raw.map((r) => {
+        const cleaned = raw.map((r, i) => {
           const obj = {};
           for (const k of Object.keys(r))
             obj[k.trim()] = typeof r[k] === "string" ? r[k].trim() : r[k];
@@ -36,6 +37,7 @@ const parseXLSX = (file) =>
             String(obj["Pending Amt."] ?? 0).replace(/,/g, ""),
           );
           obj["Due Days"] = calcDueDays(obj["Dated"]);
+          obj._id = i;
           return obj;
         });
         resolve(cleaned);
@@ -612,19 +614,32 @@ const RAW_DATA = [
   },
 ];
 
-const INITIAL_DATA = RAW_DATA.map((r) => ({
+// ── localStorage persistence ──────────────────────────────────────────────
+const LS_KEY = "sf_overdues_deleted_ids";
+
+const getSavedDeletedIds = () => {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveDeletedIds = (ids) => {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify([...ids]));
+  } catch {}
+};
+
+const INITIAL_DATA = RAW_DATA.map((r, i) => ({
   ...r,
   "Due Days": calcDueDays(r["Dated"]),
-}));
+  _id: i,
+})).filter((r) => !getSavedDeletedIds().has(r._id));
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN");
-const fmtK = (n) =>
-  n >= 100000
-    ? "₹" + (n / 100000).toFixed(1) + "L"
-    : n >= 1000
-      ? "₹" + (n / 1000).toFixed(0) + "K"
-      : "₹" + n;
 
 const getDueBadge = (days) => {
   if (days > 180)
@@ -659,7 +674,8 @@ const getPdfTitle = (search, filteredData) => {
   const accounts = [
     ...new Set(filteredData.map((r) => r["Account"]).filter(Boolean)),
   ];
-  if (accounts.length === 1) return `Supple Rubber Overdues Payments - ${accounts[0]}`;
+  if (accounts.length === 1)
+    return `Supple Rubber Overdues Report - ${accounts[0]}`;
   if (accounts.length <= 3)
     return `Supple Rubber Overdues Report - ${accounts.join(", ")}`;
   return `Supple Rubber Overdues Report - ${q.toUpperCase()}`;
@@ -714,7 +730,7 @@ const generatePDF = (data, title) => {
   };
 
   const rows = data
-    .map((r, i) => {
+    .map((r) => {
       const d = getDueBadge(r["Due Days"]);
       const bc = getBadgeClass(r["Due Days"]);
       return `<tr>
@@ -729,9 +745,7 @@ const generatePDF = (data, title) => {
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-/* ── CRITICAL: force browsers to print backgrounds & borders ── */
-*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
 body{font-family:Arial,sans-serif;color:#1e293b;background:#fff;padding:20px}
 .hdr{background:#1e3a5f!important;color:#fff!important;padding:16px 20px;border-radius:8px;margin-bottom:16px;border:2px solid #1e3a5f}
 .hdr h1{font-size:18px;font-weight:700;color:#fff!important}
@@ -743,18 +757,15 @@ body{font-family:Arial,sans-serif;color:#1e293b;background:#fff;padding:20px}
 .stat.purple{border-left:4px solid #7c3aed!important}
 .stat .val{font-size:16px;font-weight:700;color:#1e3a5f}
 .stat .lbl{font-size:9px;color:#64748b;margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.stat .sub{font-size:9px;color:#64748b;margin-top:2px}
-/* ── TABLE: full borders everywhere ── */
+.stat .sub2{font-size:9px;color:#64748b;margin-top:2px}
 table{width:100%;border-collapse:collapse;border:2px solid #334155!important}
 thead tr{background:#1e3a5f!important}
-thead th{padding:7px 8px;font-size:10px;font-weight:700;color:#fff!important;text-align:left;
-  border-right:1px solid #475569!important;border-bottom:2px solid #475569!important}
+thead th{padding:7px 8px;font-size:10px;font-weight:700;color:#fff!important;text-align:left;border-right:1px solid #475569!important;border-bottom:2px solid #475569!important}
 thead th:last-child{border-right:none!important}
 tbody tr{border-bottom:1px solid #94a3b8!important}
 tbody tr:nth-child(even){background:#f1f5f9!important}
 tbody td{border:1px solid #94a3b8!important;padding:5px 8px;font-size:10.5px;color:#1e293b}
-.total-row td{font-weight:700;background:#dbeafe!important;font-size:11px;padding:7px 8px;
-  border:1.5px solid #2563eb!important;color:#1e3a5f!important}
+.total-row td{font-weight:700;background:#dbeafe!important;font-size:11px;padding:7px 8px;border:1.5px solid #2563eb!important;color:#1e3a5f!important}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:700;border:1px solid transparent}
 .badge-red{background:#fee2e2!important;color:#991b1b!important;border-color:#fca5a5!important}
 .badge-orange{background:#ffedd5!important;color:#9a3412!important;border-color:#fdba74!important}
@@ -762,28 +773,21 @@ tbody td{border:1px solid #94a3b8!important;padding:5px 8px;font-size:10.5px;col
 .badge-blue{background:#dbeafe!important;color:#1e40af!important;border-color:#93c5fd!important}
 .badge-green{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important}
 .footer{margin-top:14px;font-size:9px;color:#64748b;text-align:center;border-top:1px solid #cbd5e1;padding-top:8px}
-@media print{
-  body{padding:10px}
-  table{page-break-inside:auto}
-  tr{page-break-inside:avoid;page-break-after:auto}
-  thead{display:table-header-group}
-}
+@media print{body{padding:10px}table{page-break-inside:auto}tr{page-break-inside:avoid;page-break-after:auto}thead{display:table-header-group}}
 </style></head><body>
 <div class="hdr">
   <h1>${title}</h1>
-  <div class="sub">Generated: ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} &nbsp;</div>
+  <div class="sub">Generated: ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
 </div>
 <div class="stats">
-  <div class="stat"><div class="val">${fmt(total)}</div><div class="lbl">Total Pending</div><div class="sub">${data.length} entries</div></div>
-  <div class="stat red"><div class="val">${overdue.length}</div><div class="lbl">Overdue Entries</div><div class="sub">${fmt(overdueTotal)}</div></div>
-  <div class="stat orange"><div class="val">${fmt(overdueTotal)}</div><div class="lbl">Overdue Amount</div><div class="sub">${overdue.length} entries</div></div>
-  <div class="stat purple"><div class="val">${maxDays}d</div><div class="lbl">Max Due Days</div><div class="sub">${maxAcct}</div></div>
+  <div class="stat"><div class="val">${fmt(total)}</div><div class="lbl">Total Pending</div><div class="sub2">${data.length} entries</div></div>
+  <div class="stat red"><div class="val">${overdue.length}</div><div class="lbl">Overdue Entries</div><div class="sub2">${fmt(overdueTotal)}</div></div>
+  <div class="stat orange"><div class="val">${fmt(overdueTotal)}</div><div class="lbl">Overdue Amount</div><div class="sub2">${overdue.length} entries</div></div>
+  <div class="stat purple"><div class="val">${maxDays}d</div><div class="lbl">Max Due Days</div><div class="sub2">${maxAcct}</div></div>
 </div>
 <table>
   <thead><tr>
-    <th>Account</th>
-    <th>Date</th>
-    <th>Ref. No.</th>
+    <th>Account</th><th>Date</th><th>Ref. No.</th>
     <th style="text-align:right">Pending Amt.</th>
     <th style="text-align:center">Due Days</th>
   </tr></thead>
@@ -805,6 +809,33 @@ tbody td{border:1px solid #94a3b8!important;padding:5px 8px;font-size:10.5px;col
   setTimeout(() => w.print(), 500);
 };
 
+// ── Delete Confirmation Modal ─────────────────────────────────────────────
+const ConfirmModal = ({ message, onConfirm, onCancel }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-slate-200">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-2xl">🗑️</span>
+        <h3 className="font-bold text-slate-800 text-base">Confirm Delete</h3>
+      </div>
+      <p className="text-sm text-slate-600 mb-6 leading-relaxed">{message}</p>
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
   const [data, setData] = useState(INITIAL_DATA);
@@ -818,11 +849,21 @@ export default function App() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [parseErr, setParseErr] = useState("");
-  const [activeTab, setActiveTab] = useState("detail"); // "detail" | "summary"
-  const [summarySort, setSummarySort] = useState("total"); // "total" | "entries" | "maxDays"
+  const [activeTab, setActiveTab] = useState("detail");
+  const [summarySort, setSummarySort] = useState("total");
   const [expandedAccount, setExpandedAccount] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
   const fileRef = useRef();
 
+  // ── Sync deleted IDs to localStorage whenever data changes ───────────────
+  useEffect(() => {
+    const allIds = new Set(RAW_DATA.map((_, i) => i));
+    const remaining = new Set(data.map((r) => r._id));
+    const deleted = new Set([...allIds].filter((id) => !remaining.has(id)));
+    saveDeletedIds(deleted);
+  }, [data]);
+
+  // ── File Upload ──────────────────────────────────────────────────────────
   const handleFile = useCallback(async (file) => {
     if (!file) return;
     setUploading(true);
@@ -844,7 +885,51 @@ export default function App() {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  // Filtered + sorted detail rows
+  // ── Delete Handlers ──────────────────────────────────────────────────────
+  const confirmDeleteRow = (row) => {
+    setConfirmModal({
+      message: `Delete entry "${row["Ref. No."]}" for ${row["Account"]}? This cannot be undone.`,
+      onConfirm: () => {
+        setData((prev) => prev.filter((r) => r._id !== row._id));
+        setConfirmModal(null);
+      },
+    });
+  };
+
+  const confirmDeleteAccount = (acctName) => {
+    const count = data.filter((r) => r["Account"] === acctName).length;
+    const total = data
+      .filter((r) => r["Account"] === acctName)
+      .reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
+    setConfirmModal({
+      message: `Delete all ${count} entries for "${acctName}" totalling ${fmt(total)}? This cannot be undone.`,
+      onConfirm: () => {
+        setData((prev) => prev.filter((r) => r["Account"] !== acctName));
+        if (expandedAccount === acctName) setExpandedAccount(null);
+        setConfirmModal(null);
+      },
+    });
+  };
+
+  // ── Reset all deleted rows ────────────────────────────────────────────────
+  const resetAllData = () => {
+    setConfirmModal({
+      message: `Restore all deleted entries and reset to original data? Current deletions will be undone.`,
+      onConfirm: () => {
+        saveDeletedIds(new Set());
+        setData(
+          RAW_DATA.map((r, i) => ({
+            ...r,
+            "Due Days": calcDueDays(r["Dated"]),
+            _id: i,
+          })),
+        );
+        setConfirmModal(null);
+      },
+    });
+  };
+
+  // ── Filtered + Sorted Rows ───────────────────────────────────────────────
   const filtered = data
     .filter((r) => {
       const q = search.toLowerCase();
@@ -870,6 +955,7 @@ export default function App() {
       return sortDir === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
     });
 
+  // ── Derived Stats ────────────────────────────────────────────────────────
   const total = filtered.reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
   const overdueRows = filtered.filter((r) => r["Due Days"] > 0);
   const overdueTotal = overdueRows.reduce(
@@ -884,7 +970,7 @@ export default function App() {
     filtered.find((r) => r["Due Days"] === maxDueDays)?.["Account"] ?? "";
   const pdfTitle = getPdfTitle(search, filtered);
 
-  // Account summary (always from full data)
+  // ── Account Summary ──────────────────────────────────────────────────────
   const accountSummary = buildAccountSummary(data).sort((a, b) => {
     if (summarySort === "entries") return b.entries - a.entries;
     if (summarySort === "maxDays") return b.maxDays - a.maxDays;
@@ -900,6 +986,7 @@ export default function App() {
       setSortDir("desc");
     }
   };
+
   const ThIcon = ({ col }) =>
     sortCol !== col ? (
       <span className="text-slate-400 ml-1 text-xs">↕</span>
@@ -909,11 +996,21 @@ export default function App() {
       </span>
     );
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       className="min-h-screen bg-slate-50 text-black"
       style={{ fontFamily: "Arial, sans-serif" }}
     >
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <ConfirmModal
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+
       {/* ── Header ── */}
       <div className="bg-gradient-to-r from-slate-800 to-blue-800 px-4 py-5 sm:px-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -931,19 +1028,28 @@ export default function App() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={() => generatePDF(filtered, pdfTitle)}
-              className="flex items-center gap-2 bg-white text-blue-800 font-semibold px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition text-sm"
-            >
-              ⬇ Download PDF
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={resetAllData}
+                className="flex items-center gap-1 bg-white/10 text-white border border-white/30 font-semibold px-3 py-2 rounded-lg hover:bg-white/20 transition text-sm"
+                title="Restore all deleted entries"
+              >
+                ↺ Reset
+              </button>
+              <button
+                onClick={() => generatePDF(filtered, pdfTitle)}
+                className="flex items-center gap-2 bg-white text-blue-800 font-semibold px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition text-sm"
+              >
+                ⬇ Download PDF
+              </button>
+            </div>
             <p className="text-blue-300 text-xs italic">📄 {pdfTitle}.pdf</p>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-5">
-        {/* ── Upload ── */}
+        {/* ── Upload Zone ── */}
         <div
           onDrop={onDrop}
           onDragOver={(e) => {
@@ -973,6 +1079,7 @@ export default function App() {
             </p>
           </div>
         </div>
+
         {parseErr && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">
             {parseErr}
@@ -1091,12 +1198,15 @@ export default function App() {
                           key={col}
                           onClick={() => thSort(col)}
                           className={`px-4 py-3 text-left cursor-pointer select-none hover:bg-slate-700 transition
-                          ${col === "Pending Amt." ? "text-right" : ""}${col === "Due Days" ? " text-center" : ""}`}
+                            ${col === "Pending Amt." ? "text-right" : ""}
+                            ${col === "Due Days" ? "text-center" : ""}`}
                         >
                           {label}
                           <ThIcon col={col} />
                         </th>
                       ))}
+                      {/* Delete column header */}
+                      <th className="px-4 py-3 text-center w-16">Del</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1104,7 +1214,7 @@ export default function App() {
                       const badge = getDueBadge(r["Due Days"]);
                       return (
                         <tr
-                          key={i}
+                          key={r._id}
                           className={`border-b border-slate-100 hover:bg-blue-50 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}
                         >
                           <td
@@ -1129,6 +1239,16 @@ export default function App() {
                               {badge.label}
                             </span>
                           </td>
+                          {/* Delete button */}
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => confirmDeleteRow(r)}
+                              title="Delete this entry"
+                              className="inline-flex items-center justify-center w-7 h-7 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition text-base leading-none"
+                            >
+                              ✕
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1143,6 +1263,7 @@ export default function App() {
                         {fmt(total)}
                       </td>
                       <td />
+                      <td />
                     </tr>
                   </tbody>
                 </table>
@@ -1151,22 +1272,31 @@ export default function App() {
 
             {/* Mobile Cards */}
             <div className="sm:hidden space-y-3">
-              {filtered.map((r, i) => {
+              {filtered.map((r) => {
                 const badge = getDueBadge(r["Due Days"]);
                 return (
                   <div
-                    key={i}
+                    key={r._id}
                     className="bg-white rounded-xl shadow-sm border border-slate-200 p-4"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <p className="font-semibold text-slate-800 text-sm leading-tight">
                         {r["Account"]}
                       </p>
-                      <span
-                        className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
-                      >
-                        {badge.label}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
+                        >
+                          {badge.label}
+                        </span>
+                        <button
+                          onClick={() => confirmDeleteRow(r)}
+                          title="Delete"
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition text-sm leading-none"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span>
@@ -1217,7 +1347,7 @@ export default function App() {
         )}
 
         {/* ══════════════════════════════════════════
-            TAB 2 — ACCOUNT SUMMARY (Pivot view)
+            TAB 2 — ACCOUNT SUMMARY
         ══════════════════════════════════════════ */}
         {activeTab === "summary" && (
           <div className="space-y-4">
@@ -1235,7 +1365,11 @@ export default function App() {
                   key={key}
                   onClick={() => setSummarySort(key)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
-                    ${summarySort === key ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"}`}
+                    ${
+                      summarySort === key
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                    }`}
                 >
                   {label}
                 </button>
@@ -1269,6 +1403,9 @@ export default function App() {
                     >
                       Amount Share
                     </th>
+                    <th className="px-4 py-3 text-center font-semibold w-28">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1280,6 +1417,7 @@ export default function App() {
                       .filter((r) => r["Account"] === row.account)
                       .sort((a, b) => b["Due Days"] - a["Due Days"]);
                     const badge = getDueBadge(row.maxDays);
+
                     return (
                       <>
                         <tr
@@ -1339,14 +1477,28 @@ export default function App() {
                                 <div
                                   className="bg-blue-500 h-2 rounded-full transition-all"
                                   style={{ width: `${barW}%` }}
-                                ></div>
+                                />
                               </div>
                               <span className="text-xs text-slate-500 font-medium w-10 text-right">
                                 {pct}%
                               </span>
                             </div>
                           </td>
+                          {/* Delete account button */}
+                          <td
+                            className="px-4 py-3 text-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => confirmDeleteAccount(row.account)}
+                              title={`Delete all ${row.entries} entries for ${row.account}`}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-400 transition"
+                            >
+                              ✕ All
+                            </button>
+                          </td>
                         </tr>
+
                         {/* Expanded sub-rows */}
                         {isExpanded &&
                           subRows.map((r, j) => {
@@ -1379,14 +1531,25 @@ export default function App() {
                                     {sb.label}
                                   </span>
                                 </td>
-                                <td></td>
+                                <td />
+                                {/* Delete individual row from expanded view */}
+                                <td className="px-4 py-2 text-center">
+                                  <button
+                                    onClick={() => confirmDeleteRow(r)}
+                                    title="Delete this entry"
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-400 hover:bg-red-50 hover:text-red-600 transition text-sm leading-none"
+                                  >
+                                    ✕
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })}
                       </>
                     );
                   })}
-                  {/* Grand Total row */}
+
+                  {/* Grand Total */}
                   <tr className="bg-blue-50 border-t-2 border-blue-300">
                     <td
                       colSpan={2}
@@ -1407,7 +1570,7 @@ export default function App() {
                           .reduce((s, r) => s + (r["Pending Amt."] || 0), 0),
                       )}
                     </td>
-                    <td colSpan={2}></td>
+                    <td colSpan={3} />
                   </tr>
                 </tbody>
               </table>
@@ -1423,6 +1586,7 @@ export default function App() {
                 const subRows = data
                   .filter((r) => r["Account"] === row.account)
                   .sort((a, b) => b["Due Days"] - a["Due Days"]);
+
                 return (
                   <div
                     key={row.account}
@@ -1443,20 +1607,33 @@ export default function App() {
                             {row.account}
                           </p>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-bold text-slate-800 text-base">
-                            {fmt(row.total)}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {pct}% of total
-                          </p>
+                        <div className="flex items-start gap-2">
+                          <div className="text-right">
+                            <p className="font-bold text-slate-800 text-base">
+                              {fmt(row.total)}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {pct}% of total
+                            </p>
+                          </div>
+                          {/* Delete account on mobile */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteAccount(row.account);
+                            }}
+                            title="Delete all entries for this account"
+                            className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-md text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-700 transition text-sm leading-none shrink-0"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
                       <div className="bg-slate-100 rounded-full h-1.5 mb-3">
                         <div
                           className="bg-blue-500 h-1.5 rounded-full"
                           style={{ width: `${barW}%` }}
-                        ></div>
+                        />
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex gap-3">
@@ -1477,6 +1654,7 @@ export default function App() {
                         </span>
                       </div>
                     </div>
+
                     {isExpanded && (
                       <div className="border-t border-blue-100 bg-blue-50/50 px-4 py-3 space-y-2">
                         {subRows.map((r, j) => {
@@ -1494,18 +1672,27 @@ export default function App() {
                                   {r["Dated"]} &nbsp;·&nbsp; {r["Type"]}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-slate-700">
-                                  ₹
-                                  {Number(r["Pending Amt."]).toLocaleString(
-                                    "en-IN",
-                                  )}
-                                </p>
-                                <span
-                                  className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-semibold ${sb.bg}`}
+                              <div className="text-right flex items-center gap-2">
+                                <div>
+                                  <p className="font-semibold text-slate-700">
+                                    ₹
+                                    {Number(r["Pending Amt."]).toLocaleString(
+                                      "en-IN",
+                                    )}
+                                  </p>
+                                  <span
+                                    className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-semibold ${sb.bg}`}
+                                  >
+                                    {sb.label}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => confirmDeleteRow(r)}
+                                  title="Delete entry"
+                                  className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-400 hover:bg-red-50 hover:text-red-600 transition text-sm leading-none shrink-0"
                                 >
-                                  {sb.label}
-                                </span>
+                                  ✕
+                                </button>
                               </div>
                             </div>
                           );
@@ -1515,6 +1702,7 @@ export default function App() {
                   </div>
                 );
               })}
+
               <div className="bg-blue-600 text-white rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-sm">

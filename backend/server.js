@@ -11,6 +11,8 @@ import connectDB from "./config/db.js";
 import dsrRecordRouter from "./routes/dsrRecordRouter.js";
 import dsrCustomerRouter from "./routes/dsrCustomerRouter.js";
 import stockRoute from "./routes/stockRoute.js";
+import noteRoutes from "./routes/noteRoutes.js";
+import commandRoutes from "./routes/commandRoutes.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -81,6 +83,8 @@ app.use("/api/user", userRouter);
 app.use("/api/dsr/records", dsrRecordRouter);
 app.use("/api/dsr/customers", dsrCustomerRouter);
 app.use("/api/stock", stockRoute);
+app.use("/api/notes", noteRoutes);
+app.use("/api/commands", commandRoutes);
 
 // Health check
 app.get("/", (req, res) => {
