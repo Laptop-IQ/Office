@@ -1,9 +1,8 @@
-/* eslint-disable react/prop-types */
 /* eslint-disable react/react-in-jsx-scope */
 import { useState, useEffect, useCallback } from "react";
 
 // ── Config ─────────────────────────────────────────────────────────────────
-const API_BASE = "http://localhost:4000/api/commands";
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api/commands`;
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const CheckIcon = () => (
