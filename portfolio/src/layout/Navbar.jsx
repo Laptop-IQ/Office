@@ -50,6 +50,12 @@ export function Navbar() {
       items: [
         { name: "Sales Report", path: "/DailySalesReport", icon: ChartBarIcon },
         { name: "CRM Activity", path: "/Chemsalescrm", icon: PlusCircleIcon },
+        { name: "Purchase Order", path: "/purchase", icon: PlusCircleIcon },
+        {
+          name: "Price list Customer",
+          path: "/pricelist",
+          icon: PlusCircleIcon,
+        },
       ],
     },
     {
@@ -69,6 +75,11 @@ export function Navbar() {
         {
           name: "Notepad",
           path: "/notepad",
+          icon: ClipboardDocumentListIcon,
+        },
+        {
+          name: "Copy Code",
+          path: "/copypaste",
           icon: ClipboardDocumentListIcon,
         },
       ],
