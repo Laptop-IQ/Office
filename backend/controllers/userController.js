@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import User from "../models/userModel.js";
 
-
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT),
@@ -32,12 +31,12 @@ const sendOTPEmail = async (email, otp, subject = "Your OTP Code") => {
   });
 };
 
-const signToken = (userId) =>
+// ← FIXED: rememberMe parameter added
+const signToken = (userId, rememberMe = false) =>
   jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    expiresIn: rememberMe ? "30d" : process.env.JWT_EXPIRES_IN || "7d",
   });
 
-// Safe user object (no password)
 const safeUser = (user) => ({
   id: user._id,
   name: user.name,
@@ -157,7 +156,8 @@ export const resendSignupOTP = async (req, res) => {
 // ────────────────────────────────────────────
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // ← FIXED: remember destructure kiya
+    const { email, password, remember } = req.body;
     const user = await User.findOne({ email }).select("+password");
     if (!user)
       return res
@@ -174,7 +174,8 @@ export const login = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Invalid credentials" });
 
-    const token = signToken(user._id);
+    // ← FIXED: remember pass kiya signToken mein
+    const token = signToken(user._id, remember);
     res.json({
       success: true,
       message: "Login successful",
@@ -266,7 +267,6 @@ export const updateProfile = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
 
-    // If email is changing, check it's not taken
     if (email && email !== user.email) {
       const taken = await User.findOne({ email });
       if (taken)
@@ -308,12 +308,10 @@ export const updatePassword = async (req, res) => {
         .json({ success: false, message: "Current password is incorrect" });
 
     if (newPassword.length < 8)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Password must be at least 8 characters",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
 
     user.password = await bcrypt.hash(newPassword, 12);
     await user.save();
@@ -323,6 +321,10 @@ export const updatePassword = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// ────────────────────────────────────────────
+// DELETE ACCOUNT — DELETE /api/user/delete-account
+// ────────────────────────────────────────────
 export const deleteAccount = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -331,7 +333,6 @@ export const deleteAccount = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
 
-    // Delete profile photo if exists
     if (user.profilePic) {
       const filePath = path.join(process.cwd(), user.profilePic);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
