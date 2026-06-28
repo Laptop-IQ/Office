@@ -82,6 +82,11 @@ export function Navbar() {
           path: "/copypaste",
           icon: ClipboardDocumentListIcon,
         },
+        {
+          name: "Mind Map Pro",
+          path: "/mindmap",
+          icon: ClipboardDocumentListIcon,
+        },
       ],
     },
   ];

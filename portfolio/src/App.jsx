@@ -33,6 +33,8 @@ import Notepad from "./components/Notepad";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
 import CommandLibrary from "./components/CommandLibrary";
+import Minimap from "./components/MindMapPro";
+import MindMapPro from "./components/MindMapPro";
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -153,6 +155,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Notepad />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/mindmap"
+            element={
+              <PrivateRoute>
+                <MindMapPro />
               </PrivateRoute>
             }
           />
