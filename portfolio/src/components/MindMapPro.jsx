@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
-const API_BASE = "http://localhost:4000/api/mindmap"; // ← your backend URL
+const API_BASE = `${import.meta.env.VITE_API_URL}/mindmap`;
 const getToken = () => localStorage.getItem("token");
 const authHeaders = () => ({
   "Content-Type": "application/json",
