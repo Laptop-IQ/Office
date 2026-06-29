@@ -1431,7 +1431,6 @@ const RecordCard = ({ record, onDelete }) => {
         borderLeft: `4px solid ${sc.border}`,
       }}
     >
-      {/* Main visible content */}
       <div style={{ padding: "14px 14px 0 14px" }}>
         <div
           style={{
@@ -1489,7 +1488,6 @@ const RecordCard = ({ record, onDelete }) => {
           </div>
         </div>
 
-        {/* Objective & Outcome – always visible */}
         {record.objective && (
           <div
             style={{
@@ -1549,7 +1547,6 @@ const RecordCard = ({ record, onDelete }) => {
           </div>
         )}
 
-        {/* Compact summary row — always visible */}
         <div
           style={{
             display: "flex",
@@ -1637,7 +1634,6 @@ const RecordCard = ({ record, onDelete }) => {
         </div>
       </div>
 
-      {/* Expandable detail section */}
       <div className={`dsr-card-detail-section${expanded ? " open" : ""}`}>
         <div
           style={{
@@ -1841,7 +1837,6 @@ const Sidebar = ({ active, onChange, recordCount }) => (
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
             DSR
@@ -2396,7 +2391,6 @@ const DailySalesReport = () => {
     return customerLastRecord[name] || null;
   }, [newRecord.customer, customers, customerLastRecord]);
 
-  // Filter records based on active filter
   const filteredByDate = useMemo(() => {
     if (activeFilter === "all") return records;
     if (activeFilter === "custom" && filterStart && filterEnd) {
@@ -2519,7 +2513,7 @@ const DailySalesReport = () => {
     }
   };
 
-  // ─── Enhanced Export with center alignment (xlsx-js-style) ──────────────────
+  // ─── Export ──────────────────────────────────────────────────────────────────
   const NUMERIC_HEADERS = [
     "Potential Dyes (Rs L/mth)",
     "Potential Aux (Rs L/mth)",
@@ -2534,9 +2528,7 @@ const DailySalesReport = () => {
     font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
     fill: { fgColor: { rgb: "0B2E4E" } },
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
-    border: {
-      bottom: { style: "thin", color: { rgb: "00B8A2" } },
-    },
+    border: { bottom: { style: "thin", color: { rgb: "00B8A2" } } },
   };
 
   const NUM_CELL_STYLE = {
@@ -2553,6 +2545,8 @@ const DailySalesReport = () => {
     const sorted = [...recordsToExport].sort(
       (a, b) => new Date(a.date) - new Date(b.date),
     );
+
+    // ✅ FIXED column order — matches uploaded file exactly
     const exportData = sorted.map((r) => ({
       Date: r.date
         ? new Date(r.date).toLocaleDateString("en-IN", {
@@ -2561,11 +2555,11 @@ const DailySalesReport = () => {
             year: "numeric",
           })
         : "",
-      Customer: r.customer,
       Area: r.area,
       Distributor: r.distributor,
-      "Project Stage": r.stage,
+      Customer: r.customer,
       Objective: r.objective,
+      "Project Stage": r.stage,
       "Visit Outcome": r.outcome,
       "Potential Dyes (Rs L/mth)": toNum(r.potDyes),
       "Potential Aux (Rs L/mth)": toNum(r.potAux),
@@ -2583,23 +2577,21 @@ const DailySalesReport = () => {
 
     const colKeys = Object.keys(exportData[0]);
     const numericSet = new Set(NUMERIC_HEADERS);
-
-    // Build worksheet manually cell-by-cell so styles apply correctly
     const ws = {};
 
-    // Header row (R=0)
     colKeys.forEach((key, C) => {
-      const addr = XLSX.utils.encode_cell({ r: 0, c: C });
-      ws[addr] = { v: key, t: "s", s: HEADER_STYLE };
+      ws[XLSX.utils.encode_cell({ r: 0, c: C })] = {
+        v: key,
+        t: "s",
+        s: HEADER_STYLE,
+      };
     });
 
-    // Data rows (R=1..n)
     exportData.forEach((row, rowIdx) => {
       colKeys.forEach((key, C) => {
-        const addr = XLSX.utils.encode_cell({ r: rowIdx + 1, c: C });
         const val = row[key];
         const isNum = numericSet.has(key);
-        ws[addr] = {
+        ws[XLSX.utils.encode_cell({ r: rowIdx + 1, c: C })] = {
           v: val,
           t: isNum ? "n" : "s",
           s: isNum ? NUM_CELL_STYLE : TEXT_CELL_STYLE,
@@ -2607,31 +2599,28 @@ const DailySalesReport = () => {
       });
     });
 
-    // Set worksheet range
     ws["!ref"] = XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
       e: { r: exportData.length, c: colKeys.length - 1 },
     });
 
-    // Column widths
     ws["!cols"] = [
-      { wch: 18 },
-      { wch: 24 },
-      { wch: 14 },
-      { wch: 16 },
-      { wch: 30 },
-      { wch: 36 },
-      { wch: 36 },
-      { wch: 22 },
-      { wch: 22 },
-      { wch: 22 },
-      { wch: 22 },
-      { wch: 14 },
-      { wch: 24 },
-      { wch: 14 },
+      { wch: 18 }, // Date
+      { wch: 14 }, // Area
+      { wch: 16 }, // Distributor
+      { wch: 24 }, // Customer
+      { wch: 36 }, // Objective
+      { wch: 30 }, // Project Stage
+      { wch: 36 }, // Visit Outcome
+      { wch: 22 }, // Potential Dyes
+      { wch: 22 }, // Potential Aux
+      { wch: 22 }, // Existing Dyes
+      { wch: 22 }, // Existing Aux
+      { wch: 14 }, // ABP AM26
+      { wch: 24 }, // YTD Sale
+      { wch: 14 }, // YTD vs ABP %
     ];
 
-    // Row height for header
     ws["!rows"] = [{ hpt: 20 }];
 
     const wb = XLSX.utils.book_new();
@@ -2812,7 +2801,6 @@ const DailySalesReport = () => {
 
   const customerList = Object.keys(customers).sort();
   const lr = selectedCustomerLastRecord;
-
   const FILTER_CHIPS = [{ id: "all", label: "All", count: records.length }];
 
   return (
@@ -2854,8 +2842,6 @@ const DailySalesReport = () => {
             gap: 12,
           }}
         >
-
-          
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1
               style={{
@@ -2949,7 +2935,6 @@ const DailySalesReport = () => {
         {/* RECORDS TAB */}
         {activeTab === "records" && (
           <>
-            {/* Filter chips */}
             <div
               style={{
                 display: "flex",
@@ -2979,7 +2964,6 @@ const DailySalesReport = () => {
               </button>
             </div>
 
-            {/* Custom date inputs */}
             {activeFilter === "custom" && (
               <div
                 style={{
@@ -3025,7 +3009,6 @@ const DailySalesReport = () => {
               </div>
             )}
 
-            {/* Search + Export */}
             <div
               style={{
                 display: "flex",
@@ -3059,7 +3042,6 @@ const DailySalesReport = () => {
               <ExportDropdown records={filteredByDate} onExport={doExport} />
             </div>
 
-            {/* Result count badge */}
             {(activeFilter !== "all" || searchQuery) && (
               <div
                 style={{
