@@ -13,6 +13,8 @@ import dsrCustomerRouter from "./routes/dsrCustomerRouter.js";
 import stockRoute from "./routes/stockRoute.js";
 import noteRoutes from "./routes/noteRoutes.js";
 import commandRoutes from "./routes/commandRoutes.js";
+import mindmapRoutes from "./routes/mindmapRoutes.js";
+
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -85,6 +87,7 @@ app.use("/api/dsr/customers", dsrCustomerRouter);
 app.use("/api/stock", stockRoute);
 app.use("/api/notes", noteRoutes);
 app.use("/api/commands", commandRoutes);
+app.use("/api/mindmap", mindmapRoutes);
 
 // Health check
 app.get("/", (req, res) => {
