@@ -59,7 +59,6 @@ const getCategory = (name) => {
 const TABS = [
   { id: "sample", label: "Sample", icon: "🧪" },
   { id: "delhi", label: "Delhi", icon: "🏙" },
-  { id: "faridabad", label: "Faridabad", icon: "🏭" },
   { id: "shadecard", label: "Shade Card", icon: "🎨" },
 ];
 

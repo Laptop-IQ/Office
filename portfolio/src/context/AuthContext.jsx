@@ -113,7 +113,6 @@ export const AuthProvider = ({ children }) => {
         axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
         setToken(newToken);
         setUser(newUser);
-        toast.success("Login successful!");
         return { success: true };
       }
     } catch (error) {

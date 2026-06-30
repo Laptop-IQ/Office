@@ -1,5 +1,4 @@
 /* eslint-disable react/react-in-jsx-scope */
-
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/mindmap`;
@@ -16,46 +15,39 @@ const api = {
       headers: authHeaders(),
       body: JSON.stringify({ title }),
     }).then((r) => r.json()),
-
   getMap: (mapId) =>
     fetch(`${API_BASE}/${mapId}`, { headers: authHeaders() }).then((r) =>
       r.json(),
     ),
-
   syncMap: (mapId, nodes, edges) =>
     fetch(`${API_BASE}/${mapId}/sync`, {
       method: "PUT",
       headers: authHeaders(),
       body: JSON.stringify({ nodes, edges }),
     }).then((r) => r.json()),
-
   addNode: (mapId, payload) =>
     fetch(`${API_BASE}/${mapId}/node`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(payload),
     }).then((r) => r.json()),
-
   updateNode: (mapId, nodeId, updates) =>
     fetch(`${API_BASE}/${mapId}/node/${nodeId}`, {
       method: "PATCH",
       headers: authHeaders(),
       body: JSON.stringify(updates),
     }).then((r) => r.json()),
-
   deleteNode: (mapId, nodeId) =>
     fetch(`${API_BASE}/${mapId}/node/${nodeId}`, {
       method: "DELETE",
       headers: authHeaders(),
     }).then((r) => r.json()),
-
   addEdge: (mapId, payload) =>
     fetch(`${API_BASE}/${mapId}/edge`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(payload),
     }).then((r) => r.json()),
-
   deleteEdge: (mapId, edgeId) =>
     fetch(`${API_BASE}/${mapId}/edge/${edgeId}`, {
       method: "DELETE",
@@ -65,6 +57,37 @@ const api = {
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+const PAGE_EMOJIS = [
+  "📄",
+  "🧠",
+  "⚡",
+  "🎯",
+  "🗂️",
+  "📅",
+  "🔬",
+  "🚀",
+  "💡",
+  "🌟",
+  "🔥",
+  "📊",
+  "🎨",
+  "🏆",
+  "💎",
+  "🌈",
+];
+const PAGE_COLORS = [
+  "#7c3aed",
+  "#1d4ed8",
+  "#0d9488",
+  "#d97706",
+  "#e11d48",
+  "#4d7c0f",
+  "#c026d3",
+  "#0e7490",
+  "#ea580c",
+  "#64748b",
+];
 
 const PALETTES = {
   Violet: ["#7c3aed", "#8b5cf6", "#a78bfa", "#c4b5fd"],
@@ -91,7 +114,6 @@ const NODE_COLORS = [
   "#0369a1",
   "#166534",
 ];
-
 const EDGE_STYLES = ["curve", "straight", "elbow", "arc"];
 const FONT_FAMILIES = [
   "Inter",
@@ -151,6 +173,36 @@ const THEMES = {
     muted: "#6366f1",
     accent: "#818cf8",
     grid: "#0e0e22",
+  },
+  Dawn: {
+    bg: "#faf7f2",
+    surface: "#f2ede4",
+    panel: "#ede7db",
+    border: "#d4c9b8",
+    text: "#1a1208",
+    muted: "#7c6e5a",
+    accent: "#b45309",
+    grid: "#e8e0d4",
+  },
+  Ocean: {
+    bg: "#020b18",
+    surface: "#041426",
+    panel: "#061c36",
+    border: "#0d2d50",
+    text: "#e0f2fe",
+    muted: "#38bdf8",
+    accent: "#0ea5e9",
+    grid: "#051a2e",
+  },
+  Neon: {
+    bg: "#050508",
+    surface: "#0a0a14",
+    panel: "#0f0f1e",
+    border: "#1a1a35",
+    text: "#f0fdf4",
+    muted: "#4ade80",
+    accent: "#22c55e",
+    grid: "#0d0d1a",
   },
 };
 
@@ -436,14 +488,12 @@ const Icon = ({ name, size = 14 }) => {
       </>
     ),
     cloud: (
-      <>
-        <path
-          d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
+      <path
+        d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+      />
     ),
     tag: (
       <>
@@ -557,6 +607,225 @@ const Icon = ({ name, size = 14 }) => {
         fill="none"
       />
     ),
+    page: (
+      <>
+        <rect
+          x="4"
+          y="2"
+          width="16"
+          height="20"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <path
+          d="M8 7h8M8 11h8M8 15h5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+    x: (
+      <path
+        d="M18 6L6 18M6 6l12 12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    ),
+    pencil: (
+      <>
+        <path
+          d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </>
+    ),
+    // NEW ICONS
+    group: (
+      <>
+        <rect
+          x="3"
+          y="3"
+          width="8"
+          height="8"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <rect
+          x="13"
+          y="3"
+          width="8"
+          height="8"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <rect
+          x="3"
+          y="13"
+          width="8"
+          height="8"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <path
+          d="M17 13v-2m0-2V7M7 17h2m2 0h2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+    history: (
+      <>
+        <path
+          d="M1 4v6h6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <path
+          d="M3.51 15a9 9 0 102.13-9.36L1 10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <path
+          d="M12 7v5l4 2"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </>
+    ),
+    palette: (
+      <>
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <circle cx="9" cy="9" r="1.5" fill="currentColor" />
+        <circle cx="15" cy="9" r="1.5" fill="currentColor" />
+        <circle cx="9" cy="15" r="1.5" fill="currentColor" />
+        <circle cx="15" cy="15" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="12" r="2" fill="currentColor" />
+      </>
+    ),
+    export: (
+      <>
+        <path
+          d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <polyline
+          points="7 10 12 15 17 10"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <line
+          x1="12"
+          y1="15"
+          x2="12"
+          y2="3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+    connect: (
+      <>
+        <circle
+          cx="6"
+          cy="12"
+          r="3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <circle
+          cx="18"
+          cy="6"
+          r="3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r="3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <path
+          d="M9 12h2m2 0h2M16 7.5l-2 3M16 16.5l-2-3"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+    ungroup: (
+      <>
+        <path
+          d="M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+          strokeDasharray="4 2"
+        />
+        <path
+          d="M9 12h6M12 9v6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+    theme: (
+      <>
+        <path
+          d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </>
+    ),
   };
   return (
     <svg
@@ -586,7 +855,7 @@ function ToastStack({ toasts, T }) {
     <div
       style={{
         position: "fixed",
-        bottom: 24,
+        bottom: 64,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 9999,
@@ -625,6 +894,7 @@ function ToastStack({ toasts, T }) {
 
 // ─── Minimap ──────────────────────────────────────────────────────────────────
 function Minimap({ nodes, viewBox, T }) {
+  if (!nodes?.length) return null;
   const allX = nodes.map((n) => n.x),
     allY = nodes.map((n) => n.y);
   const minX = Math.min(...allX) - 100,
@@ -632,17 +902,21 @@ function Minimap({ nodes, viewBox, T }) {
   const maxX = Math.max(...allX) + 100,
     maxY = Math.max(...allY) + 100;
   const W = 160,
-    H = 100;
-  const scaleX = W / (maxX - minX || 1),
-    scaleY = H / (maxY - minY || 1);
-  const scale = Math.min(scaleX, scaleY) * 0.9;
-  const ox = (W - (maxX - minX) * scale) / 2 - minX * scale,
-    oy = (H - (maxY - minY) * scale) / 2 - minY * scale;
+    H = 100,
+    rangeX = maxX - minX || 1,
+    rangeY = maxY - minY || 1;
+  const scale = Math.min(W / rangeX, H / rangeY) * 0.9;
+  const ox = (W - rangeX * scale) / 2 - minX * scale,
+    oy = (H - rangeY * scale) / 2 - minY * scale;
+  const vx = viewBox.x * scale + ox,
+    vy = viewBox.y * scale + oy,
+    vw = viewBox.w * scale,
+    vh = viewBox.h * scale;
   return (
     <div
       style={{
         position: "absolute",
-        bottom: 20,
+        bottom: 60,
         left: 20,
         borderRadius: 8,
         overflow: "hidden",
@@ -661,16 +935,18 @@ function Minimap({ nodes, viewBox, T }) {
             opacity={0.85}
           />
         ))}
-        <rect
-          x={viewBox.x * scale + ox}
-          y={viewBox.y * scale + oy}
-          width={viewBox.w * scale}
-          height={viewBox.h * scale}
-          fill="none"
-          stroke={T.accent}
-          strokeWidth={1}
-          opacity={0.6}
-        />
+        {isFinite(vx) && isFinite(vy) && (
+          <rect
+            x={vx}
+            y={vy}
+            width={vw}
+            height={vh}
+            fill="none"
+            stroke={T.accent}
+            strokeWidth={1}
+            opacity={0.6}
+          />
+        )}
       </svg>
     </div>
   );
@@ -694,7 +970,7 @@ function ContextMenu({ x, y, items, T, onClose }) {
         left: x,
         top: y,
         zIndex: 9000,
-        minWidth: 180,
+        minWidth: 190,
         background: T.panel,
         border: `1px solid ${T.border}`,
         borderRadius: 8,
@@ -748,12 +1024,13 @@ function ContextMenu({ x, y, items, T, onClose }) {
 }
 
 // ─── Toolbar Button ───────────────────────────────────────────────────────────
-function TBtn({ icon, label, active, danger, onClick, shortcut, T }) {
+function TBtn({ icon, label, active, danger, onClick, shortcut, T, badge }) {
   return (
     <button
       onClick={onClick}
-      title={shortcut ? `${label} (${shortcut})` : label}
+      title={shortcut ? `${label || ""} (${shortcut})` : label || ""}
       style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -783,6 +1060,20 @@ function TBtn({ icon, label, active, danger, onClick, shortcut, T }) {
     >
       <Icon name={icon} size={14} />
       {label && <span>{label}</span>}
+      {badge && (
+        <span
+          style={{
+            position: "absolute",
+            top: 4,
+            right: 4,
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "#ef4444",
+            border: `1.5px solid ${T.panel}`,
+          }}
+        />
+      )}
     </button>
   );
 }
@@ -838,7 +1129,7 @@ const inputStyle = (T) => ({
   boxSizing: "border-box",
 });
 
-// ─── Sync status indicator ────────────────────────────────────────────────────
+// ─── Sync Badge ───────────────────────────────────────────────────────────────
 function SyncBadge({ status, T }) {
   const cfg = {
     idle: { label: "Saved", color: "#22c55e" },
@@ -871,7 +1162,7 @@ function SyncBadge({ status, T }) {
   );
 }
 
-// ─── Loading screen ───────────────────────────────────────────────────────────
+// ─── Loading Screen ───────────────────────────────────────────────────────────
 function LoadingScreen({ T, message }) {
   return (
     <div
@@ -902,20 +1193,1578 @@ function LoadingScreen({ T, message }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function MindMapPro({ mapId: propMapId }) {
+// ─── Page Templates ───────────────────────────────────────────────────────────
+const PAGE_TEMPLATES = [
+  {
+    id: "blank",
+    label: "Blank page",
+    emoji: "📄",
+    desc: "Empty canvas, start fresh",
+    nodes: (title) => [makeRootNode(title)],
+    edges: () => [],
+  },
+  {
+    id: "brainstorm",
+    label: "Brainstorm",
+    emoji: "⚡",
+    desc: "Central idea with 4 branches",
+    nodes: (title) => {
+      const cx = 2000,
+        cy = 2000,
+        branches = ["Ideas", "Problems", "Solutions", "Next Steps"];
+      const colors = ["#7c3aed", "#0d9488", "#d97706", "#e11d48"],
+        angles = [-120, -60, 60, 120];
+      return [
+        makeRootNode(title),
+        ...branches.map((b, i) => ({
+          id: `b${i}`,
+          text: b,
+          color: colors[i],
+          shape: "rounded",
+          fontSize: 14,
+          bold: false,
+          italic: false,
+          x: cx + Math.cos((angles[i] * Math.PI) / 180) * 220,
+          y: cy + Math.sin((angles[i] * Math.PI) / 180) * 220,
+          note: "",
+          tag: "",
+          emoji: "",
+          collapsed: false,
+          locked: false,
+          image: "",
+          fontFamily: "Inter",
+          groupId: null,
+        })),
+      ];
+    },
+    edges: () => [
+      ...["b0", "b1", "b2", "b3"].map((to, i) => ({
+        id: `e${i}`,
+        from: "root",
+        to,
+        label: "",
+        style: "curve",
+      })),
+    ],
+  },
+  {
+    id: "project",
+    label: "Project Plan",
+    emoji: "🗂️",
+    desc: "Goals, tasks, timeline, risks",
+    nodes: (title) => {
+      const cx = 2000,
+        cy = 2000;
+      const sections = [
+        { text: "Goals", color: "#1d4ed8", a: -130 },
+        { text: "Tasks", color: "#0d9488", a: -50 },
+        { text: "Timeline", color: "#d97706", a: 50 },
+        { text: "Risks", color: "#e11d48", a: 130 },
+      ];
+      return [
+        makeRootNode(title),
+        ...sections.map((s, i) => ({
+          id: `p${i}`,
+          text: s.text,
+          color: s.color,
+          shape: "rounded",
+          fontSize: 14,
+          bold: true,
+          italic: false,
+          x: cx + Math.cos((s.a * Math.PI) / 180) * 230,
+          y: cy + Math.sin((s.a * Math.PI) / 180) * 230,
+          note: "",
+          tag: "",
+          emoji: "",
+          collapsed: false,
+          locked: false,
+          image: "",
+          fontFamily: "Inter",
+          groupId: null,
+        })),
+      ];
+    },
+    edges: () => [
+      ...["p0", "p1", "p2", "p3"].map((to, i) => ({
+        id: `e${i}`,
+        from: "root",
+        to,
+        label: "",
+        style: "curve",
+      })),
+    ],
+  },
+  {
+    id: "weekly",
+    label: "Weekly Review",
+    emoji: "📅",
+    desc: "Mon–Sun with a review node",
+    nodes: (title) => {
+      const cx = 2000,
+        cy = 2000,
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const dayColors = [
+        "#7c3aed",
+        "#1d4ed8",
+        "#0d9488",
+        "#d97706",
+        "#e11d48",
+        "#9f1239",
+        "#4d7c0f",
+      ];
+      return [
+        makeRootNode(title),
+        ...days.map((d, i) => {
+          const angle = (((i / 7) * 360 - 90) * Math.PI) / 180;
+          return {
+            id: `d${i}`,
+            text: d,
+            color: dayColors[i],
+            shape: "pill",
+            fontSize: 13,
+            bold: false,
+            italic: false,
+            x: cx + Math.cos(angle) * 240,
+            y: cy + Math.sin(angle) * 240,
+            note: "",
+            tag: "",
+            emoji: "",
+            collapsed: false,
+            locked: false,
+            image: "",
+            fontFamily: "Inter",
+            groupId: null,
+          };
+        }),
+        {
+          id: "review",
+          text: "Review & Reflect",
+          color: "#c026d3",
+          shape: "rounded",
+          fontSize: 14,
+          bold: true,
+          italic: false,
+          x: cx,
+          y: cy + 320,
+          note: "",
+          tag: "",
+          emoji: "✨",
+          collapsed: false,
+          locked: false,
+          image: "",
+          fontFamily: "Inter",
+          groupId: null,
+        },
+      ];
+    },
+    edges: () => [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `ew${i}`,
+        from: "root",
+        to: `d${i}`,
+        label: "",
+        style: "straight",
+      })),
+      { id: "er", from: "root", to: "review", label: "", style: "curve" },
+    ],
+  },
+  {
+    id: "swot",
+    label: "SWOT Analysis",
+    emoji: "🔬",
+    desc: "Strengths, weaknesses, opportunities, threats",
+    nodes: (title) => {
+      const cx = 2000,
+        cy = 2000;
+      const quadrants = [
+        { text: "Strengths 💪", color: "#0d9488", x: cx - 220, y: cy - 160 },
+        { text: "Weaknesses ⚠️", color: "#d97706", x: cx + 220, y: cy - 160 },
+        {
+          text: "Opportunities 🚀",
+          color: "#1d4ed8",
+          x: cx - 220,
+          y: cy + 160,
+        },
+        { text: "Threats 🔥", color: "#e11d48", x: cx + 220, y: cy + 160 },
+      ];
+      return [
+        makeRootNode(title),
+        ...quadrants.map((q, i) => ({
+          id: `q${i}`,
+          text: q.text,
+          color: q.color,
+          shape: "rounded",
+          fontSize: 14,
+          bold: true,
+          italic: false,
+          x: q.x,
+          y: q.y,
+          note: "",
+          tag: "",
+          emoji: "",
+          collapsed: false,
+          locked: false,
+          image: "",
+          fontFamily: "Inter",
+          groupId: null,
+        })),
+      ];
+    },
+    edges: () => [
+      ...["q0", "q1", "q2", "q3"].map((to, i) => ({
+        id: `eq${i}`,
+        from: "root",
+        to,
+        label: "",
+        style: "elbow",
+      })),
+    ],
+  },
+];
+
+// ─── Add Page Popup ───────────────────────────────────────────────────────────
+function AddPagePopup({ T, onAdd, onClose, pageCount }) {
+  const [step, setStep] = useState("pick");
+  const [chosen, setChosen] = useState(null);
+  const [name, setName] = useState("");
+  const [pageEmoji, setPageEmoji] = useState("📄");
+  const [pageColor, setPageColor] = useState(PAGE_COLORS[0]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const nameRef = useRef(),
+    popupRef = useRef();
+
+  useEffect(() => {
+    const h = (e) => {
+      if (!popupRef.current?.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (step === "name") setTimeout(() => nameRef.current?.focus(), 60);
+  }, [step]);
+
+  const pickTemplate = (tpl) => {
+    setChosen(tpl);
+    setName(tpl.id === "blank" ? `Page ${pageCount + 1}` : tpl.label);
+    setPageEmoji(tpl.emoji);
+    setStep("name");
+  };
+
+  const confirm = () => {
+    if (!chosen) return;
+    onAdd(chosen, name.trim() || chosen.label, pageEmoji, pageColor);
+    onClose();
+  };
+
+  return (
+    <div
+      ref={popupRef}
+      style={{
+        position: "absolute",
+        bottom: 48,
+        left: 0,
+        width: 360,
+        background: T.panel,
+        border: `1px solid ${T.border}`,
+        borderRadius: 12,
+        boxShadow: "0 -4px 32px rgba(0,0,0,0.5)",
+        zIndex: 200,
+        overflow: "hidden",
+        animation: "popupSlideUp 0.18s cubic-bezier(0.16,1,0.3,1)",
+      }}
+    >
+      <style>{`@keyframes popupSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+
+      {step === "pick" && (
+        <>
+          <div
+            style={{
+              padding: "12px 16px 8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderBottom: `1px solid ${T.border}`,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: T.muted,
+              }}
+            >
+              New page
+            </span>
+            <button
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: T.muted,
+                cursor: "pointer",
+                display: "flex",
+                padding: 2,
+              }}
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+          <div style={{ padding: "8px 8px 10px" }}>
+            {PAGE_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                onClick={() => pickTemplate(tpl)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: 8,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = T.surface)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    flexShrink: 0,
+                  }}
+                >
+                  {tpl.emoji}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: T.text,
+                      marginBottom: 2,
+                    }}
+                  >
+                    {tpl.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: T.muted,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tpl.desc}
+                  </div>
+                </div>
+                <Icon name="chevronR" size={12} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {step === "name" && chosen && (
+        <>
+          <div
+            style={{
+              padding: "12px 16px 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              borderBottom: `1px solid ${T.border}`,
+            }}
+          >
+            <button
+              onClick={() => setStep("pick")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: T.muted,
+                cursor: "pointer",
+                display: "flex",
+                padding: 2,
+              }}
+            >
+              <Icon name="chevronL" size={14} />
+            </button>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: T.muted,
+              }}
+            >
+              {chosen.emoji} {chosen.label}
+            </span>
+          </div>
+          <div style={{ padding: "14px 16px 16px" }}>
+            {/* Emoji & Color picker */}
+            <label
+              style={{
+                fontSize: 11,
+                color: T.muted,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Page icon & color
+            </label>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              {/* Emoji picker button */}
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowEmojiPicker((v) => !v)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 10,
+                    border: `2px solid ${T.border}`,
+                    background: T.surface,
+                    fontSize: 22,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {pageEmoji}
+                </button>
+                {showEmojiPicker && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 54,
+                      left: 0,
+                      background: T.panel,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 10,
+                      padding: 8,
+                      zIndex: 300,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 4,
+                      width: 200,
+                    }}
+                  >
+                    {PAGE_EMOJIS.map((em) => (
+                      <button
+                        key={em}
+                        onClick={() => {
+                          setPageEmoji(em);
+                          setShowEmojiPicker(false);
+                        }}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          border: "none",
+                          background:
+                            em === pageEmoji ? T.surface : "transparent",
+                          borderRadius: 6,
+                          fontSize: 18,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Color swatches */}
+              <div
+                style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}
+              >
+                {PAGE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setPageColor(c)}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 6,
+                      border: "none",
+                      background: c,
+                      cursor: "pointer",
+                      outline:
+                        pageColor === c
+                          ? "2px solid white"
+                          : "2px solid transparent",
+                      outlineOffset: 2,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <label
+              style={{
+                fontSize: 11,
+                color: T.muted,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Page name
+            </label>
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirm();
+                if (e.key === "Escape") onClose();
+              }}
+              placeholder={chosen.label}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: 8,
+                border: `1px solid ${T.accent}`,
+                background: T.surface,
+                color: T.text,
+                fontSize: 13,
+                outline: "none",
+                boxSizing: "border-box",
+                boxShadow: `0 0 0 2px ${T.accent}30`,
+              }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1,
+                  padding: "8px",
+                  borderRadius: 7,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.muted,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirm}
+                style={{
+                  flex: 2,
+                  padding: "8px",
+                  borderRadius: 7,
+                  border: "none",
+                  background: T.accent,
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                <Icon name="plus" size={13} /> Create page
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Page Tab Context Menu ────────────────────────────────────────────────────
+function PageTabContextMenu({
+  x,
+  y,
+  page,
+  pages,
+  T,
+  onRename,
+  onDelete,
+  onDuplicate,
+  onChangeColor,
+  onChangeEmoji,
+  onClose,
+}) {
+  const ref = useRef();
+  useEffect(() => {
+    const h = (e) => {
+      if (!ref.current?.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  });
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "fixed",
+        left: x,
+        top: y,
+        zIndex: 9100,
+        minWidth: 200,
+        background: T.panel,
+        border: `1px solid ${T.border}`,
+        borderRadius: 10,
+        padding: "4px 0",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+      }}
+    >
+      <div
+        style={{
+          padding: "8px 14px 4px",
+          fontSize: 11,
+          color: T.muted,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+        }}
+      >
+        PAGE OPTIONS
+      </div>
+      {[
+        {
+          label: "Rename",
+          icon: "pencil",
+          action: () => {
+            onRename(page.id);
+            onClose();
+          },
+        },
+        {
+          label: "Duplicate",
+          icon: "copy",
+          action: () => {
+            onDuplicate(page.id);
+            onClose();
+          },
+        },
+      ].map((item, i) => (
+        <button
+          key={i}
+          onClick={item.action}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            width: "100%",
+            padding: "8px 14px",
+            background: "transparent",
+            border: "none",
+            color: T.text,
+            fontSize: 13,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = T.surface)}
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <Icon name={item.icon} size={13} />
+          <span>{item.label}</span>
+        </button>
+      ))}
+      <div style={{ padding: "6px 14px 4px", fontSize: 10, color: T.muted }}>
+        Icon
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          padding: "0 10px 8px",
+        }}
+      >
+        {PAGE_EMOJIS.map((em) => (
+          <button
+            key={em}
+            onClick={() => {
+              onChangeEmoji(page.id, em);
+              onClose();
+            }}
+            style={{
+              width: 28,
+              height: 28,
+              border: "none",
+              background: em === page.emoji ? T.surface : "transparent",
+              borderRadius: 6,
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            {em}
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: "4px 14px 4px", fontSize: 10, color: T.muted }}>
+        Color
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          padding: "0 10px 10px",
+        }}
+      >
+        {PAGE_COLORS.map((c) => (
+          <button
+            key={c}
+            onClick={() => {
+              onChangeColor(page.id, c);
+              onClose();
+            }}
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 5,
+              border: "none",
+              background: c,
+              cursor: "pointer",
+              outline:
+                page.color === c ? "2px solid white" : "2px solid transparent",
+              outlineOffset: 2,
+            }}
+          />
+        ))}
+      </div>
+      {pages.length > 1 && (
+        <>
+          <div style={{ height: 1, background: T.border, margin: "4px 0" }} />
+          <button
+            onClick={() => {
+              onDelete(page.id);
+              onClose();
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              width: "100%",
+              padding: "8px 14px",
+              background: "transparent",
+              border: "none",
+              color: "#ef4444",
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = T.surface)}
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.background = "transparent")
+            }
+          >
+            <Icon name="trash" size={13} />
+            <span>Delete page</span>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Page Tab Bar ─────────────────────────────────────────────────────────────
+function PageTabBar({
+  pages,
+  activePageId,
+  onSwitch,
+  onAdd,
+  onRename,
+  onDelete,
+  onDuplicate,
+  onChangeColor,
+  onChangeEmoji,
+  T,
+}) {
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+  const [tabCtxMenu, setTabCtxMenu] = useState(null);
+  const editRef = useRef();
+
+  const startEdit = (page, e) => {
+    e.stopPropagation();
+    setEditingId(page.id);
+    setEditName(page.title);
+    setTimeout(() => editRef.current?.focus(), 30);
+  };
+  const commitEdit = () => {
+    if (editingId && editName.trim()) onRename(editingId, editName.trim());
+    setEditingId(null);
+  };
+
+  const handleContextMenu = (e, page) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTabCtxMenu({ x: e.clientX, y: e.clientY - 180, page });
+  };
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 40,
+        display: "flex",
+        alignItems: "stretch",
+        background: T.panel,
+        borderTop: `1px solid ${T.border}`,
+        zIndex: 50,
+      }}
+    >
+      {pages.map((page) => {
+        const isActive = page.id === activePageId;
+        const accentColor = page.color || T.accent;
+        return (
+          <div
+            key={page.id}
+            onClick={() => onSwitch(page.id)}
+            onContextMenu={(e) => handleContextMenu(e, page)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 10px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              borderRight: `1px solid ${T.border}`,
+              background: isActive ? T.surface : "transparent",
+              borderTop: isActive
+                ? `2px solid ${accentColor}`
+                : "2px solid transparent",
+              position: "relative",
+              minWidth: 90,
+              maxWidth: 190,
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive)
+                e.currentTarget.style.background = T.surface + "80";
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) e.currentTarget.style.background = "transparent";
+            }}
+          >
+            {/* Page emoji/icon */}
+            <span
+              style={{
+                fontSize: 14,
+                flexShrink: 0,
+                opacity: isActive ? 1 : 0.6,
+              }}
+            >
+              {page.emoji || "📄"}
+            </span>
+            {editingId === page.id ? (
+              <input
+                ref={editRef}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: T.text,
+                  fontSize: 12,
+                  width: 70,
+                  fontFamily: "inherit",
+                }}
+              />
+            ) : (
+              <span
+                onDoubleClick={(e) => startEdit(page, e)}
+                style={{
+                  fontSize: 12,
+                  color: isActive ? T.text : T.muted,
+                  fontWeight: isActive ? 600 : 400,
+                  flex: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title="Double-click to rename"
+              >
+                {page.title}
+              </span>
+            )}
+            {pages.length > 1 && isActive && editingId !== page.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(page.id);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: T.muted,
+                  cursor: "pointer",
+                  padding: "2px",
+                  borderRadius: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  opacity: 0,
+                }}
+                className="tab-close"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#ef4444";
+                  e.currentTarget.style.opacity = "1";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = T.muted;
+                  e.currentTarget.style.opacity = "0";
+                }}
+              >
+                <Icon name="x" size={11} />
+              </button>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add page button */}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <button
+          onClick={() => setShowPopup((v) => !v)}
+          title="Add new page"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            height: "100%",
+            padding: "0 14px",
+            background: showPopup ? T.surface : "transparent",
+            border: "none",
+            borderRight: `1px solid ${T.border}`,
+            color: showPopup ? T.accent : T.muted,
+            cursor: "pointer",
+            fontSize: 12,
+            fontWeight: 500,
+            transition: "background 0.12s,color 0.12s",
+          }}
+          onMouseEnter={(e) => {
+            if (!showPopup) {
+              e.currentTarget.style.background = T.surface;
+              e.currentTarget.style.color = T.text;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!showPopup) {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = T.muted;
+            }
+          }}
+        >
+          <div
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: "50%",
+              background: showPopup ? T.accent : "transparent",
+              border: `1.5px solid ${showPopup ? T.accent : T.muted}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.12s,border-color 0.12s",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path
+                d="M12 5v14M5 12h14"
+                stroke={showPopup ? "#fff" : "currentColor"}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <span style={{ fontSize: 12 }}>New page</span>
+        </button>
+        {showPopup && (
+          <AddPagePopup
+            T={T}
+            onAdd={(tpl, name, emoji, color) => {
+              onAdd(tpl, name, emoji, color);
+              setShowPopup(false);
+            }}
+            onClose={() => setShowPopup(false)}
+            pageCount={pages.length}
+          />
+        )}
+      </div>
+
+      <div style={{ flex: 1 }} />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "0 14px",
+          fontSize: 11,
+          color: T.muted,
+          flexShrink: 0,
+          borderLeft: `1px solid ${T.border}`,
+        }}
+      >
+        {pages.length} {pages.length === 1 ? "page" : "pages"}
+      </div>
+
+      {tabCtxMenu && (
+        <PageTabContextMenu
+          x={tabCtxMenu.x}
+          y={tabCtxMenu.y}
+          page={tabCtxMenu.page}
+          pages={pages}
+          T={T}
+          onRename={(id) => {
+            const p = pages.find((x) => x.id === id);
+            if (p) {
+              setEditingId(id);
+              setEditName(p.title);
+              setTimeout(() => editRef.current?.focus(), 80);
+            }
+          }}
+          onDelete={onDelete}
+          onDuplicate={onDuplicate}
+          onChangeColor={onChangeColor}
+          onChangeEmoji={onChangeEmoji}
+          onClose={() => setTabCtxMenu(null)}
+        />
+      )}
+
+      <style>{`div[style*="minWidth:90"]:hover .tab-close { opacity: 0.5 !important; }`}</style>
+    </div>
+  );
+}
+
+// ─── History Panel ────────────────────────────────────────────────────────────
+function HistoryPanel({ history, redoStack, T, onUndo, onRedo, onClose }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 60,
+        right: 270,
+        width: 220,
+        background: T.panel,
+        border: `1px solid ${T.border}`,
+        borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        zIndex: 500,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "10px 14px",
+          borderBottom: `1px solid ${T.border}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
+          History
+        </span>
+        <button
+          onClick={onClose}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: T.muted,
+            cursor: "pointer",
+            display: "flex",
+          }}
+        >
+          <Icon name="x" size={12} />
+        </button>
+      </div>
+      <div style={{ maxHeight: 300, overflowY: "auto", padding: "6px 0" }}>
+        {redoStack.length > 0 &&
+          redoStack
+            .map((_, i) => (
+              <div
+                key={`redo-${i}`}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: 11,
+                  color: T.muted,
+                  opacity: 0.4,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  for (let j = 0; j <= i; j++) onRedo();
+                }}
+              >
+                <Icon name="redo" size={11} /> Step{" "}
+                {history.length + redoStack.length - i} (redo)
+              </div>
+            ))
+            .reverse()}
+        {history.length === 0 && redoStack.length === 0 && (
+          <div
+            style={{
+              padding: "16px 14px",
+              fontSize: 12,
+              color: T.muted,
+              textAlign: "center",
+            }}
+          >
+            No history yet
+          </div>
+        )}
+        {history
+          .map((_, i) => (
+            <div
+              key={`hist-${i}`}
+              style={{
+                padding: "6px 14px",
+                fontSize: 11,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                background:
+                  i === history.length - 1 ? T.surface : "transparent",
+                color: i === history.length - 1 ? T.accent : T.text,
+              }}
+              onClick={() => {
+                const steps = history.length - 1 - i;
+                for (let j = 0; j < steps; j++) onUndo();
+              }}
+              onMouseEnter={(e) => {
+                if (i !== history.length - 1)
+                  e.currentTarget.style.background = T.surface + "60";
+              }}
+              onMouseLeave={(e) => {
+                if (i !== history.length - 1)
+                  e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {i === history.length - 1 ? (
+                <Icon name="eye" size={11} />
+              ) : (
+                <Icon name="history" size={11} />
+              )}
+              Step {i + 1} {i === history.length - 1 ? "(current)" : ""}
+            </div>
+          ))
+          .reverse()}
+      </div>
+    </div>
+  );
+}
+
+// ─── Theme Switcher Popup ─────────────────────────────────────────────────────
+function ThemeSwitcher({ T, theme, onTheme, onClose }) {
+  const ref = useRef();
+  useEffect(() => {
+    const h = (e) => {
+      if (!ref.current?.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  });
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        top: 54,
+        left: "50%",
+        transform: "translateX(-50%)",
+        background: T.panel,
+        border: `1px solid ${T.border}`,
+        borderRadius: 10,
+        padding: 8,
+        zIndex: 800,
+        display: "flex",
+        gap: 6,
+        flexWrap: "wrap",
+        width: 280,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+      }}
+    >
+      {Object.entries(THEMES).map(([name, t]) => (
+        <button
+          key={name}
+          onClick={() => {
+            onTheme(name);
+            onClose();
+          }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4,
+            padding: "8px 10px",
+            borderRadius: 8,
+            border: `1px solid ${theme === name ? t.accent : T.border}`,
+            background: theme === name ? t.accent + "22" : T.surface,
+            cursor: "pointer",
+            width: 60,
+          }}
+        >
+          <div style={{ display: "flex", gap: 2 }}>
+            {[t.bg, t.accent, t.text].map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: c,
+                  border: `1px solid ${T.border}`,
+                }}
+              />
+            ))}
+          </div>
+          <span
+            style={{
+              fontSize: 9,
+              color: theme === name ? T.accent : T.muted,
+              fontWeight: theme === name ? 700 : 400,
+            }}
+          >
+            {name}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Connections Panel (inside right panel "Node" tab) ────────────────────────
+function ConnectionsList({ nodeId, nodes, edges, onFocus, T }) {
+  const incoming = edges
+    .filter((e) => e.to === nodeId)
+    .map((e) => ({
+      ...e,
+      dir: "in",
+      other: nodes.find((n) => n.id === e.from),
+    }));
+  const outgoing = edges
+    .filter((e) => e.from === nodeId)
+    .map((e) => ({
+      ...e,
+      dir: "out",
+      other: nodes.find((n) => n.id === e.to),
+    }));
+  const all = [...incoming, ...outgoing];
+  if (!all.length)
+    return (
+      <div style={{ fontSize: 12, color: "#64748b", padding: "8px 0" }}>
+        No connections
+      </div>
+    );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {all.map((c) => (
+        <button
+          key={c.id}
+          onClick={() => onFocus(c.other?.id)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "6px 8px",
+            borderRadius: 6,
+            border: `1px solid ${T.border}`,
+            background: T.surface,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: c.other?.color || T.muted,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              color: T.text,
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {c.other?.text || "?"}
+          </span>
+          <span
+            style={{
+              fontSize: 9,
+              color: T.muted,
+              background: T.panel,
+              padding: "2px 5px",
+              borderRadius: 4,
+              flexShrink: 0,
+            }}
+          >
+            {c.dir === "in" ? "← in" : "out →"}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Groups Panel ─────────────────────────────────────────────────────────────
+function GroupsPanel({
+  nodes,
+  groups,
+  multiSel,
+  T,
+  onGroup,
+  onUngroup,
+  onSelectGroup,
+  onDeleteGroup,
+  onRenameGroup,
+}) {
+  const [newGroupName, setNewGroupName] = useState("");
+  return (
+    <div>
+      {/* Create new group from selection */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: T.muted, marginBottom: 6 }}>
+          {multiSel.size > 1
+            ? `${multiSel.size} nodes selected`
+            : "Select multiple nodes first"}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            placeholder="Group name…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && multiSel.size > 1) {
+                onGroup([...multiSel], newGroupName || "Group");
+                setNewGroupName("");
+              }
+            }}
+            style={{ ...inputStyle(T), flex: 1, fontSize: 12 }}
+          />
+          <button
+            onClick={() => {
+              if (multiSel.size > 1) {
+                onGroup([...multiSel], newGroupName || "Group");
+                setNewGroupName("");
+              }
+            }}
+            disabled={multiSel.size < 2}
+            style={{
+              padding: "0 10px",
+              borderRadius: 6,
+              border: "none",
+              background: multiSel.size > 1 ? T.accent : T.border,
+              color: "white",
+              cursor: multiSel.size > 1 ? "pointer" : "default",
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            Group
+          </button>
+        </div>
+      </div>
+      {/* Existing groups */}
+      {groups.length === 0 && (
+        <div
+          style={{
+            fontSize: 12,
+            color: T.muted,
+            textAlign: "center",
+            padding: "12px 0",
+          }}
+        >
+          No groups yet
+        </div>
+      )}
+      {groups.map((g) => {
+        const memberCount = nodes.filter((n) => n.groupId === g.id).length;
+        return (
+          <div
+            key={g.id}
+            style={{
+              marginBottom: 6,
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 4,
+              }}
+            >
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: g.color || T.accent,
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: T.text,
+                  flex: 1,
+                }}
+              >
+                {g.name}
+              </span>
+              <span style={{ fontSize: 10, color: T.muted }}>
+                {memberCount} nodes
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                onClick={() => onSelectGroup(g.id)}
+                style={{
+                  flex: 1,
+                  padding: "4px 0",
+                  borderRadius: 5,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.muted,
+                  cursor: "pointer",
+                  fontSize: 10,
+                }}
+              >
+                Select
+              </button>
+              <button
+                onClick={() => onUngroup(g.id)}
+                style={{
+                  flex: 1,
+                  padding: "4px 0",
+                  borderRadius: 5,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.muted,
+                  cursor: "pointer",
+                  fontSize: 10,
+                }}
+              >
+                Ungroup
+              </button>
+              <button
+                onClick={() => onDeleteGroup(g.id)}
+                style={{
+                  flex: 1,
+                  padding: "4px 0",
+                  borderRadius: 5,
+                  border: `1px solid rgba(239,68,68,0.3)`,
+                  background: "transparent",
+                  color: "#ef4444",
+                  cursor: "pointer",
+                  fontSize: 10,
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Default root node ────────────────────────────────────────────────────────
+const makeRootNode = (title = "Central Idea") => ({
+  id: "root",
+  text: title,
+  x: 2000,
+  y: 2000,
+  color: "#7c3aed",
+  shape: "rounded",
+  fontSize: 16,
+  bold: true,
+  italic: false,
+  note: "",
+  tag: "",
+  emoji: "",
+  collapsed: false,
+  locked: false,
+  image: "",
+  fontFamily: "Inter",
+  groupId: null,
+});
+
+// ─── Map Canvas ───────────────────────────────────────────────────────────────
+function MapCanvas({
+  mapId,
+  pageId,
+  initialNodes,
+  initialEdges,
+  initialGroups,
+  theme,
+  T,
+  presentMode,
+  setPresentMode,
+  onSyncNodes,
+  onSyncEdges,
+  onSyncGroups,
+}) {
   const CANVAS = 4000;
   const SVG_W = 900,
     SVG_H = 600;
 
-  // ── Map state ──
-  const [mapId, setMapId] = useState(propMapId || null);
-  const [loadState, setLoadState] = useState("loading"); // "loading" | "ready" | "error"
-  const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "saving" | "error"
-
-  // ── Canvas state ──
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
+  const [nodes, setNodes] = useState(initialNodes ?? []);
+  const [edges, setEdges] = useState(initialEdges ?? []);
+  const [groups, setGroups] = useState(initialGroups ?? []);
   const [selected, setSelected] = useState("root");
   const [multiSel, setMultiSel] = useState(new Set(["root"]));
   const [dragging, setDragging] = useState(null);
@@ -929,7 +2778,6 @@ export default function MindMapPro({ mapId: propMapId }) {
   const [panStart, setPanStart] = useState(null);
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState("");
-  const [theme, setTheme] = useState("Obsidian");
   const [panelTab, setPanelTab] = useState("node");
   const [panelOpen, setPanelOpen] = useState(true);
   const [mode, setMode] = useState("select");
@@ -948,20 +2796,40 @@ export default function MindMapPro({ mapId: propMapId }) {
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
   const [animatedEdges, setAnimatedEdges] = useState(false);
-  const [presentMode, setPresentMode] = useState(false);
   const [edgeLabelEdit, setEdgeLabelEdit] = useState(null);
   const [imageInput, setImageInput] = useState("");
   const [hoveredNode, setHoveredNode] = useState(null);
   const [addBtnHover, setAddBtnHover] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [showHistory, setShowHistory] = useState(false);
+  const [showThemes, setShowThemes] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState(theme);
+  const [localTheme, setLocalTheme] = useState(T);
 
   const svgRef = useRef();
   const editRef = useRef();
   const syncTimer = useRef(null);
   const hoverLeaveTimer = useRef(null);
   const { toasts, add: toast } = useToast();
-  const T = THEMES[theme];
 
-  // ── Derived ──
+  // When theme prop changes, update local
+  useEffect(() => {
+    setSelectedTheme(theme);
+    setLocalTheme(T);
+  }, [theme]);
+
+  const CT = THEMES[selectedTheme] || T; // current theme
+
+  useEffect(() => {
+    onSyncNodes(nodes);
+  }, [nodes]);
+  useEffect(() => {
+    onSyncEdges(edges);
+  }, [edges]);
+  useEffect(() => {
+    onSyncGroups(groups);
+  }, [groups]);
+
   const selectedNode = nodes.find((n) => n.id === selected);
   const searchHits = searchQ
     ? new Set(
@@ -973,49 +2841,6 @@ export default function MindMapPro({ mapId: propMapId }) {
 
   const snap = (v) => (snapToGrid ? Math.round(v / 20) * 20 : v);
 
-  // ── 1. Bootstrap: load or create map on mount ─────────────────────────────
-  useEffect(() => {
-    const init = async () => {
-      setLoadState("loading");
-      try {
-        let id = mapId;
-
-        if (!id) {
-          // Check localStorage for a previously created map
-          const saved = localStorage.getItem("mindmap_id");
-          if (saved) {
-            id = saved;
-          } else {
-            // Create a brand-new map
-            const res = await api.createMap("My Mind Map");
-            if (!res.success) throw new Error(res.message);
-            id = res.map._id;
-            localStorage.setItem("mindmap_id", id);
-          }
-          setMapId(id);
-        }
-
-        const res = await api.getMap(id);
-        if (!res.success) throw new Error(res.message);
-
-        setNodes(res.map.nodes);
-        setEdges(res.map.edges);
-        setViewBox({
-          x: CANVAS / 2 - 450,
-          y: CANVAS / 2 - 300,
-          w: 900,
-          h: 600,
-        });
-        setLoadState("ready");
-      } catch (err) {
-        console.error("MindMap init error:", err);
-        setLoadState("error");
-      }
-    };
-    init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── 2. Debounced auto-sync (drag-end / bulk edits) ────────────────────────
   const scheduleSync = useCallback(
     (nextNodes, nextEdges) => {
       if (!mapId) return;
@@ -1026,54 +2851,54 @@ export default function MindMapPro({ mapId: propMapId }) {
           const res = await api.syncMap(mapId, nextNodes, nextEdges);
           if (!res.success) throw new Error(res.message);
           setSyncStatus("idle");
-        } catch (err) {
-          console.error("Sync error:", err);
+        } catch {
           setSyncStatus("error");
           toast("Auto-save failed", "error");
         }
       }, 1200);
     },
     [mapId],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
-  // ─── History helpers ───────────────────────────────────────────────────────
   const snapshot = useCallback(() => {
     setHistory((h) => [
       ...h.slice(-40),
       {
         nodes: JSON.parse(JSON.stringify(nodes)),
         edges: JSON.parse(JSON.stringify(edges)),
+        groups: JSON.parse(JSON.stringify(groups)),
       },
     ]);
     setRedoStack([]);
-  }, [nodes, edges]);
+  }, [nodes, edges, groups]);
 
   const undo = useCallback(() => {
     if (!history.length) return;
     const prev = history[history.length - 1];
-    setRedoStack((r) => [{ nodes, edges }, ...r.slice(0, 39)]);
+    setRedoStack((r) => [{ nodes, edges, groups }, ...r.slice(0, 39)]);
     setNodes(prev.nodes);
     setEdges(prev.edges);
+    setGroups(prev.groups || []);
     setHistory((h) => h.slice(0, -1));
     scheduleSync(prev.nodes, prev.edges);
     toast("Undone");
-  }, [history, nodes, edges, scheduleSync]);
+  }, [history, nodes, edges, groups, scheduleSync]);
 
   const redo = useCallback(() => {
     if (!redoStack.length) return;
     const next = redoStack[0];
-    setHistory((h) => [...h, { nodes, edges }]);
+    setHistory((h) => [...h, { nodes, edges, groups }]);
     setNodes(next.nodes);
     setEdges(next.edges);
+    setGroups(next.groups || []);
     setRedoStack((r) => r.slice(1));
     scheduleSync(next.nodes, next.edges);
     toast("Redone");
-  }, [redoStack, nodes, edges, scheduleSync]);
+  }, [redoStack, nodes, edges, groups, scheduleSync]);
 
-  // ─── SVG helpers ───────────────────────────────────────────────────────────
   const svgPt = (e) => {
-    const svg = svgRef.current;
-    const r = svg.getBoundingClientRect();
+    const svg = svgRef.current,
+      r = svg.getBoundingClientRect();
     return {
       x: viewBox.x + ((e.clientX - r.left) / r.width) * viewBox.w,
       y: viewBox.y + ((e.clientY - r.top) / r.height) * viewBox.h,
@@ -1109,8 +2934,8 @@ export default function MindMapPro({ mapId: propMapId }) {
   const fitAll = () => {
     if (!nodes.length) return;
     const xs = nodes.map((n) => n.x),
-      ys = nodes.map((n) => n.y);
-    const pad = 120;
+      ys = nodes.map((n) => n.y),
+      pad = 120;
     const w = Math.max(...xs) - Math.min(...xs) + pad * 2,
       h = Math.max(...ys) - Math.min(...ys) + pad * 2;
     setViewBox({
@@ -1127,25 +2952,24 @@ export default function MindMapPro({ mapId: propMapId }) {
     const n = nodes.find((x) => x.id === id);
     if (!n) return;
     setViewBox((v) => ({ ...v, x: n.x - v.w / 2, y: n.y - v.h / 2 }));
+    setSelected(id);
+    setMultiSel(new Set([id]));
   };
 
-  // ─── 3. addChild — optimistic + backend ────────────────────────────────────
   const addChild = useCallback(
     async (parentId, label = "New Idea") => {
       const pid = parentId || selected;
       if (!pid) return;
       const parent = nodes.find((n) => n.id === pid);
       if (!parent) return;
-
       snapshot();
       const childCount = edges.filter((e) => e.from === pid).length;
       const angle = ((childCount * 50 - 80) * Math.PI) / 180;
       const dist = 200;
       const colorSet = PALETTES[palette];
       const color = colorSet[childCount % colorSet.length];
-      const tempId = uid();
-      const tempEdgeId = uid();
-
+      const tempId = uid(),
+        tempEdgeId = uid();
       const newNode = {
         id: tempId,
         text: label,
@@ -1163,6 +2987,7 @@ export default function MindMapPro({ mapId: propMapId }) {
         locked: false,
         image: "",
         fontFamily: "Inter",
+        groupId: null,
       };
       const newEdge = {
         id: tempEdgeId,
@@ -1171,8 +2996,6 @@ export default function MindMapPro({ mapId: propMapId }) {
         label: "",
         style: edgeStyle,
       };
-
-      // Optimistic update
       setNodes((ns) => [...ns, newNode]);
       setEdges((es) => [...es, newEdge]);
       setSelected(tempId);
@@ -1183,8 +3006,6 @@ export default function MindMapPro({ mapId: propMapId }) {
         setEditText(label);
       }, 80);
       toast("Node added");
-
-      // Backend sync
       if (mapId) {
         try {
           const res = await api.addNode(mapId, {
@@ -1193,9 +3014,8 @@ export default function MindMapPro({ mapId: propMapId }) {
             color,
           });
           if (!res.success) throw new Error(res.message);
-          // Replace temp IDs with real backend IDs
-          const realNodeId = res.node.id;
-          const realEdgeId = res.edge.id;
+          const realNodeId = res.node.id,
+            realEdgeId = res.edge.id;
           setNodes((ns) =>
             ns.map((n) => (n.id === tempId ? { ...n, id: realNodeId } : n)),
           );
@@ -1215,10 +3035,8 @@ export default function MindMapPro({ mapId: propMapId }) {
             return n;
           });
           setEditId((id) => (id === tempId ? realNodeId : id));
-        } catch (err) {
-          console.error("addNode error:", err);
+        } catch {
           toast("Failed to save node", "error");
-          // Rollback
           setNodes((ns) => ns.filter((n) => n.id !== tempId));
           setEdges((es) => es.filter((e) => e.id !== tempEdgeId));
         }
@@ -1227,30 +3045,24 @@ export default function MindMapPro({ mapId: propMapId }) {
     [selected, nodes, edges, snapshot, palette, edgeStyle, snap, mapId],
   );
 
-  // ─── 4. updateNode — optimistic + debounced backend ───────────────────────
   const upNode = useCallback(
     (key, val) => {
       setNodes((ns) => {
         const next = ns.map((n) =>
           multiSel.has(n.id) ? { ...n, [key]: val } : n,
         );
-        // Debounced backend patch for each affected node
-        if (mapId) {
+        if (mapId)
           [...multiSel].forEach(async (nid) => {
             try {
               await api.updateNode(mapId, nid, { [key]: val });
-            } catch (err) {
-              console.error("updateNode error:", err);
-            }
+            } catch {}
           });
-        }
         return next;
       });
     },
     [multiSel, mapId],
   );
 
-  // ─── 5. deleteNodes — optimistic + backend ────────────────────────────────
   const deleteNodes = useCallback(
     async (ids) => {
       const set = ids instanceof Set ? ids : new Set(ids);
@@ -1258,26 +3070,21 @@ export default function MindMapPro({ mapId: propMapId }) {
         toast("Can't delete root node", "error");
         return;
       }
-
       snapshot();
-      const prevNodes = [...nodes];
-      const prevEdges = [...edges];
-
+      const prevNodes = [...nodes],
+        prevEdges = [...edges];
       setNodes((ns) => ns.filter((n) => !set.has(n.id)));
       setEdges((es) => es.filter((e) => !set.has(e.from) && !set.has(e.to)));
+      // Remove from groups
+      setGroups((gs) => gs.map((g) => g));
       setSelected("root");
       setMultiSel(new Set(["root"]));
       toast(`Deleted ${set.size} node(s)`);
-
       if (mapId) {
-        // Delete non-root nodes via API (backend cascades children)
-        const toDelete = [...set].filter((id) => id !== "root");
-        for (const nid of toDelete) {
+        for (const nid of [...set].filter((id) => id !== "root")) {
           try {
             await api.deleteNode(mapId, nid);
-          } catch (err) {
-            console.error("deleteNode error:", err);
-            // Rollback all on first failure
+          } catch {
             toast("Delete failed — rolled back", "error");
             setNodes(prevNodes);
             setEdges(prevEdges);
@@ -1289,7 +3096,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     [nodes, edges, snapshot, mapId],
   );
 
-  // ─── 6. Link mode — create edge via backend ───────────────────────────────
   const createEdge = useCallback(
     async (fromId, toId) => {
       const exists = edges.find(
@@ -1298,7 +3104,6 @@ export default function MindMapPro({ mapId: propMapId }) {
           (e.from === toId && e.to === fromId),
       );
       if (exists) return;
-
       snapshot();
       const tempId = uid();
       const newEdge = {
@@ -1310,7 +3115,6 @@ export default function MindMapPro({ mapId: propMapId }) {
       };
       setEdges((es) => [...es, newEdge]);
       toast("Connected");
-
       if (mapId) {
         try {
           const res = await api.addEdge(mapId, {
@@ -1323,8 +3127,7 @@ export default function MindMapPro({ mapId: propMapId }) {
           setEdges((es) =>
             es.map((e) => (e.id === tempId ? { ...e, id: res.edge.id } : e)),
           );
-        } catch (err) {
-          console.error("addEdge error:", err);
+        } catch {
           toast("Edge save failed", "error");
           setEdges((es) => es.filter((e) => e.id !== tempId));
         }
@@ -1333,19 +3136,16 @@ export default function MindMapPro({ mapId: propMapId }) {
     [edges, snapshot, edgeStyle, mapId],
   );
 
-  // ─── 7. Remove edge via backend ───────────────────────────────────────────
   const removeEdge = useCallback(
     async (edgeId) => {
       snapshot();
       const prev = [...edges];
       setEdges((es) => es.filter((e) => e.id !== edgeId));
       toast("Edge removed");
-
       if (mapId) {
         try {
           await api.deleteEdge(mapId, edgeId);
-        } catch (err) {
-          console.error("deleteEdge error:", err);
+        } catch {
           toast("Edge delete failed", "error");
           setEdges(prev);
         }
@@ -1354,22 +3154,20 @@ export default function MindMapPro({ mapId: propMapId }) {
     [edges, snapshot, mapId],
   );
 
-  // ─── 8. Manual save button ────────────────────────────────────────────────
   const saveNow = async () => {
     if (!mapId) return;
     setSyncStatus("saving");
     try {
       const res = await api.syncMap(mapId, nodes, edges);
-      if (!res.success) throw new Error(res.message);
+      if (!res.success) throw new Error();
       setSyncStatus("idle");
       toast("Saved", "success");
-    } catch (err) {
+    } catch {
       setSyncStatus("error");
       toast("Save failed", "error");
     }
   };
 
-  // ─── Duplicate ────────────────────────────────────────────────────────────
   const duplicateNode = () => {
     if (!selectedNode) return;
     snapshot();
@@ -1385,7 +3183,92 @@ export default function MindMapPro({ mapId: propMapId }) {
     toast("Duplicated");
   };
 
-  // ─── Mouse handlers ───────────────────────────────────────────────────────
+  // ─── Groups ────────────────────────────────────────────────────────────────
+  const createGroup = (nodeIds, name) => {
+    snapshot();
+    const gid = uid();
+    const memberNodes = nodes.filter((n) => nodeIds.includes(n.id));
+    const colors = memberNodes.map((n) => n.color);
+    const color = colors[0] || CT.accent;
+    setGroups((gs) => [...gs, { id: gid, name, color }]);
+    setNodes((ns) =>
+      ns.map((n) => (nodeIds.includes(n.id) ? { ...n, groupId: gid } : n)),
+    );
+    toast(`Group "${name}" created`);
+  };
+
+  const ungroupGroup = (gid) => {
+    snapshot();
+    setGroups((gs) => gs.filter((g) => g.id !== gid));
+    setNodes((ns) =>
+      ns.map((n) => (n.groupId === gid ? { ...n, groupId: null } : n)),
+    );
+    toast("Ungrouped");
+  };
+
+  const selectGroup = (gid) => {
+    const ids = nodes.filter((n) => n.groupId === gid).map((n) => n.id);
+    if (ids.length) {
+      setMultiSel(new Set(ids));
+      setSelected(ids[0]);
+    }
+  };
+
+  const deleteGroup = (gid) => {
+    snapshot();
+    setGroups((gs) => gs.filter((g) => g.id !== gid));
+    setNodes((ns) =>
+      ns.map((n) => (n.groupId === gid ? { ...n, groupId: null } : n)),
+    );
+    toast("Group deleted");
+  };
+
+  // ─── Export PNG ────────────────────────────────────────────────────────────
+  const exportPNG = useCallback(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const xs = nodes.map((n) => n.x),
+      ys = nodes.map((n) => n.y),
+      pad = 80;
+    const minX = Math.min(...xs) - pad,
+      minY = Math.min(...ys) - pad;
+    const maxX = Math.max(...xs) + pad,
+      maxY = Math.max(...ys) + pad;
+    const W = maxX - minX,
+      H = maxY - minY;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("viewBox", `${minX} ${minY} ${W} ${H}`);
+    clone.setAttribute("width", W);
+    clone.setAttribute("height", H);
+    const bgRect = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "rect",
+    );
+    bgRect.setAttribute("x", minX);
+    bgRect.setAttribute("y", minY);
+    bgRect.setAttribute("width", W);
+    bgRect.setAttribute("height", H);
+    bgRect.setAttribute("fill", CT.bg);
+    clone.insertBefore(bgRect, clone.firstChild);
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const canvas = document.createElement("canvas");
+    const scale = 2;
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "mindmap.png";
+      a.click();
+      toast("Exported PNG", "success");
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+  }, [nodes, CT]);
+
   const onNodeMouseDown = (e, id) => {
     e.stopPropagation();
     if (e.button === 2) return;
@@ -1394,7 +3277,6 @@ export default function MindMapPro({ mapId: propMapId }) {
       toast("Node is locked");
       return;
     }
-
     if (mode === "link") {
       if (linking === null) {
         setLinking(id);
@@ -1404,7 +3286,6 @@ export default function MindMapPro({ mapId: propMapId }) {
       setLinking(null);
       return;
     }
-
     if (e.shiftKey) {
       setMultiSel((ms) => {
         const n = new Set(ms);
@@ -1417,7 +3298,6 @@ export default function MindMapPro({ mapId: propMapId }) {
         setMultiSel(new Set([id]));
       } else setSelected(id);
     }
-
     setDragging({
       id,
       startX: e.clientX,
@@ -1564,11 +3444,19 @@ export default function MindMapPro({ mapId: propMapId }) {
         },
         { label: "Duplicate", icon: "copy", action: duplicateNode },
         {
-          label: "Focus",
+          label: "Focus view",
           icon: "eye",
           action: () => focusNode(contextMenu.id),
         },
         "---",
+        {
+          label: "Group selected",
+          icon: "group",
+          action: () => {
+            if (multiSel.size > 1) createGroup([...multiSel], "New Group");
+            else toast("Select multiple nodes first", "error");
+          },
+        },
         {
           label: "Lock/Unlock",
           icon: "pin",
@@ -1593,7 +3481,6 @@ export default function MindMapPro({ mapId: propMapId }) {
       ]
     : [];
 
-  // ─── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
       if (editId) {
@@ -1630,11 +3517,17 @@ export default function MindMapPro({ mapId: propMapId }) {
         e.preventDefault();
         saveNow();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "g") {
+        e.preventDefault();
+        if (multiSel.size > 1) createGroup([...multiSel], "Group");
+      }
       if (e.key === "Escape") {
         setMode("select");
         setLinking(null);
         setShowSearch(false);
         setContextMenu(null);
+        setShowHistory(false);
+        setShowThemes(false);
       }
       if (e.key === "1") setMode("select");
       if (e.key === "2") setMode("pan");
@@ -1648,9 +3541,8 @@ export default function MindMapPro({ mapId: propMapId }) {
     return () => window.removeEventListener("keydown", h);
   }, [editId, addChild, deleteNodes, undo, redo, multiSel, nodes, doZoom]);
 
-  // ─── Export / Import ──────────────────────────────────────────────────────
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify({ nodes, edges }, null, 2)], {
+    const blob = new Blob([JSON.stringify({ nodes, edges, groups }, null, 2)], {
       type: "application/json",
     });
     const a = document.createElement("a");
@@ -1689,6 +3581,7 @@ export default function MindMapPro({ mapId: propMapId }) {
         snapshot();
         setNodes(d.nodes);
         setEdges(d.edges);
+        if (d.groups) setGroups(d.groups);
         scheduleSync(d.nodes, d.edges);
         toast("Imported", "success");
       } catch {
@@ -1709,7 +3602,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     toast("Exported SVG", "success");
   };
 
-  // ─── Auto-arrange ─────────────────────────────────────────────────────────
   const autoArrange = (type = "radial") => {
     snapshot();
     const root = nodes.find((n) => n.id === "root");
@@ -1753,7 +3645,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     toast("Layout applied");
   };
 
-  // ─── Edge path ────────────────────────────────────────────────────────────
   const getEdgePath = (from, to, style) => {
     if (!from || !to) return "";
     const dx = to.x - from.x,
@@ -1785,7 +3676,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     return { W, H };
   };
 
-  // ─── Visibility ───────────────────────────────────────────────────────────
   const visibleNodeIds = useMemo(() => {
     const visible = new Set();
     const visit = (id) => {
@@ -1803,940 +3693,1000 @@ export default function MindMapPro({ mapId: propMapId }) {
   );
   const visibleNodes = nodes.filter((n) => visibleNodeIds.has(n.id));
 
-  // ─── Loading / error states ───────────────────────────────────────────────
-  if (loadState === "loading")
-    return <LoadingScreen T={T} message="Loading your mind map…" />;
-  if (loadState === "error")
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          background: T.bg,
-          color: T.text,
-          flexDirection: "column",
-          gap: 16,
-        }}
-      >
-        <div style={{ fontSize: 32 }}>⚠️</div>
-        <p style={{ fontSize: 16, fontWeight: 600 }}>Could not load mind map</p>
-        <p style={{ fontSize: 13, color: T.muted }}>
-          Check your auth token and backend URL in config.
-        </p>
-        <button
-          onClick={() => {
-            localStorage.removeItem("mindmap_id");
-            window.location.reload();
-          }}
-          style={{
-            padding: "8px 20px",
-            borderRadius: 8,
-            border: `1px solid ${T.border}`,
-            background: T.surface,
-            color: T.text,
-            cursor: "pointer",
-            fontSize: 13,
-          }}
-        >
-          Create new map
-        </button>
-      </div>
-    );
+  // Group bounding boxes for rendering
+  const groupBounds = useMemo(() => {
+    return groups
+      .map((g) => {
+        const members = visibleNodes.filter((n) => n.groupId === g.id);
+        if (members.length === 0) return null;
+        const xs = members.map((n) => n.x),
+          ys = members.map((n) => n.y);
+        const pad = 40;
+        return {
+          ...g,
+          x: Math.min(...xs) - pad,
+          y: Math.min(...ys) - pad,
+          w: Math.max(...xs) - Math.min(...xs) + pad * 2,
+          h: Math.max(...ys) - Math.min(...ys) + pad * 2,
+        };
+      })
+      .filter(Boolean);
+  }, [groups, visibleNodes]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
       style={{
-        display: "flex",
-        height: "100vh",
-        width: "100vw",
+        flex: 1,
+        position: "relative",
         overflow: "hidden",
-        background: T.bg,
-        color: T.text,
-        fontFamily: "Inter, system-ui, sans-serif",
-        userSelect: "none",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        * { box-sizing:border-box; }
-        ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
-        input,textarea,select{font-family:inherit}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes dash{to{stroke-dashoffset:-20}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-        @keyframes addBtnFadeIn{from{opacity:0;transform:scale(0.6)}to{opacity:1;transform:scale(1)}}
-      `}</style>
-
-      {/* ── Canvas ── */}
-      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-        <svg
-          ref={svgRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            cursor:
-              mode === "pan" || panStart
-                ? "grabbing"
-                : mode === "link"
-                  ? "crosshair"
-                  : "default",
-          }}
-          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseDown={onSvgMouseDown}
-        >
-          <defs>
-            <pattern
-              id="dots"
-              width="30"
-              height="30"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="15" cy="15" r="0.7" fill={T.muted} opacity="0.25" />
-            </pattern>
-            <marker
-              id="arrowhead"
-              markerWidth="8"
-              markerHeight="8"
-              refX="7"
-              refY="3"
-              orient="auto"
-            >
-              <path d="M0,0 L0,6 L8,3 z" fill={T.muted} opacity="0.8" />
-            </marker>
-            <marker
-              id="arrowActive"
-              markerWidth="8"
-              markerHeight="8"
-              refX="7"
-              refY="3"
-              orient="auto"
-            >
-              <path d="M0,0 L0,6 L8,3 z" fill={T.accent} />
-            </marker>
-            {nodes.map((n) => (
-              <radialGradient
-                key={n.id + "-g"}
-                id={`glow-${n.id}`}
-                cx="50%"
-                cy="50%"
-                r="50%"
-              >
-                <stop offset="0%" stopColor={n.color} stopOpacity="0.35" />
-                <stop offset="100%" stopColor={n.color} stopOpacity="0.08" />
-              </radialGradient>
-            ))}
-          </defs>
-
-          {showGrid && (
-            <rect
-              x={viewBox.x}
-              y={viewBox.y}
-              width={viewBox.w}
-              height={viewBox.h}
-              fill="url(#dots)"
-            />
-          )}
-
-          {/* Edges */}
-          {visibleEdges.map((edge) => {
-            const from = nodes.find((n) => n.id === edge.from),
-              to = nodes.find((n) => n.id === edge.to);
-            if (!from || !to) return null;
-            const isActive = multiSel.has(edge.from) || multiSel.has(edge.to);
-            const path = getEdgePath(from, to, edge.style || edgeStyle);
-            const mx = (from.x + to.x) / 2,
-              my = (from.y + to.y) / 2;
-            return (
-              <g key={edge.id}>
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={12}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => removeEdge(edge.id)}
-                />
-                <path
-                  d={path}
-                  fill="none"
-                  stroke={isActive ? T.accent : T.muted}
-                  strokeWidth={isActive ? 2 : 1.4}
-                  strokeOpacity={isActive ? 1 : 0.45}
-                  markerEnd={isActive ? "url(#arrowActive)" : "url(#arrowhead)"}
-                  strokeDasharray={animatedEdges ? "8 4" : undefined}
-                  style={
-                    animatedEdges
-                      ? { animation: "dash 0.6s linear infinite" }
-                      : undefined
-                  }
-                />
-                {(edge.label || isActive) && (
-                  <g>
-                    {edge.label && (
-                      <rect
-                        x={mx - edge.label.length * 3.5 - 4}
-                        y={my - 9}
-                        width={edge.label.length * 7 + 8}
-                        height={16}
-                        rx={4}
-                        fill={T.panel}
-                        stroke={T.border}
-                        strokeWidth={0.8}
-                      />
-                    )}
-                    {edgeLabelEdit === edge.id ? (
-                      <foreignObject
-                        x={mx - 50}
-                        y={my - 10}
-                        width={100}
-                        height={20}
-                      >
-                        <input
-                          autoFocus
-                          defaultValue={edge.label}
-                          onBlur={(e2) => {
-                            snapshot();
-                            setEdges((es) =>
-                              es.map((ed) =>
-                                ed.id === edge.id
-                                  ? { ...ed, label: e2.target.value }
-                                  : ed,
-                              ),
-                            );
-                            setEdgeLabelEdit(null);
-                          }}
-                          onKeyDown={(e2) => {
-                            if (e2.key === "Enter") e2.target.blur();
-                          }}
-                          style={{
-                            width: "100%",
-                            background: T.panel,
-                            border: "none",
-                            color: T.text,
-                            fontSize: 11,
-                            textAlign: "center",
-                            outline: "none",
-                          }}
-                        />
-                      </foreignObject>
-                    ) : (
-                      <text
-                        x={mx}
-                        y={my + 4}
-                        textAnchor="middle"
-                        fill={T.muted}
-                        fontSize={11}
-                        style={{ cursor: "pointer" }}
-                        onDoubleClick={(e2) => {
-                          e2.stopPropagation();
-                          setEdgeLabelEdit(edge.id);
-                        }}
-                      >
-                        {edge.label || (isActive ? "···" : "")}
-                      </text>
-                    )}
-                  </g>
-                )}
-              </g>
-            );
-          })}
-
-          {/* Nodes */}
-          {visibleNodes.map((node) => {
-            const { W, H } = nodeBounds(node);
-            const isSel = multiSel.has(node.id);
-            const isSearchHit = searchHits.has(node.id);
-            const isLinking = linking === node.id;
-            const collapseCount = edges.filter(
-              (e) => e.from === node.id,
-            ).length;
-            const hasCollapsed = node.collapsed && collapseCount > 0;
-            const isHovered =
-              hoveredNode === node.id && !dragging && mode === "select";
-
-            return (
-              <g
-                key={node.id}
-                transform={`translate(${node.x - W / 2},${node.y - H / 2})`}
-                onMouseDown={(e) => onNodeMouseDown(e, node.id)}
-                onDoubleClick={(e) => onDblClick(e, node.id)}
-                onContextMenu={(e) => onContextMenu(e, node.id)}
-                onMouseEnter={() => {
-                  clearTimeout(hoverLeaveTimer.current);
-                  if (!dragging && mode === "select") setHoveredNode(node.id);
-                }}
-                onMouseLeave={() => {
-                  hoverLeaveTimer.current = setTimeout(() => {
-                    setHoveredNode((v) => (v === node.id ? null : v));
-                    setAddBtnHover(null);
-                  }, 120);
-                }}
-                style={{
-                  cursor: node.locked
-                    ? "not-allowed"
-                    : dragging?.id === node.id
-                      ? "grabbing"
-                      : "grab",
-                }}
-              >
-                <rect
-                  x={0}
-                  y={0}
-                  width={W + 44}
-                  height={H}
-                  fill="transparent"
-                  style={{ pointerEvents: "all" }}
-                />
-                {isSel && (
-                  <ellipse
-                    cx={W / 2}
-                    cy={H / 2}
-                    rx={W * 0.7}
-                    ry={H * 0.7}
-                    fill={`url(#glow-${node.id})`}
-                    style={{ pointerEvents: "none" }}
-                  />
-                )}
-                {isSearchHit && (
-                  <rect
-                    x={-5}
-                    y={-5}
-                    width={W + 10}
-                    height={H + 10}
-                    rx={14}
-                    fill="none"
-                    stroke="#fbbf24"
-                    strokeWidth={2}
-                    style={{ animation: "pulse 1s ease infinite" }}
-                  />
-                )}
-                {isSel && (
-                  <rect
-                    x={-3}
-                    y={-3}
-                    width={W + 6}
-                    height={H + 6}
-                    rx={
-                      node.shape === "pill"
-                        ? H / 2 + 3
-                        : node.shape === "circle"
-                          ? W / 2 + 3
-                          : 14
-                    }
-                    fill="none"
-                    stroke={node.color}
-                    strokeWidth={2}
-                    opacity={0.9}
-                  />
-                )}
-
-                {node.shape === "hexagon" ? (
-                  <polygon
-                    points={`${W * 0.25},0 ${W * 0.75},0 ${W},${H / 2} ${W * 0.75},${H} ${W * 0.25},${H} 0,${H / 2}`}
-                    fill={node.color + "1a"}
-                    stroke={node.color}
-                    strokeWidth={isSel ? 2 : 1.5}
-                  />
-                ) : node.shape === "diamond" ? (
-                  <rect
-                    x={8}
-                    y={8}
-                    width={W - 16}
-                    height={H - 16}
-                    rx={6}
-                    fill={node.color + "1a"}
-                    stroke={node.color}
-                    strokeWidth={isSel ? 2 : 1.5}
-                    transform={`rotate(45,${W / 2},${H / 2})`}
-                  />
-                ) : (
-                  <rect
-                    width={W}
-                    height={H}
-                    rx={
-                      node.shape === "pill"
-                        ? H / 2
-                        : node.shape === "circle"
-                          ? W / 2
-                          : 10
-                    }
-                    fill={node.color + "18"}
-                    stroke={
-                      isSel
-                        ? node.color
-                        : isHovered
-                          ? node.color + "99"
-                          : node.color + "60"
-                    }
-                    strokeWidth={isSel ? 2 : isHovered ? 1.8 : 1.5}
-                    style={{ transition: "stroke 0.15s,stroke-width 0.15s" }}
-                  />
-                )}
-
-                {node.image && (
-                  <image
-                    href={node.image}
-                    x={4}
-                    y={4}
-                    width={W - 8}
-                    height={H * 0.55}
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                )}
-                {node.emoji && !node.image && (
-                  <text
-                    x={14}
-                    y={H / 2 + 5}
-                    fontSize={14}
-                    style={{ userSelect: "none" }}
-                  >
-                    {node.emoji}
-                  </text>
-                )}
-
-                {editId === node.id ? (
-                  <foreignObject
-                    x={node.emoji ? 26 : 6}
-                    y={H / 2 - 12}
-                    width={W - (node.emoji ? 32 : 12)}
-                    height={26}
-                  >
-                    <input
-                      ref={editRef}
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onBlur={commitEdit}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === "Escape")
-                          commitEdit();
-                      }}
-                      style={{
-                        width: "100%",
-                        background: "transparent",
-                        border: "none",
-                        outline: "none",
-                        color: T.text,
-                        fontSize: node.fontSize || 14,
-                        fontWeight: node.bold ? 700 : 400,
-                        fontStyle: node.italic ? "italic" : "normal",
-                        fontFamily: node.fontFamily || "Inter",
-                        textAlign: "center",
-                      }}
-                    />
-                  </foreignObject>
-                ) : (
-                  <text
-                    x={node.emoji ? W / 2 + 8 : W / 2}
-                    y={
-                      H / 2 +
-                      (node.image ? H * 0.28 : 0) +
-                      (node.fontSize || 14) * 0.35
-                    }
-                    textAnchor="middle"
-                    fill={T.text}
-                    fontSize={node.fontSize || 14}
-                    fontWeight={node.bold ? 700 : 400}
-                    fontStyle={node.italic ? "italic" : "normal"}
-                    fontFamily={node.fontFamily || "Inter"}
-                    style={{ pointerEvents: "none" }}
-                  >
-                    {showLabels
-                      ? node.text.length > 22
-                        ? node.text.slice(0, 20) + "…"
-                        : node.text
-                      : ""}
-                  </text>
-                )}
-
-                {node.tag && (
-                  <text
-                    x={W - 4}
-                    y={14}
-                    textAnchor="end"
-                    fontSize={9}
-                    fill={node.color}
-                    opacity={0.9}
-                    style={{ pointerEvents: "none" }}
-                  >
-                    #{node.tag}
-                  </text>
-                )}
-                {node.note && <circle cx={W - 5} cy={5} r={4} fill="#f59e0b" />}
-                {node.locked && (
-                  <text
-                    x={6}
-                    y={H - 5}
-                    fontSize={9}
-                    fill={T.muted}
-                    opacity={0.7}
-                  >
-                    🔒
-                  </text>
-                )}
-
-                {hasCollapsed && (
-                  <g
-                    style={{ cursor: "pointer" }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      upNode("collapsed", false);
-                    }}
-                  >
-                    <circle
-                      cx={W / 2}
-                      cy={H + 10}
-                      r={10}
-                      fill={node.color}
-                      opacity={0.9}
-                    />
-                    <text
-                      x={W / 2}
-                      y={H + 15}
-                      textAnchor="middle"
-                      fill="white"
-                      fontSize={10}
-                      fontWeight={700}
-                    >
-                      {collapseCount}
-                    </text>
-                  </g>
-                )}
-
-                {isLinking && (
-                  <rect
-                    x={-4}
-                    y={-4}
-                    width={W + 8}
-                    height={H + 8}
-                    rx={14}
-                    fill="none"
-                    stroke="#fbbf24"
-                    strokeWidth={3}
-                    strokeDasharray="5 3"
-                    style={{ animation: "dash 0.5s linear infinite" }}
-                  />
-                )}
-
-                {/* Hover + button */}
-                {isHovered &&
-                  !node.locked &&
-                  !node.collapsed &&
-                  (() => {
-                    const bx = W + 20,
-                      by = H / 2,
-                      isHov = addBtnHover === node.id;
-                    return (
-                      <g
-                        onMouseEnter={(e) => {
-                          e.stopPropagation();
-                          clearTimeout(hoverLeaveTimer.current);
-                          setAddBtnHover(node.id);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.stopPropagation();
-                          setAddBtnHover(null);
-                          hoverLeaveTimer.current = setTimeout(
-                            () =>
-                              setHoveredNode((v) => (v === node.id ? null : v)),
-                            80,
-                          );
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          addChild(node.id);
-                        }}
-                        style={{
-                          cursor: "pointer",
-                          animation: "addBtnFadeIn 0.15s ease",
-                        }}
-                      >
-                        <line
-                          x1={W}
-                          y1={by}
-                          x2={bx - (isHov ? 13 : 11)}
-                          y2={by}
-                          stroke={node.color}
-                          strokeWidth={1.5}
-                          strokeDasharray="3 2"
-                          opacity={0.45}
-                          style={{ pointerEvents: "none" }}
-                        />
-                        <circle
-                          cx={bx}
-                          cy={by}
-                          r={isHov ? 13 : 11}
-                          fill={isHov ? node.color : T.panel}
-                          stroke={node.color}
-                          strokeWidth={isHov ? 0 : 1.5}
-                          style={{ transition: "r 0.12s,fill 0.12s" }}
-                        />
-                        <path
-                          d={`M ${bx} ${by - 5} L ${bx} ${by + 5} M ${bx - 5} ${by} L ${bx + 5} ${by}`}
-                          stroke={isHov ? "white" : node.color}
-                          strokeWidth={isHov ? 2.5 : 2}
-                          strokeLinecap="round"
-                          style={{
-                            pointerEvents: "none",
-                            transition: "stroke 0.12s",
-                          }}
-                        />
-                      </g>
-                    );
-                  })()}
-              </g>
-            );
-          })}
-
-          {lasso && (
-            <rect
-              x={lasso.x}
-              y={lasso.y}
-              width={lasso.w}
-              height={lasso.h}
-              fill={T.accent + "15"}
-              stroke={T.accent}
-              strokeWidth={1.5}
-              strokeDasharray="5 3"
-            />
-          )}
-          {linking && (
-            <circle
-              cx={nodes.find((n) => n.id === linking)?.x || 0}
-              cy={nodes.find((n) => n.id === linking)?.y || 0}
-              r={18}
-              fill="none"
-              stroke="#fbbf24"
-              strokeWidth={2}
-              style={{ animation: "pulse 0.8s ease infinite" }}
-            />
-          )}
-        </svg>
-
-        {/* Toolbar */}
-        {!presentMode && (
-          <div
-            style={{
-              position: "absolute",
-              top: 14,
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              background: T.panel,
-              border: `1px solid ${T.border}`,
-              borderRadius: 10,
-              padding: "3px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-            }}
+      <svg
+        ref={svgRef}
+        style={{
+          flex: 1,
+          cursor:
+            mode === "pan" || panStart
+              ? "grabbing"
+              : mode === "link"
+                ? "crosshair"
+                : "default",
+        }}
+        viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseDown={onSvgMouseDown}
+      >
+        <defs>
+          <pattern
+            id="dots"
+            width="30"
+            height="30"
+            patternUnits="userSpaceOnUse"
           >
-            <div
-              style={{
-                display: "flex",
-                gap: 1,
-                padding: "0 2px",
-                borderRight: `1px solid ${T.border}`,
-                marginRight: 4,
-              }}
+            <circle cx="15" cy="15" r="0.7" fill={CT.muted} opacity="0.25" />
+          </pattern>
+          <marker
+            id="arrowhead"
+            markerWidth="8"
+            markerHeight="8"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <path d="M0,0 L0,6 L8,3 z" fill={CT.muted} opacity="0.8" />
+          </marker>
+          <marker
+            id="arrowActive"
+            markerWidth="8"
+            markerHeight="8"
+            refX="7"
+            refY="3"
+            orient="auto"
+          >
+            <path d="M0,0 L0,6 L8,3 z" fill={CT.accent} />
+          </marker>
+          {nodes.map((n) => (
+            <radialGradient
+              key={n.id + "-g"}
+              id={`glow-${n.id}`}
+              cx="50%"
+              cy="50%"
+              r="50%"
             >
-              {[
-                ["cursor", "Select", "select", "1"],
-                ["hand", "Pan", "pan", "2"],
-                ["link", "Link", "link", "3"],
-              ].map(([ico, lab, m, key]) => (
-                <TBtn
-                  key={m}
-                  icon={ico}
-                  label={lab}
-                  active={mode === m}
-                  onClick={() => {
-                    setMode(m);
-                    setLinking(null);
-                  }}
-                  shortcut={key}
-                  T={T}
-                />
-              ))}
-            </div>
-            <TBtn
-              icon="plus"
-              label="Child"
-              onClick={() => addChild()}
-              shortcut="Tab"
-              T={T}
-            />
-            <TBtn
-              icon="trash"
-              danger
-              onClick={() => deleteNodes(multiSel)}
-              shortcut="Del"
-              T={T}
-            />
-            <TBtn
-              icon="copy"
-              label="Dup"
-              onClick={duplicateNode}
-              shortcut="⌘D"
-              T={T}
-            />
-            <div
-              style={{
-                width: 1,
-                height: 24,
-                background: T.border,
-                margin: "0 4px",
-              }}
-            />
-            <TBtn icon="undo" onClick={undo} shortcut="⌘Z" T={T} />
-            <TBtn icon="redo" onClick={redo} shortcut="⌘Y" T={T} />
-            <div
-              style={{
-                width: 1,
-                height: 24,
-                background: T.border,
-                margin: "0 4px",
-              }}
-            />
-            <TBtn
-              icon="magic"
-              label="Layout"
-              onClick={() => autoArrange("radial")}
-              T={T}
-            />
-            <TBtn icon="fit" onClick={fitAll} shortcut="0" T={T} />
-            <TBtn
-              icon="zoomin"
-              onClick={() => doZoom(0.85)}
-              shortcut="+"
-              T={T}
-            />
-            <TBtn
-              icon="zoomout"
-              onClick={() => doZoom(1.15)}
-              shortcut="-"
-              T={T}
-            />
-            <div
-              style={{
-                padding: "0 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                color: T.muted,
-                borderLeft: `1px solid ${T.border}`,
-                marginLeft: 2,
-              }}
-            >
-              {zoomLevel}%
-            </div>
-            <div
-              style={{
-                width: 1,
-                height: 24,
-                background: T.border,
-                margin: "0 4px",
-              }}
-            />
-            {/* Save button */}
-            <TBtn
-              icon="save"
-              label="Save"
-              onClick={saveNow}
-              shortcut="⌘S"
-              T={T}
-            />
-            <TBtn
-              icon="search"
-              onClick={() => setShowSearch((s) => !s)}
-              shortcut="⌘F"
-              T={T}
-            />
-            <TBtn
-              icon="chevronR"
-              onClick={() => setPanelOpen((p) => !p)}
-              T={T}
-            />
-          </div>
+              <stop offset="0%" stopColor={n.color} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={n.color} stopOpacity="0.08" />
+            </radialGradient>
+          ))}
+        </defs>
+
+        {showGrid && (
+          <rect
+            x={viewBox.x}
+            y={viewBox.y}
+            width={viewBox.w}
+            height={viewBox.h}
+            fill="url(#dots)"
+          />
         )}
 
-        {showSearch && !presentMode && (
+        {/* Group backgrounds */}
+        {groupBounds.map((g) => (
+          <g key={`grp-${g.id}`}>
+            <rect
+              x={g.x}
+              y={g.y}
+              width={g.w}
+              height={g.h}
+              rx={16}
+              fill={g.color + "14"}
+              stroke={g.color}
+              strokeWidth={1.5}
+              strokeDasharray="8 4"
+              opacity={0.7}
+            />
+            <rect
+              x={g.x + 8}
+              y={g.y - 11}
+              width={g.name.length * 7 + 16}
+              height={20}
+              rx={6}
+              fill={g.color}
+              opacity={0.9}
+            />
+            <text
+              x={g.x + 16}
+              y={g.y + 3}
+              fontSize={11}
+              fontWeight={700}
+              fill="white"
+            >
+              {g.name}
+            </text>
+          </g>
+        ))}
+
+        {/* Edges */}
+        {visibleEdges.map((edge) => {
+          const from = nodes.find((n) => n.id === edge.from),
+            to = nodes.find((n) => n.id === edge.to);
+          if (!from || !to) return null;
+          const isActive = multiSel.has(edge.from) || multiSel.has(edge.to);
+          const path = getEdgePath(from, to, edge.style || edgeStyle);
+          const mx = (from.x + to.x) / 2,
+            my = (from.y + to.y) / 2;
+          return (
+            <g key={edge.id}>
+              <path
+                d={path}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={12}
+                style={{ cursor: "pointer" }}
+                onClick={() => removeEdge(edge.id)}
+              />
+              <path
+                d={path}
+                fill="none"
+                stroke={isActive ? CT.accent : CT.muted}
+                strokeWidth={isActive ? 2 : 1.4}
+                strokeOpacity={isActive ? 1 : 0.45}
+                markerEnd={isActive ? "url(#arrowActive)" : "url(#arrowhead)"}
+                strokeDasharray={animatedEdges ? "8 4" : undefined}
+                style={
+                  animatedEdges
+                    ? { animation: "dash 0.6s linear infinite" }
+                    : undefined
+                }
+              />
+              {(edge.label || isActive) && (
+                <g>
+                  {edge.label && (
+                    <rect
+                      x={mx - edge.label.length * 3.5 - 4}
+                      y={my - 9}
+                      width={edge.label.length * 7 + 8}
+                      height={16}
+                      rx={4}
+                      fill={CT.panel}
+                      stroke={CT.border}
+                      strokeWidth={0.8}
+                    />
+                  )}
+                  {edgeLabelEdit === edge.id ? (
+                    <foreignObject
+                      x={mx - 50}
+                      y={my - 10}
+                      width={100}
+                      height={20}
+                    >
+                      <input
+                        autoFocus
+                        defaultValue={edge.label}
+                        onBlur={(e2) => {
+                          snapshot();
+                          setEdges((es) =>
+                            es.map((ed) =>
+                              ed.id === edge.id
+                                ? { ...ed, label: e2.target.value }
+                                : ed,
+                            ),
+                          );
+                          setEdgeLabelEdit(null);
+                        }}
+                        onKeyDown={(e2) => {
+                          if (e2.key === "Enter") e2.target.blur();
+                        }}
+                        style={{
+                          width: "100%",
+                          background: CT.panel,
+                          border: "none",
+                          color: CT.text,
+                          fontSize: 11,
+                          textAlign: "center",
+                          outline: "none",
+                        }}
+                      />
+                    </foreignObject>
+                  ) : (
+                    <text
+                      x={mx}
+                      y={my + 4}
+                      textAnchor="middle"
+                      fill={CT.muted}
+                      fontSize={11}
+                      style={{ cursor: "pointer" }}
+                      onDoubleClick={(e2) => {
+                        e2.stopPropagation();
+                        setEdgeLabelEdit(edge.id);
+                      }}
+                    >
+                      {edge.label || (isActive ? "···" : "")}
+                    </text>
+                  )}
+                </g>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Nodes */}
+        {visibleNodes.map((node) => {
+          const { W, H } = nodeBounds(node);
+          const isSel = multiSel.has(node.id),
+            isSearchHit = searchHits.has(node.id);
+          const isLinking = linking === node.id,
+            collapseCount = edges.filter((e) => e.from === node.id).length;
+          const hasCollapsed = node.collapsed && collapseCount > 0;
+          const isHovered =
+            hoveredNode === node.id && !dragging && mode === "select";
+          const nodeGroup = groups.find((g) => g.id === node.groupId);
+          return (
+            <g
+              key={node.id}
+              transform={`translate(${node.x - W / 2},${node.y - H / 2})`}
+              onMouseDown={(e) => onNodeMouseDown(e, node.id)}
+              onDoubleClick={(e) => onDblClick(e, node.id)}
+              onContextMenu={(e) => onContextMenu(e, node.id)}
+              onMouseEnter={() => {
+                clearTimeout(hoverLeaveTimer.current);
+                if (!dragging && mode === "select") setHoveredNode(node.id);
+              }}
+              onMouseLeave={() => {
+                hoverLeaveTimer.current = setTimeout(() => {
+                  setHoveredNode((v) => (v === node.id ? null : v));
+                  setAddBtnHover(null);
+                }, 120);
+              }}
+              style={{
+                cursor: node.locked
+                  ? "not-allowed"
+                  : dragging?.id === node.id
+                    ? "grabbing"
+                    : "grab",
+              }}
+            >
+              <rect
+                x={0}
+                y={0}
+                width={W + 44}
+                height={H}
+                fill="transparent"
+                style={{ pointerEvents: "all" }}
+              />
+              {isSel && (
+                <ellipse
+                  cx={W / 2}
+                  cy={H / 2}
+                  rx={W * 0.7}
+                  ry={H * 0.7}
+                  fill={`url(#glow-${node.id})`}
+                  style={{ pointerEvents: "none" }}
+                />
+              )}
+              {isSearchHit && (
+                <rect
+                  x={-5}
+                  y={-5}
+                  width={W + 10}
+                  height={H + 10}
+                  rx={14}
+                  fill="none"
+                  stroke="#fbbf24"
+                  strokeWidth={2}
+                  style={{ animation: "pulse 1s ease infinite" }}
+                />
+              )}
+              {isSel && (
+                <rect
+                  x={-3}
+                  y={-3}
+                  width={W + 6}
+                  height={H + 6}
+                  rx={
+                    node.shape === "pill"
+                      ? H / 2 + 3
+                      : node.shape === "circle"
+                        ? W / 2 + 3
+                        : 14
+                  }
+                  fill="none"
+                  stroke={node.color}
+                  strokeWidth={2}
+                  opacity={0.9}
+                />
+              )}
+              {/* Group indicator dot */}
+              {nodeGroup && !isSel && (
+                <circle
+                  cx={W}
+                  cy={0}
+                  r={5}
+                  fill={nodeGroup.color}
+                  opacity={0.9}
+                />
+              )}
+              {node.shape === "hexagon" ? (
+                <polygon
+                  points={`${W * 0.25},0 ${W * 0.75},0 ${W},${H / 2} ${W * 0.75},${H} ${W * 0.25},${H} 0,${H / 2}`}
+                  fill={node.color + "1a"}
+                  stroke={node.color}
+                  strokeWidth={isSel ? 2 : 1.5}
+                />
+              ) : node.shape === "diamond" ? (
+                <rect
+                  x={8}
+                  y={8}
+                  width={W - 16}
+                  height={H - 16}
+                  rx={6}
+                  fill={node.color + "1a"}
+                  stroke={node.color}
+                  strokeWidth={isSel ? 2 : 1.5}
+                  transform={`rotate(45,${W / 2},${H / 2})`}
+                />
+              ) : (
+                <rect
+                  width={W}
+                  height={H}
+                  rx={
+                    node.shape === "pill"
+                      ? H / 2
+                      : node.shape === "circle"
+                        ? W / 2
+                        : 10
+                  }
+                  fill={node.color + "18"}
+                  stroke={
+                    isSel
+                      ? node.color
+                      : isHovered
+                        ? node.color + "99"
+                        : node.color + "60"
+                  }
+                  strokeWidth={isSel ? 2 : isHovered ? 1.8 : 1.5}
+                  style={{ transition: "stroke 0.15s,stroke-width 0.15s" }}
+                />
+              )}
+              {node.image && (
+                <image
+                  href={node.image}
+                  x={4}
+                  y={4}
+                  width={W - 8}
+                  height={H * 0.55}
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              )}
+              {node.emoji && !node.image && (
+                <text
+                  x={14}
+                  y={H / 2 + 5}
+                  fontSize={14}
+                  style={{ userSelect: "none" }}
+                >
+                  {node.emoji}
+                </text>
+              )}
+              {editId === node.id ? (
+                <foreignObject
+                  x={node.emoji ? 26 : 6}
+                  y={H / 2 - 12}
+                  width={W - (node.emoji ? 32 : 12)}
+                  height={26}
+                >
+                  <input
+                    ref={editRef}
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onBlur={commitEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape") commitEdit();
+                    }}
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      color: CT.text,
+                      fontSize: node.fontSize || 14,
+                      fontWeight: node.bold ? 700 : 400,
+                      fontStyle: node.italic ? "italic" : "normal",
+                      fontFamily: node.fontFamily || "Inter",
+                      textAlign: "center",
+                    }}
+                  />
+                </foreignObject>
+              ) : (
+                <text
+                  x={node.emoji ? W / 2 + 8 : W / 2}
+                  y={
+                    H / 2 +
+                    (node.image ? H * 0.28 : 0) +
+                    (node.fontSize || 14) * 0.35
+                  }
+                  textAnchor="middle"
+                  fill={CT.text}
+                  fontSize={node.fontSize || 14}
+                  fontWeight={node.bold ? 700 : 400}
+                  fontStyle={node.italic ? "italic" : "normal"}
+                  fontFamily={node.fontFamily || "Inter"}
+                  style={{ pointerEvents: "none" }}
+                >
+                  {showLabels
+                    ? node.text.length > 22
+                      ? node.text.slice(0, 20) + "…"
+                      : node.text
+                    : ""}
+                </text>
+              )}
+              {node.tag && (
+                <text
+                  x={W - 4}
+                  y={14}
+                  textAnchor="end"
+                  fontSize={9}
+                  fill={node.color}
+                  opacity={0.9}
+                  style={{ pointerEvents: "none" }}
+                >
+                  #{node.tag}
+                </text>
+              )}
+              {node.note && <circle cx={W - 5} cy={5} r={4} fill="#f59e0b" />}
+              {node.locked && (
+                <text
+                  x={6}
+                  y={H - 5}
+                  fontSize={9}
+                  fill={CT.muted}
+                  opacity={0.7}
+                >
+                  🔒
+                </text>
+              )}
+              {hasCollapsed && (
+                <g
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    upNode("collapsed", false);
+                  }}
+                >
+                  <circle
+                    cx={W / 2}
+                    cy={H + 10}
+                    r={10}
+                    fill={node.color}
+                    opacity={0.9}
+                  />
+                  <text
+                    x={W / 2}
+                    y={H + 15}
+                    textAnchor="middle"
+                    fill="white"
+                    fontSize={10}
+                    fontWeight={700}
+                  >
+                    {collapseCount}
+                  </text>
+                </g>
+              )}
+              {isLinking && (
+                <rect
+                  x={-4}
+                  y={-4}
+                  width={W + 8}
+                  height={H + 8}
+                  rx={14}
+                  fill="none"
+                  stroke="#fbbf24"
+                  strokeWidth={3}
+                  strokeDasharray="5 3"
+                  style={{ animation: "dash 0.5s linear infinite" }}
+                />
+              )}
+              {isHovered &&
+                !node.locked &&
+                !node.collapsed &&
+                (() => {
+                  const bx = W + 20,
+                    by = H / 2,
+                    isHov = addBtnHover === node.id;
+                  return (
+                    <g
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        clearTimeout(hoverLeaveTimer.current);
+                        setAddBtnHover(node.id);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.stopPropagation();
+                        setAddBtnHover(null);
+                        hoverLeaveTimer.current = setTimeout(
+                          () =>
+                            setHoveredNode((v) => (v === node.id ? null : v)),
+                          80,
+                        );
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        addChild(node.id);
+                      }}
+                      style={{
+                        cursor: "pointer",
+                        animation: "addBtnFadeIn 0.15s ease",
+                      }}
+                    >
+                      <line
+                        x1={W}
+                        y1={by}
+                        x2={bx - (isHov ? 13 : 11)}
+                        y2={by}
+                        stroke={node.color}
+                        strokeWidth={1.5}
+                        strokeDasharray="3 2"
+                        opacity={0.45}
+                        style={{ pointerEvents: "none" }}
+                      />
+                      <circle
+                        cx={bx}
+                        cy={by}
+                        r={isHov ? 13 : 11}
+                        fill={isHov ? node.color : CT.panel}
+                        stroke={node.color}
+                        strokeWidth={isHov ? 0 : 1.5}
+                        style={{ transition: "r 0.12s,fill 0.12s" }}
+                      />
+                      <path
+                        d={`M ${bx} ${by - 5} L ${bx} ${by + 5} M ${bx - 5} ${by} L ${bx + 5} ${by}`}
+                        stroke={isHov ? "white" : node.color}
+                        strokeWidth={isHov ? 2.5 : 2}
+                        strokeLinecap="round"
+                        style={{
+                          pointerEvents: "none",
+                          transition: "stroke 0.12s",
+                        }}
+                      />
+                    </g>
+                  );
+                })()}
+            </g>
+          );
+        })}
+
+        {lasso && (
+          <rect
+            x={lasso.x}
+            y={lasso.y}
+            width={lasso.w}
+            height={lasso.h}
+            fill={CT.accent + "15"}
+            stroke={CT.accent}
+            strokeWidth={1.5}
+            strokeDasharray="5 3"
+          />
+        )}
+        {linking && (
+          <circle
+            cx={nodes.find((n) => n.id === linking)?.x || 0}
+            cy={nodes.find((n) => n.id === linking)?.y || 0}
+            r={18}
+            fill="none"
+            stroke="#fbbf24"
+            strokeWidth={2}
+            style={{ animation: "pulse 0.8s ease infinite" }}
+          />
+        )}
+      </svg>
+
+      {/* ── Toolbar ── */}
+      {!presentMode && (
+        <div
+          style={{
+            position: "absolute",
+            top: 14,
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            background: CT.panel,
+            border: `1px solid ${CT.border}`,
+            borderRadius: 10,
+            padding: "3px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+          }}
+        >
           <div
             style={{
-              position: "absolute",
-              top: 70,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: T.panel,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
               display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 14px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+              gap: 1,
+              padding: "0 2px",
+              borderRight: `1px solid ${CT.border}`,
+              marginRight: 4,
             }}
           >
-            <Icon name="search" size={14} />
-            <input
-              autoFocus
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Search nodes…"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setShowSearch(false);
-                  setSearchQ("");
-                }
-              }}
+            {[
+              ["cursor", "Select", "select", "1"],
+              ["hand", "Pan", "pan", "2"],
+              ["link", "Link", "link", "3"],
+            ].map(([ico, lab, m, key]) => (
+              <TBtn
+                key={m}
+                icon={ico}
+                label={lab}
+                active={mode === m}
+                onClick={() => {
+                  setMode(m);
+                  setLinking(null);
+                }}
+                shortcut={key}
+                T={CT}
+              />
+            ))}
+          </div>
+          <TBtn
+            icon="plus"
+            label="Child"
+            onClick={() => addChild()}
+            shortcut="Tab"
+            T={CT}
+          />
+          <TBtn
+            icon="trash"
+            danger
+            onClick={() => deleteNodes(multiSel)}
+            shortcut="Del"
+            T={CT}
+          />
+          <TBtn
+            icon="copy"
+            label="Dup"
+            onClick={duplicateNode}
+            shortcut="⌘D"
+            T={CT}
+          />
+          <div
+            style={{
+              width: 1,
+              height: 24,
+              background: CT.border,
+              margin: "0 4px",
+            }}
+          />
+          <TBtn icon="undo" onClick={undo} shortcut="⌘Z" T={CT} />
+          <TBtn icon="redo" onClick={redo} shortcut="⌘Y" T={CT} />
+          <TBtn
+            icon="history"
+            onClick={() => setShowHistory((h) => !h)}
+            active={showHistory}
+            T={CT}
+            badge={history.length > 0}
+          />
+          <div
+            style={{
+              width: 1,
+              height: 24,
+              background: CT.border,
+              margin: "0 4px",
+            }}
+          />
+          <TBtn
+            icon="magic"
+            label="Layout"
+            onClick={() => autoArrange("radial")}
+            T={CT}
+          />
+          <TBtn icon="fit" onClick={fitAll} shortcut="0" T={CT} />
+          <TBtn
+            icon="zoomin"
+            onClick={() => doZoom(0.85)}
+            shortcut="+"
+            T={CT}
+          />
+          <TBtn
+            icon="zoomout"
+            onClick={() => doZoom(1.15)}
+            shortcut="-"
+            T={CT}
+          />
+          <div
+            style={{
+              padding: "0 10px",
+              fontSize: 12,
+              fontWeight: 600,
+              color: CT.muted,
+              borderLeft: `1px solid ${CT.border}`,
+              marginLeft: 2,
+            }}
+          >
+            {zoomLevel}%
+          </div>
+          <div
+            style={{
+              width: 1,
+              height: 24,
+              background: CT.border,
+              margin: "0 4px",
+            }}
+          />
+          {/* Theme switcher button */}
+          <div style={{ position: "relative" }}>
+            <TBtn
+              icon="theme"
+              onClick={() => setShowThemes((s) => !s)}
+              active={showThemes}
+              T={CT}
+            />
+            {showThemes && (
+              <ThemeSwitcher
+                T={CT}
+                theme={selectedTheme}
+                onTheme={(t) => setSelectedTheme(t)}
+                onClose={() => setShowThemes(false)}
+              />
+            )}
+          </div>
+          {/* Export PNG */}
+          <TBtn icon="export" onClick={exportPNG} T={CT} />
+          <TBtn
+            icon="save"
+            label="Save"
+            onClick={saveNow}
+            shortcut="⌘S"
+            T={CT}
+          />
+          <TBtn
+            icon="search"
+            onClick={() => setShowSearch((s) => !s)}
+            shortcut="⌘F"
+            T={CT}
+          />
+          <TBtn
+            icon="chevronR"
+            onClick={() => setPanelOpen((p) => !p)}
+            T={CT}
+          />
+        </div>
+      )}
+
+      {/* History Panel */}
+      {showHistory && !presentMode && (
+        <HistoryPanel
+          history={history}
+          redoStack={redoStack}
+          T={CT}
+          onUndo={undo}
+          onRedo={redo}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      {/* Search */}
+      {showSearch && !presentMode && (
+        <div
+          style={{
+            position: "absolute",
+            top: 70,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: CT.panel,
+            border: `1px solid ${CT.border}`,
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 14px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+          }}
+        >
+          <Icon name="search" size={14} />
+          <input
+            autoFocus
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Search nodes…"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowSearch(false);
+                setSearchQ("");
+              }
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: CT.text,
+              fontSize: 13,
+              width: 200,
+            }}
+          />
+          {searchHits.size > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: CT.muted }}>
+                {searchHits.size} found
+              </span>
+              {[...searchHits]
+                .map((id, i) => (
+                  <button
+                    key={id}
+                    onClick={() => focusNode(id)}
+                    style={{
+                      fontSize: 11,
+                      background: CT.surface,
+                      border: `1px solid ${CT.border}`,
+                      color: CT.accent,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {nodes.find((n) => n.id === id)?.text?.slice(0, 12) ||
+                      `#${i + 1}`}
+                  </button>
+                ))
+                .slice(0, 3)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Status bar */}
+      {!presentMode && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 48,
+            right: showMini ? 190 : 20,
+            background: CT.panel,
+            border: `1px solid ${CT.border}`,
+            borderRadius: 7,
+            display: "flex",
+            alignItems: "center",
+            gap: 0,
+            fontSize: 11,
+            color: CT.muted,
+            overflow: "hidden",
+          }}
+        >
+          <SyncBadge status={syncStatus} T={CT} />
+          {[
+            `${nodes.length} nodes`,
+            `${edges.length} edges`,
+            `${groups.length} groups`,
+            multiSel.size > 1 ? `${multiSel.size} selected` : "",
+          ]
+            .filter(Boolean)
+            .map((v, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "6px 12px",
+                  borderLeft: `1px solid ${CT.border}`,
+                }}
+              >
+                {v}
+              </div>
+            ))}
+          <div
+            style={{
+              padding: "6px 12px",
+              borderLeft: `1px solid ${CT.border}`,
+            }}
+          >
+            <button
+              onClick={() => setShowGrid((g) => !g)}
               style={{
                 background: "transparent",
                 border: "none",
-                outline: "none",
-                color: T.text,
-                fontSize: 13,
-                width: 200,
-              }}
-            />
-            {searchHits.size > 0 && (
-              <span style={{ fontSize: 11, color: T.muted }}>
-                {searchHits.size} found
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Status bar */}
-        {!presentMode && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 16,
-              right: showMini ? 190 : 20,
-              background: T.panel,
-              border: `1px solid ${T.border}`,
-              borderRadius: 7,
-              display: "flex",
-              alignItems: "center",
-              gap: 0,
-              fontSize: 11,
-              color: T.muted,
-              overflow: "hidden",
-            }}
-          >
-            <SyncBadge status={syncStatus} T={T} />
-            {[
-              [`${nodes.length} nodes`],
-              [`${edges.length} edges`],
-              [multiSel.size > 1 ? `${multiSel.size} selected` : ""],
-            ]
-              .filter(([v]) => v)
-              .map(([v], i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "6px 12px",
-                    borderLeft: `1px solid ${T.border}`,
-                  }}
-                >
-                  {v}
-                </div>
-              ))}
-            <div
-              style={{
-                padding: "6px 12px",
-                borderLeft: `1px solid ${T.border}`,
+                color: showGrid ? CT.accent : CT.muted,
+                cursor: "pointer",
+                fontSize: 11,
               }}
             >
-              <button
-                onClick={() => setShowGrid((g) => !g)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: showGrid ? T.accent : T.muted,
-                  cursor: "pointer",
-                  fontSize: 11,
-                }}
-              >
-                Grid
-              </button>
-            </div>
-            <div
-              style={{
-                padding: "6px 12px",
-                borderLeft: `1px solid ${T.border}`,
-              }}
-            >
-              <button
-                onClick={() => setShowMini((m) => !m)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: showMini ? T.accent : T.muted,
-                  cursor: "pointer",
-                  fontSize: 11,
-                }}
-              >
-                Map
-              </button>
-            </div>
+              Grid
+            </button>
           </div>
-        )}
-
-        {showMini && !presentMode && (
-          <Minimap nodes={visibleNodes} viewBox={viewBox} T={T} />
-        )}
-
-        {mode === "link" && !presentMode && (
           <div
             style={{
-              position: "absolute",
-              bottom: 64,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: T.panel,
-              border: `1px solid ${T.border}`,
-              color: "#fbbf24",
-              borderRadius: 8,
-              padding: "7px 16px",
-              fontSize: 12,
-              fontWeight: 500,
+              padding: "6px 12px",
+              borderLeft: `1px solid ${CT.border}`,
             }}
           >
-            {linking
-              ? "Click destination node to connect"
-              : "Click source node to start linking"}{" "}
-            · Esc to cancel
+            <button
+              onClick={() => setShowMini((m) => !m)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: showMini ? CT.accent : CT.muted,
+                cursor: "pointer",
+                fontSize: 11,
+              }}
+            >
+              Map
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {showMini && !presentMode && (
+        <Minimap nodes={visibleNodes} viewBox={viewBox} T={CT} />
+      )}
+
+      {mode === "link" && !presentMode && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 96,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: CT.panel,
+            border: `1px solid ${CT.border}`,
+            color: "#fbbf24",
+            borderRadius: 8,
+            padding: "7px 16px",
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          {linking
+            ? "Click destination node to connect"
+            : "Click source node to start linking"}{" "}
+          · Esc to cancel
+        </div>
+      )}
 
       {/* ── Right Panel ── */}
       {panelOpen && !presentMode && (
         <div
           style={{
-            width: 260,
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 268,
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            background: T.panel,
-            borderLeft: `1px solid ${T.border}`,
+            background: CT.panel,
+            borderLeft: `1px solid ${CT.border}`,
             overflow: "hidden",
           }}
         >
           <div
             style={{
               display: "flex",
-              borderBottom: `1px solid ${T.border}`,
+              borderBottom: `1px solid ${CT.border}`,
               flexShrink: 0,
             }}
           >
             {[
               ["node", "Node"],
+              ["connect", "Links"],
+              ["group", "Groups"],
               ["style", "Style"],
               ["map", "Map"],
             ].map(([t, l]) => (
@@ -2745,16 +4695,16 @@ export default function MindMapPro({ mapId: propMapId }) {
                 onClick={() => setPanelTab(t)}
                 style={{
                   flex: 1,
-                  padding: "11px 0",
+                  padding: "10px 0",
                   border: "none",
                   cursor: "pointer",
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 600,
-                  background: panelTab === t ? T.surface : "transparent",
-                  color: panelTab === t ? T.text : T.muted,
+                  background: panelTab === t ? CT.surface : "transparent",
+                  color: panelTab === t ? CT.text : CT.muted,
                   borderBottom:
                     panelTab === t
-                      ? `2px solid ${T.accent}`
+                      ? `2px solid ${CT.accent}`
                       : "2px solid transparent",
                 }}
               >
@@ -2762,18 +4712,18 @@ export default function MindMapPro({ mapId: propMapId }) {
               </button>
             ))}
           </div>
-
           <div style={{ flex: 1, overflowY: "auto" }}>
+            {/* ── NODE TAB ── */}
             {panelTab === "node" && selectedNode && (
               <>
-                <Section title="Label & Content" T={T}>
+                <Section title="Label & Content" T={CT}>
                   <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                     <input
                       value={selectedNode.emoji || ""}
                       onChange={(e) => upNode("emoji", e.target.value)}
                       placeholder="😀"
                       style={{
-                        ...inputStyle(T),
+                        ...inputStyle(CT),
                         width: 44,
                         textAlign: "center",
                         flexShrink: 0,
@@ -2782,7 +4732,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     <input
                       value={selectedNode.text}
                       onChange={(e) => upNode("text", e.target.value)}
-                      style={{ ...inputStyle(T), flex: 1 }}
+                      style={{ ...inputStyle(CT), flex: 1 }}
                     />
                   </div>
                   <textarea
@@ -2791,7 +4741,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     placeholder="Add a note…"
                     rows={3}
                     style={{
-                      ...inputStyle(T),
+                      ...inputStyle(CT),
                       resize: "vertical",
                       lineHeight: 1.5,
                     }}
@@ -2801,12 +4751,11 @@ export default function MindMapPro({ mapId: propMapId }) {
                       value={selectedNode.tag || ""}
                       onChange={(e) => upNode("tag", e.target.value)}
                       placeholder="#tag"
-                      style={{ ...inputStyle(T) }}
+                      style={{ ...inputStyle(CT) }}
                     />
                   </div>
                 </Section>
-
-                <Section title="Color" T={T}>
+                <Section title="Color" T={CT}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {NODE_COLORS.map((c) => (
                       <button
@@ -2844,7 +4793,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     }}
                   >
                     <label
-                      style={{ fontSize: 11, color: T.muted, flexShrink: 0 }}
+                      style={{ fontSize: 11, color: CT.muted, flexShrink: 0 }}
                     >
                       Custom
                     </label>
@@ -2855,7 +4804,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                       style={{
                         width: 36,
                         height: 28,
-                        border: `1px solid ${T.border}`,
+                        border: `1px solid ${CT.border}`,
                         borderRadius: 6,
                         padding: 2,
                         background: "transparent",
@@ -2864,13 +4813,12 @@ export default function MindMapPro({ mapId: propMapId }) {
                     />
                   </div>
                 </Section>
-
-                <Section title="Typography" T={T}>
+                <Section title="Typography" T={CT}>
                   <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                     <label
                       style={{
                         fontSize: 11,
-                        color: T.muted,
+                        color: CT.muted,
                         width: 70,
                         flexShrink: 0,
                         paddingTop: 8,
@@ -2884,7 +4832,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                       max={36}
                       value={selectedNode.fontSize || 14}
                       onChange={(e) => upNode("fontSize", +e.target.value)}
-                      style={{ flex: 1, accentColor: T.accent }}
+                      style={{ flex: 1, accentColor: CT.accent }}
                     />
                   </div>
                   <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -2898,9 +4846,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         style={{
                           padding: "5px 14px",
                           borderRadius: 6,
-                          border: `1px solid ${T.border}`,
-                          background: selectedNode[k] ? T.accent : T.surface,
-                          color: selectedNode[k] ? "white" : T.text,
+                          border: `1px solid ${CT.border}`,
+                          background: selectedNode[k] ? CT.accent : CT.surface,
+                          color: selectedNode[k] ? "white" : CT.text,
                           fontSize: 13,
                           fontWeight: 700,
                           cursor: "pointer",
@@ -2913,7 +4861,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                   <select
                     value={selectedNode.fontFamily || "Inter"}
                     onChange={(e) => upNode("fontFamily", e.target.value)}
-                    style={{ ...inputStyle(T) }}
+                    style={{ ...inputStyle(CT) }}
                   >
                     {FONT_FAMILIES.map((f) => (
                       <option key={f} value={f}>
@@ -2922,8 +4870,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     ))}
                   </select>
                 </Section>
-
-                <Section title="Shape" T={T}>
+                <Section title="Shape" T={CT}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {["rounded", "pill", "diamond", "hexagon", "circle"].map(
                       (s) => (
@@ -2933,12 +4880,13 @@ export default function MindMapPro({ mapId: propMapId }) {
                           style={{
                             padding: "5px 12px",
                             borderRadius: 6,
-                            border: `1px solid ${selectedNode.shape === s ? T.accent : T.border}`,
+                            border: `1px solid ${selectedNode.shape === s ? CT.accent : CT.border}`,
                             background:
                               selectedNode.shape === s
-                                ? T.accent + "22"
-                                : T.surface,
-                            color: selectedNode.shape === s ? T.text : T.muted,
+                                ? CT.accent + "22"
+                                : CT.surface,
+                            color:
+                              selectedNode.shape === s ? CT.text : CT.muted,
                             fontSize: 11,
                             cursor: "pointer",
                           }}
@@ -2949,14 +4897,13 @@ export default function MindMapPro({ mapId: propMapId }) {
                     )}
                   </div>
                 </Section>
-
-                <Section title="Image URL" T={T} defaultOpen={false}>
+                <Section title="Image URL" T={CT} defaultOpen={false}>
                   <div style={{ display: "flex", gap: 6 }}>
                     <input
                       value={imageInput}
                       onChange={(e) => setImageInput(e.target.value)}
                       placeholder="https://…"
-                      style={{ ...inputStyle(T), flex: 1 }}
+                      style={{ ...inputStyle(CT), flex: 1 }}
                     />
                     <button
                       onClick={() => {
@@ -2967,9 +4914,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                       style={{
                         padding: "0 12px",
                         borderRadius: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
-                        color: T.text,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
+                        color: CT.text,
                         cursor: "pointer",
                         fontSize: 12,
                       }}
@@ -2985,8 +4932,8 @@ export default function MindMapPro({ mapId: propMapId }) {
                         width: "100%",
                         padding: "5px",
                         borderRadius: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
                         color: "#ef4444",
                         cursor: "pointer",
                         fontSize: 11,
@@ -2996,8 +4943,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     </button>
                   )}
                 </Section>
-
-                <Section title="Options" T={T} defaultOpen={false}>
+                <Section title="Options" T={CT} defaultOpen={false}>
                   {[
                     ["locked", "🔒 Locked", "Lock node"],
                     ["collapsed", "⬇ Collapsed", "Hide children"],
@@ -3013,7 +4959,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     >
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 500 }}>{l}</div>
-                        <div style={{ fontSize: 10, color: T.muted }}>
+                        <div style={{ fontSize: 10, color: CT.muted }}>
                           {desc}
                         </div>
                       </div>
@@ -3025,7 +4971,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                           borderRadius: 11,
                           border: "none",
                           cursor: "pointer",
-                          background: selectedNode[k] ? T.accent : "#333",
+                          background: selectedNode[k] ? CT.accent : "#333",
                           position: "relative",
                           transition: "background 0.2s",
                         }}
@@ -3055,9 +5001,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         flex: 1,
                         padding: "8px",
                         borderRadius: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
-                        color: T.text,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
+                        color: CT.text,
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 500,
@@ -3071,9 +5017,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         flex: 1,
                         padding: "8px",
                         borderRadius: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
-                        color: T.text,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
+                        color: CT.text,
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 500,
@@ -3107,7 +5053,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                 style={{
                   padding: 24,
                   textAlign: "center",
-                  color: T.muted,
+                  color: CT.muted,
                   fontSize: 13,
                 }}
               >
@@ -3115,9 +5061,190 @@ export default function MindMapPro({ mapId: propMapId }) {
               </div>
             )}
 
+            {/* ── CONNECTIONS TAB ── */}
+            {panelTab === "connect" && (
+              <div style={{ padding: "14px 16px" }}>
+                {selectedNode ? (
+                  <>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: CT.text,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {selectedNode.emoji} {selectedNode.text}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: CT.muted,
+                        marginBottom: 12,
+                      }}
+                    >
+                      All connections for this node
+                    </div>
+                    <ConnectionsList
+                      nodeId={selected}
+                      nodes={nodes}
+                      edges={edges}
+                      onFocus={focusNode}
+                      T={CT}
+                    />
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      color: CT.muted,
+                      fontSize: 12,
+                      paddingTop: 16,
+                    }}
+                  >
+                    Select a node to see its connections
+                  </div>
+                )}
+                <div
+                  style={{
+                    marginTop: 20,
+                    padding: "12px",
+                    borderRadius: 8,
+                    border: `1px solid ${CT.border}`,
+                    background: CT.surface,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: CT.muted,
+                      marginBottom: 8,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ALL EDGES ({edges.length})
+                  </div>
+                  <div
+                    style={{
+                      maxHeight: 180,
+                      overflowY: "auto",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                    }}
+                  >
+                    {edges.map((e) => {
+                      const from = nodes.find((n) => n.id === e.from),
+                        to = nodes.find((n) => n.id === e.to);
+                      return (
+                        <div
+                          key={e.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 11,
+                            color: CT.muted,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: from?.color || CT.muted,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {from?.text?.slice(0, 10) || "?"}
+                          </span>
+                          <span style={{ opacity: 0.5 }}>→</span>
+                          <div
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: to?.color || CT.muted,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {to?.text?.slice(0, 10) || "?"}
+                          </span>
+                          <button
+                            onClick={() => removeEdge(e.id)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              fontSize: 10,
+                              padding: "0 4px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {edges.length === 0 && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: CT.muted,
+                          textAlign: "center",
+                          padding: "8px 0",
+                        }}
+                      >
+                        No edges yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── GROUPS TAB ── */}
+            {panelTab === "group" && (
+              <div style={{ padding: "14px 16px" }}>
+                <GroupsPanel
+                  nodes={nodes}
+                  groups={groups}
+                  multiSel={multiSel}
+                  T={CT}
+                  onGroup={createGroup}
+                  onUngroup={ungroupGroup}
+                  onSelectGroup={selectGroup}
+                  onDeleteGroup={deleteGroup}
+                  onRenameGroup={(gid, name) => {
+                    setGroups((gs) =>
+                      gs.map((g) => (g.id === gid ? { ...g, name } : g)),
+                    );
+                  }}
+                />
+              </div>
+            )}
+
+            {/* ── STYLE TAB ── */}
             {panelTab === "style" && (
               <>
-                <Section title="Edge Style" T={T}>
+                <Section title="Edge Style" T={CT}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {EDGE_STYLES.map((s) => (
                       <button
@@ -3126,10 +5253,10 @@ export default function MindMapPro({ mapId: propMapId }) {
                         style={{
                           padding: "5px 12px",
                           borderRadius: 6,
-                          border: `1px solid ${edgeStyle === s ? T.accent : T.border}`,
+                          border: `1px solid ${edgeStyle === s ? CT.accent : CT.border}`,
                           background:
-                            edgeStyle === s ? T.accent + "22" : T.surface,
-                          color: edgeStyle === s ? T.text : T.muted,
+                            edgeStyle === s ? CT.accent + "22" : CT.surface,
+                          color: edgeStyle === s ? CT.text : CT.muted,
                           fontSize: 11,
                           cursor: "pointer",
                         }}
@@ -3146,7 +5273,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                       justifyContent: "space-between",
                     }}
                   >
-                    <span style={{ fontSize: 12, color: T.muted }}>
+                    <span style={{ fontSize: 12, color: CT.muted }}>
                       Animated edges
                     </span>
                     <button
@@ -3157,7 +5284,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                         borderRadius: 11,
                         border: "none",
                         cursor: "pointer",
-                        background: animatedEdges ? T.accent : "#333",
+                        background: animatedEdges ? CT.accent : "#333",
                         position: "relative",
                         transition: "background 0.2s",
                       }}
@@ -3177,7 +5304,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     </button>
                   </div>
                 </Section>
-                <Section title="Auto-Layout" T={T}>
+                <Section title="Auto-Layout" T={CT}>
                   <div style={{ display: "flex", gap: 6 }}>
                     {[
                       ["Radial", "radial"],
@@ -3190,9 +5317,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                           flex: 1,
                           padding: "8px",
                           borderRadius: 6,
-                          border: `1px solid ${T.border}`,
-                          background: T.surface,
-                          color: T.text,
+                          border: `1px solid ${CT.border}`,
+                          background: CT.surface,
+                          color: CT.text,
                           cursor: "pointer",
                           fontSize: 12,
                           fontWeight: 500,
@@ -3203,7 +5330,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     ))}
                   </div>
                 </Section>
-                <Section title="Color Palette" T={T}>
+                <Section title="Color Palette" T={CT}>
                   {Object.keys(PALETTES).map((p) => (
                     <button
                       key={p}
@@ -3216,8 +5343,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         padding: "7px 10px",
                         borderRadius: 6,
                         marginBottom: 4,
-                        border: `1px solid ${palette === p ? T.accent : T.border}`,
-                        background: palette === p ? T.accent + "15" : T.surface,
+                        border: `1px solid ${palette === p ? CT.accent : CT.border}`,
+                        background:
+                          palette === p ? CT.accent + "15" : CT.surface,
                         cursor: "pointer",
                       }}
                     >
@@ -3234,11 +5362,11 @@ export default function MindMapPro({ mapId: propMapId }) {
                           />
                         ))}
                       </div>
-                      <span style={{ fontSize: 12, color: T.text }}>{p}</span>
+                      <span style={{ fontSize: 12, color: CT.text }}>{p}</span>
                     </button>
                   ))}
                 </Section>
-                <Section title="Canvas" T={T}>
+                <Section title="Canvas" T={CT}>
                   {[
                     ["Show grid", showGrid, setShowGrid],
                     ["Show labels", showLabels, setShowLabels],
@@ -3254,7 +5382,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                         marginBottom: 10,
                       }}
                     >
-                      <span style={{ fontSize: 12, color: T.muted }}>{l}</span>
+                      <span style={{ fontSize: 12, color: CT.muted }}>{l}</span>
                       <button
                         onClick={() => set((v) => !v)}
                         style={{
@@ -3263,7 +5391,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                           borderRadius: 11,
                           border: "none",
                           cursor: "pointer",
-                          background: val ? T.accent : "#333",
+                          background: val ? CT.accent : "#333",
                           position: "relative",
                           transition: "background 0.2s",
                         }}
@@ -3287,60 +5415,76 @@ export default function MindMapPro({ mapId: propMapId }) {
               </>
             )}
 
+            {/* ── MAP TAB ── */}
             {panelTab === "map" && (
               <>
-                <Section title="Theme" T={T}>
-                  {Object.keys(THEMES).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        padding: "8px 10px",
-                        borderRadius: 6,
-                        marginBottom: 4,
-                        border: `1px solid ${theme === t ? T.accent : T.border}`,
-                        background: theme === t ? T.accent + "18" : T.surface,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span
+                <Section title="Theme" T={CT}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 6,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {Object.keys(THEMES).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setSelectedTheme(t)}
                         style={{
-                          fontSize: 12,
-                          color: T.text,
-                          fontWeight: theme === t ? 600 : 400,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 3,
+                          padding: "6px 8px",
+                          borderRadius: 8,
+                          border: `1px solid ${selectedTheme === t ? CT.accent : CT.border}`,
+                          background:
+                            selectedTheme === t ? CT.accent + "18" : CT.surface,
+                          cursor: "pointer",
+                          minWidth: 56,
                         }}
                       >
-                        {t}
-                      </span>
-                      <div
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: "50%",
-                          background: THEMES[t].accent,
-                        }}
-                      />
-                    </button>
-                  ))}
+                        <div style={{ display: "flex", gap: 2 }}>
+                          {[THEMES[t].bg, THEMES[t].accent, THEMES[t].text].map(
+                            (c, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 2,
+                                  background: c,
+                                }}
+                              />
+                            ),
+                          )}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            color: selectedTheme === t ? CT.accent : CT.muted,
+                            fontWeight: selectedTheme === t ? 700 : 400,
+                          }}
+                        >
+                          {t}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </Section>
-
-                {/* Map info */}
                 {mapId && (
-                  <Section title="Sync" T={T}>
+                  <Section title="Sync" T={CT}>
                     <div
                       style={{
                         fontSize: 11,
-                        color: T.muted,
+                        color: CT.muted,
                         marginBottom: 8,
                         wordBreak: "break-all",
                       }}
                     >
                       Map ID:{" "}
-                      <span style={{ color: T.text, fontFamily: "monospace" }}>
+                      <span style={{ color: CT.text, fontFamily: "monospace" }}>
                         {mapId}
                       </span>
                     </div>
@@ -3350,9 +5494,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         width: "100%",
                         padding: "8px",
                         borderRadius: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
-                        color: T.text,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
+                        color: CT.text,
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 500,
@@ -3362,46 +5506,16 @@ export default function MindMapPro({ mapId: propMapId }) {
                         gap: 6,
                       }}
                     >
-                      <Icon name="save" size={13} /> Save Now{" "}
-                      <kbd
-                        style={{
-                          fontSize: 10,
-                          background: T.panel,
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          border: `1px solid ${T.border}`,
-                        }}
-                      >
-                        ⌘S
-                      </kbd>
-                    </button>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem("mindmap_id");
-                        window.location.reload();
-                      }}
-                      style={{
-                        width: "100%",
-                        marginTop: 6,
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        background: "rgba(239,68,68,0.05)",
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: 12,
-                      }}
-                    >
-                      New Map
+                      <Icon name="save" size={13} /> Save Now
                     </button>
                   </Section>
                 )}
-
-                <Section title="Export" T={T}>
+                <Section title="Export" T={CT}>
                   {[
                     ["⬇ JSON", "json", exportJSON],
                     ["⬇ Markdown", "md", exportMarkdown],
                     ["⬇ SVG", "svg", exportSVG],
+                    ["⬇ PNG Image", "png", exportPNG],
                   ].map(([l, k, fn]) => (
                     <button
                       key={k}
@@ -3411,9 +5525,9 @@ export default function MindMapPro({ mapId: propMapId }) {
                         padding: "8px",
                         borderRadius: 6,
                         marginBottom: 6,
-                        border: `1px solid ${T.border}`,
-                        background: T.surface,
-                        color: T.text,
+                        border: `1px solid ${CT.border}`,
+                        background: CT.surface,
+                        color: CT.text,
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 500,
@@ -3424,16 +5538,16 @@ export default function MindMapPro({ mapId: propMapId }) {
                     </button>
                   ))}
                 </Section>
-                <Section title="Import" T={T}>
+                <Section title="Import" T={CT}>
                   <label
                     style={{
                       display: "block",
                       width: "100%",
                       padding: "8px",
                       borderRadius: 6,
-                      border: `1px solid ${T.border}`,
-                      background: T.surface,
-                      color: T.text,
+                      border: `1px solid ${CT.border}`,
+                      background: CT.surface,
+                      color: CT.text,
                       cursor: "pointer",
                       fontSize: 12,
                       fontWeight: 500,
@@ -3449,10 +5563,11 @@ export default function MindMapPro({ mapId: propMapId }) {
                     />
                   </label>
                 </Section>
-                <Section title="Stats" T={T} defaultOpen={false}>
+                <Section title="Stats" T={CT} defaultOpen={false}>
                   {[
                     ["Nodes", nodes.length],
                     ["Edges", edges.length],
+                    ["Groups", groups.length],
                     ["History", history.length],
                     ["Selected", multiSel.size],
                   ].map(([l, v]) => (
@@ -3462,19 +5577,23 @@ export default function MindMapPro({ mapId: propMapId }) {
                         display: "flex",
                         justifyContent: "space-between",
                         padding: "5px 0",
-                        borderBottom: `1px solid ${T.border}`,
+                        borderBottom: `1px solid ${CT.border}`,
                       }}
                     >
-                      <span style={{ fontSize: 12, color: T.muted }}>{l}</span>
+                      <span style={{ fontSize: 12, color: CT.muted }}>{l}</span>
                       <span
-                        style={{ fontSize: 12, fontWeight: 600, color: T.text }}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: CT.text,
+                        }}
                       >
                         {v}
                       </span>
                     </div>
                   ))}
                 </Section>
-                <Section title="Keyboard Shortcuts" T={T} defaultOpen={false}>
+                <Section title="Keyboard Shortcuts" T={CT} defaultOpen={false}>
                   {[
                     ["Tab", "Add child"],
                     ["Del", "Delete node"],
@@ -3484,6 +5603,7 @@ export default function MindMapPro({ mapId: propMapId }) {
                     ["⌘A", "Select all"],
                     ["⌘F", "Search"],
                     ["⌘S", "Save"],
+                    ["⌘G", "Group selected"],
                     ["1/2/3", "Select/Pan/Link"],
                     ["0", "Fit all"],
                     ["+/-", "Zoom"],
@@ -3496,18 +5616,18 @@ export default function MindMapPro({ mapId: propMapId }) {
                         display: "flex",
                         justifyContent: "space-between",
                         padding: "4px 0",
-                        borderBottom: `1px solid ${T.border}`,
+                        borderBottom: `1px solid ${CT.border}`,
                       }}
                     >
-                      <span style={{ fontSize: 11, color: T.muted }}>{v}</span>
+                      <span style={{ fontSize: 11, color: CT.muted }}>{v}</span>
                       <kbd
                         style={{
                           fontSize: 10,
-                          color: T.text,
-                          background: T.surface,
+                          color: CT.text,
+                          background: CT.surface,
                           padding: "2px 6px",
                           borderRadius: 4,
-                          border: `1px solid ${T.border}`,
+                          border: `1px solid ${CT.border}`,
                         }}
                       >
                         {k}
@@ -3526,11 +5646,11 @@ export default function MindMapPro({ mapId: propMapId }) {
           x={contextMenu.x}
           y={contextMenu.y}
           items={ctxItems}
-          T={T}
+          T={CT}
           onClose={() => setContextMenu(null)}
         />
       )}
-      <ToastStack toasts={toasts} T={T} />
+      <ToastStack toasts={toasts} T={CT} />
 
       {presentMode && (
         <div style={{ position: "fixed", top: 12, right: 12, zIndex: 9999 }}>
@@ -3539,9 +5659,9 @@ export default function MindMapPro({ mapId: propMapId }) {
             style={{
               padding: "6px 16px",
               borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: T.panel,
-              color: T.text,
+              border: `1px solid ${CT.border}`,
+              background: CT.panel,
+              color: CT.text,
               fontSize: 12,
               cursor: "pointer",
               fontWeight: 600,
@@ -3551,6 +5671,281 @@ export default function MindMapPro({ mapId: propMapId }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function MindMapPro({ mapId: propMapId }) {
+  const [mapId, setMapId] = useState(propMapId || null);
+  const [loadState, setLoadState] = useState("loading");
+  const [theme, setTheme] = useState("Obsidian");
+  const [presentMode, setPresentMode] = useState(false);
+  const T = THEMES[theme];
+
+  const [pages, setPages] = useState([]);
+  const [activePageId, setActivePageId] = useState(null);
+
+  useEffect(() => {
+    const init = async () => {
+      setLoadState("loading");
+      try {
+        let id = mapId;
+        if (!id) {
+          const saved = localStorage.getItem("mindmap_id");
+          if (saved) {
+            id = saved;
+          } else {
+            const res = await api.createMap("My Mind Map");
+            if (!res.success) throw new Error(res.message);
+            id = res.map._id;
+            localStorage.setItem("mindmap_id", id);
+          }
+          setMapId(id);
+        }
+        const res = await api.getMap(id);
+        if (!res.success) throw new Error(res.message);
+
+        const savedPages = (() => {
+          try {
+            return (
+              JSON.parse(localStorage.getItem(`mindmap_pages_${id}`)) || null
+            );
+          } catch {
+            return null;
+          }
+        })();
+
+        if (savedPages && savedPages.length > 0) {
+          const merged = savedPages.map((p, i) =>
+            i === 0
+              ? {
+                  ...p,
+                  nodes: res.map.nodes,
+                  edges: res.map.edges,
+                  groups: p.groups || [],
+                  emoji: p.emoji || "📄",
+                  color: p.color || PAGE_COLORS[0],
+                }
+              : {
+                  ...p,
+                  nodes: p.nodes ?? [],
+                  edges: p.edges ?? [],
+                  groups: p.groups || [],
+                  emoji: p.emoji || "📄",
+                  color: p.color || PAGE_COLORS[0],
+                },
+          );
+          setPages(merged);
+          setActivePageId(savedPages[0].id);
+        } else {
+          const firstPageId = uid();
+          setPages([
+            {
+              id: firstPageId,
+              title: "Page 1",
+              nodes: res.map.nodes,
+              edges: res.map.edges,
+              groups: [],
+              emoji: "📄",
+              color: PAGE_COLORS[0],
+            },
+          ]);
+          setActivePageId(firstPageId);
+        }
+        setLoadState("ready");
+      } catch (err) {
+        console.error("MindMap init error:", err);
+        setLoadState("error");
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!mapId || !pages.length) return;
+    const toSave = pages.map((p) => ({
+      id: p.id,
+      title: p.title,
+      emoji: p.emoji || "📄",
+      color: p.color || PAGE_COLORS[0],
+      nodes: p.nodes,
+      edges: p.edges,
+      groups: p.groups || [],
+    }));
+    localStorage.setItem(`mindmap_pages_${mapId}`, JSON.stringify(toSave));
+  }, [pages, mapId]);
+
+  const addPage = (template, name, emoji, color) => {
+    const newId = uid();
+    const title = name || `Page ${pages.length + 1}`;
+    const tpl = template || PAGE_TEMPLATES[0];
+    setPages((ps) => [
+      ...ps,
+      {
+        id: newId,
+        title,
+        nodes: tpl.nodes(title),
+        edges: tpl.edges(),
+        groups: [],
+        emoji: emoji || tpl.emoji || "📄",
+        color: color || PAGE_COLORS[pages.length % PAGE_COLORS.length],
+      },
+    ]);
+    setActivePageId(newId);
+  };
+
+  const renamePage = (pageId, newTitle) =>
+    setPages((ps) =>
+      ps.map((p) => (p.id === pageId ? { ...p, title: newTitle } : p)),
+    );
+
+  const deletePage = (pageId) => {
+    if (pages.length <= 1) return;
+    const idx = pages.findIndex((p) => p.id === pageId);
+    const newPages = pages.filter((p) => p.id !== pageId);
+    setPages(newPages);
+    if (activePageId === pageId)
+      setActivePageId(newPages[Math.max(0, idx - 1)].id);
+  };
+
+  const duplicatePage = (pageId) => {
+    const src = pages.find((p) => p.id === pageId);
+    if (!src) return;
+    const newId = uid();
+    const newPage = {
+      ...JSON.parse(JSON.stringify(src)),
+      id: newId,
+      title: src.title + " (copy)",
+    };
+    const idx = pages.findIndex((p) => p.id === pageId);
+    const next = [...pages];
+    next.splice(idx + 1, 0, newPage);
+    setPages(next);
+    setActivePageId(newId);
+  };
+
+  const changePageColor = (pageId, color) =>
+    setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, color } : p)));
+  const changePageEmoji = (pageId, emoji) =>
+    setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, emoji } : p)));
+
+  const syncPageNodes = (pageId, nodes) =>
+    setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, nodes } : p)));
+  const syncPageEdges = (pageId, edges) =>
+    setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, edges } : p)));
+  const syncPageGroups = (pageId, groups) =>
+    setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, groups } : p)));
+
+  const activePage = pages.find((p) => p.id === activePageId);
+
+  if (loadState === "loading")
+    return <LoadingScreen T={T} message="Loading your mind map…" />;
+  if (loadState === "error")
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: T.bg,
+          color: T.text,
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <div style={{ fontSize: 32 }}>⚠️</div>
+        <p style={{ fontSize: 16, fontWeight: 600 }}>Could not load mind map</p>
+        <p style={{ fontSize: 13, color: T.muted }}>
+          Check your auth token and backend URL.
+        </p>
+        <button
+          onClick={() => {
+            localStorage.removeItem("mindmap_id");
+            window.location.reload();
+          }}
+          style={{
+            padding: "8px 20px",
+            borderRadius: 8,
+            border: `1px solid ${T.border}`,
+            background: T.surface,
+            color: T.text,
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
+          Create new map
+        </button>
+      </div>
+    );
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        width: "100vw",
+        overflow: "hidden",
+        background: T.bg,
+        color: T.text,
+        fontFamily: "Inter, system-ui, sans-serif",
+        userSelect: "none",
+      }}
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { box-sizing:border-box; }
+        ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
+        input,textarea,select{font-family:inherit}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes dash{to{stroke-dashoffset:-20}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+        @keyframes addBtnFadeIn{from{opacity:0;transform:scale(0.6)}to{opacity:1;transform:scale(1)}}
+        @keyframes popupSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      `}</style>
+      <div
+        style={{
+          flex: 1,
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          paddingBottom: 40,
+        }}
+      >
+        {activePage && (
+          <MapCanvas
+            key={activePageId}
+            mapId={mapId}
+            pageId={activePageId}
+            initialNodes={activePage.nodes ?? []}
+            initialEdges={activePage.edges ?? []}
+            initialGroups={activePage.groups ?? []}
+            theme={theme}
+            T={T}
+            presentMode={presentMode}
+            setPresentMode={setPresentMode}
+            onSyncNodes={(nodes) => syncPageNodes(activePageId, nodes)}
+            onSyncEdges={(edges) => syncPageEdges(activePageId, edges)}
+            onSyncGroups={(groups) => syncPageGroups(activePageId, groups)}
+          />
+        )}
+        {!presentMode && (
+          <PageTabBar
+            pages={pages}
+            activePageId={activePageId}
+            onSwitch={setActivePageId}
+            onAdd={addPage}
+            onRename={renamePage}
+            onDelete={deletePage}
+            onDuplicate={duplicatePage}
+            onChangeColor={changePageColor}
+            onChangeEmoji={changePageEmoji}
+            T={T}
+          />
+        )}
+      </div>
     </div>
   );
 }
