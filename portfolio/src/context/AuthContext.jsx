@@ -98,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${API_URL}/user/login`, {
         email,
         password,
+        remember,
       });
       if (response.data.success) {
         const { token: newToken, user: newUser } = response.data;

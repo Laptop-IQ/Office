@@ -16,8 +16,10 @@ import HeroSection from "./sections/Hero";
 // Business Components
 import SFDyesExpenseForm from "./components/SFDyesExpenseForm";
 import ThermalBill from "./components/ThermalBill";
+import FoodBill from "./components/FoodBill";
 import DailySalesReport from "./components/DailySalesReport";
 import OverduesDashboard from "./components/OverduesDashboard";
+import QRGenerator from "./components/QRGenerator";
 
 // Auth Pages
 import Login from "@/pages/Login";
@@ -33,8 +35,8 @@ import Notepad from "./components/Notepad";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
 import CommandLibrary from "./components/CommandLibrary";
-import Minimap from "./components/MindMapPro";
 import MindMapPro from "./components/MindMapPro";
+import TodoApp from "./components/TodoApp";
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -94,10 +96,26 @@ function App() {
             }
           />
           <Route
+            path="/foodbill"
+            element={
+              <PrivateRoute>
+                <FoodBill />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/DailySalesReport"
             element={
               <PrivateRoute>
                 <DailySalesReport />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/qrgen"
+            element={
+              <PrivateRoute>
+                <QRGenerator />
               </PrivateRoute>
             }
           />
@@ -182,7 +200,14 @@ function App() {
               </PrivateRoute>
             }
           />
-         
+          <Route
+            path="/todo"
+            element={
+              <PrivateRoute>
+                <TodoApp />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

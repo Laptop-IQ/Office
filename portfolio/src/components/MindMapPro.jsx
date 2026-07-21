@@ -1,6 +1,16 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/react-in-jsx-scope */
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import {
+  getEdgeAnimationStyle,
+  EdgeAnimationKeyframes,
+  AnimatedDotOverlay,
+} from "./MindMapPro/EdgeAnimations";
+import Icon from "./MindMapPro/Icon";
+import Toolbar from "./MindMapPro/Toolbar";
+import RightPanel from "./MindMapPro/RightPanel";
 
+// ─── API ──────────────────────────────────────────────────────────────────────
 const API_BASE = `${import.meta.env.VITE_API_URL}/mindmap`;
 const getToken = () => localStorage.getItem("token");
 const authHeaders = () => ({
@@ -55,7 +65,7 @@ const api = {
     }).then((r) => r.json()),
 };
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// ─── Utilities & constants ────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 const PAGE_EMOJIS = [
@@ -89,6 +99,7 @@ const PAGE_COLORS = [
   "#64748b",
 ];
 
+// PALETTES is used in addChild() to pick new-node colours
 const PALETTES = {
   Violet: ["#7c3aed", "#8b5cf6", "#a78bfa", "#c4b5fd"],
   Coral: ["#e11d48", "#f43f5e", "#fb7185", "#fda4af"],
@@ -100,29 +111,7 @@ const PALETTES = {
   Cyan: ["#0e7490", "#0891b2", "#06b6d4", "#22d3ee"],
 };
 
-const NODE_COLORS = [
-  "#7c3aed",
-  "#1d4ed8",
-  "#0d9488",
-  "#d97706",
-  "#e11d48",
-  "#4d7c0f",
-  "#9f1239",
-  "#0e7490",
-  "#c026d3",
-  "#ea580c",
-  "#0369a1",
-  "#166534",
-];
-const EDGE_STYLES = ["curve", "straight", "elbow", "arc"];
-const FONT_FAMILIES = [
-  "Inter",
-  "Georgia",
-  "'Courier New'",
-  "'Trebuchet MS'",
-  "Verdana",
-];
-
+// THEMES drives CT (current theme) inside MapCanvas and T inside MindMapPro
 const THEMES = {
   Obsidian: {
     bg: "#0a0a0f",
@@ -206,639 +195,6 @@ const THEMES = {
   },
 };
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-const Icon = ({ name, size = 14 }) => {
-  const icons = {
-    cursor: (
-      <path
-        d="M4 2l12 7-5 1.5-3 4.5V2z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinejoin="round"
-      />
-    ),
-    hand: (
-      <>
-        <path
-          d="M8 12V6m-2 2V5m4 7V5m2 7V7m2 5V9"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="M4 14s0 4 6 4 6-4 6-4V9"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
-    ),
-    link: (
-      <path
-        d="M10 13H7a4 4 0 010-8h3M14 11h3a4 4 0 000-8h-3M8 12h8"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-    ),
-    plus: (
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    ),
-    trash: (
-      <path
-        d="M6 7h12M9 7V5h6v2M10 11v5M14 11v5M7 7l1 11h8l1-11"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    undo: (
-      <>
-        <path
-          d="M4 8h9a5 5 0 010 10H8"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <path
-          d="M4 8l3-3-3 3 3 3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </>
-    ),
-    redo: (
-      <>
-        <path
-          d="M20 8h-9a5 5 0 000 10h5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <path
-          d="M20 8l-3-3 3 3-3 3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </>
-    ),
-    search: (
-      <>
-        <circle
-          cx="11"
-          cy="11"
-          r="7"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M20 20l-4-4"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    magic: (
-      <path
-        d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinejoin="round"
-      />
-    ),
-    eye: (
-      <>
-        <path
-          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r="3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
-    ),
-    copy: (
-      <>
-        <rect
-          x="9"
-          y="9"
-          width="13"
-          height="13"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
-    ),
-    note: (
-      <>
-        <path
-          d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </>
-    ),
-    collapse: (
-      <path
-        d="M8 3H5a2 2 0 00-2 2v14a2 2 0 002 2h3M16 3h3a2 2 0 012 2v14a2 2 0 01-2 2h-3M12 8v8M9 12l3-3 3 3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-    ),
-    chevronR: (
-      <path
-        d="M9 18l6-6-6-6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    chevronL: (
-      <path
-        d="M15 18l-6-6 6-6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    zoomin: (
-      <>
-        <circle
-          cx="11"
-          cy="11"
-          r="7"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M20 20l-4-4M11 8v6M8 11h6"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    zoomout: (
-      <>
-        <circle
-          cx="11"
-          cy="11"
-          r="7"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M20 20l-4-4M8 11h6"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    fit: (
-      <path
-        d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    pin: (
-      <path
-        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinejoin="round"
-      />
-    ),
-    save: (
-      <>
-        <path
-          d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <polyline
-          points="17 21 17 13 7 13 7 21"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <polyline
-          points="7 3 7 8 15 8"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
-    ),
-    cloud: (
-      <path
-        d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-    ),
-    tag: (
-      <>
-        <path
-          d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <line
-          x1="7"
-          y1="7"
-          x2="7.01"
-          y2="7"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    image: (
-      <>
-        <rect
-          x="3"
-          y="3"
-          width="18"
-          height="18"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <circle
-          cx="8.5"
-          cy="8.5"
-          r="1.5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M21 15l-5-5L5 21"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </>
-    ),
-    grid: (
-      <>
-        <rect
-          x="3"
-          y="3"
-          width="6"
-          height="6"
-          rx="1"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <rect
-          x="15"
-          y="3"
-          width="6"
-          height="6"
-          rx="1"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <rect
-          x="3"
-          y="15"
-          width="6"
-          height="6"
-          rx="1"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <rect
-          x="15"
-          y="15"
-          width="6"
-          height="6"
-          rx="1"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-      </>
-    ),
-    down: (
-      <path
-        d="M12 4v14M6 13l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    up: (
-      <path
-        d="M12 20V6M6 11l6-6 6 6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    ),
-    page: (
-      <>
-        <rect
-          x="4"
-          y="2"
-          width="16"
-          height="20"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M8 7h8M8 11h8M8 15h5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    x: (
-      <path
-        d="M18 6L6 18M6 6l12 12"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    ),
-    pencil: (
-      <>
-        <path
-          d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <path
-          d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </>
-    ),
-    // NEW ICONS
-    group: (
-      <>
-        <rect
-          x="3"
-          y="3"
-          width="8"
-          height="8"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <rect
-          x="13"
-          y="3"
-          width="8"
-          height="8"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <rect
-          x="3"
-          y="13"
-          width="8"
-          height="8"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M17 13v-2m0-2V7M7 17h2m2 0h2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    history: (
-      <>
-        <path
-          d="M1 4v6h6"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        <path
-          d="M3.51 15a9 9 0 102.13-9.36L1 10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        <path
-          d="M12 7v5l4 2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </>
-    ),
-    palette: (
-      <>
-        <circle
-          cx="12"
-          cy="12"
-          r="9"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <circle cx="9" cy="9" r="1.5" fill="currentColor" />
-        <circle cx="15" cy="9" r="1.5" fill="currentColor" />
-        <circle cx="9" cy="15" r="1.5" fill="currentColor" />
-        <circle cx="15" cy="15" r="1.5" fill="currentColor" />
-        <circle cx="12" cy="12" r="2" fill="currentColor" />
-      </>
-    ),
-    export: (
-      <>
-        <path
-          d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <polyline
-          points="7 10 12 15 17 10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <line
-          x1="12"
-          y1="15"
-          x2="12"
-          y2="3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    connect: (
-      <>
-        <circle
-          cx="6"
-          cy="12"
-          r="3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <circle
-          cx="18"
-          cy="6"
-          r="3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <circle
-          cx="18"
-          cy="18"
-          r="3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-        />
-        <path
-          d="M9 12h2m2 0h2M16 7.5l-2 3M16 16.5l-2-3"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    ungroup: (
-      <>
-        <path
-          d="M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6z"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          fill="none"
-          strokeDasharray="4 2"
-        />
-        <path
-          d="M9 12h6M12 9v6"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-    theme: (
-      <>
-        <path
-          d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        />
-      </>
-    ),
-  };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      style={{ display: "block", flexShrink: 0 }}
-    >
-      {icons[name] || null}
-    </svg>
-  );
-};
-
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function useToast() {
   const [toasts, setToasts] = useState([]);
@@ -849,6 +205,7 @@ function useToast() {
   };
   return { toasts, add };
 }
+
 function ToastStack({ toasts, T }) {
   if (!toasts.length) return null;
   return (
@@ -888,66 +245,6 @@ function ToastStack({ toasts, T }) {
           {t.msg}
         </div>
       ))}
-    </div>
-  );
-}
-
-// ─── Minimap ──────────────────────────────────────────────────────────────────
-function Minimap({ nodes, viewBox, T }) {
-  if (!nodes?.length) return null;
-  const allX = nodes.map((n) => n.x),
-    allY = nodes.map((n) => n.y);
-  const minX = Math.min(...allX) - 100,
-    minY = Math.min(...allY) - 100;
-  const maxX = Math.max(...allX) + 100,
-    maxY = Math.max(...allY) + 100;
-  const W = 160,
-    H = 100,
-    rangeX = maxX - minX || 1,
-    rangeY = maxY - minY || 1;
-  const scale = Math.min(W / rangeX, H / rangeY) * 0.9;
-  const ox = (W - rangeX * scale) / 2 - minX * scale,
-    oy = (H - rangeY * scale) / 2 - minY * scale;
-  const vx = viewBox.x * scale + ox,
-    vy = viewBox.y * scale + oy,
-    vw = viewBox.w * scale,
-    vh = viewBox.h * scale;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 60,
-        left: 20,
-        borderRadius: 8,
-        overflow: "hidden",
-        border: `1px solid ${T.border}`,
-        background: T.surface,
-      }}
-    >
-      <svg width={W} height={H}>
-        {nodes.map((n) => (
-          <circle
-            key={n.id}
-            cx={n.x * scale + ox}
-            cy={n.y * scale + oy}
-            r={4}
-            fill={n.color}
-            opacity={0.85}
-          />
-        ))}
-        {isFinite(vx) && isFinite(vy) && (
-          <rect
-            x={vx}
-            y={vy}
-            width={vw}
-            height={vh}
-            fill="none"
-            stroke={T.accent}
-            strokeWidth={1}
-            opacity={0.6}
-          />
-        )}
-      </svg>
     </div>
   );
 }
@@ -1023,112 +320,6 @@ function ContextMenu({ x, y, items, T, onClose }) {
   );
 }
 
-// ─── Toolbar Button ───────────────────────────────────────────────────────────
-function TBtn({ icon, label, active, danger, onClick, shortcut, T, badge }) {
-  return (
-    <button
-      onClick={onClick}
-      title={shortcut ? `${label || ""} (${shortcut})` : label || ""}
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        padding: label ? "0 12px" : "0 10px",
-        height: 34,
-        borderRadius: 6,
-        cursor: "pointer",
-        border: "none",
-        background: active
-          ? T.accent
-          : danger
-            ? "rgba(239,68,68,0.12)"
-            : "transparent",
-        color: active ? "#fff" : danger ? "#ef4444" : T.text,
-        fontSize: 12,
-        fontWeight: 500,
-        transition: "background 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        if (!active && !danger) e.currentTarget.style.background = T.surface;
-      }}
-      onMouseLeave={(e) => {
-        if (!active && !danger)
-          e.currentTarget.style.background = "transparent";
-      }}
-    >
-      <Icon name={icon} size={14} />
-      {label && <span>{label}</span>}
-      {badge && (
-        <span
-          style={{
-            position: "absolute",
-            top: 4,
-            right: 4,
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "#ef4444",
-            border: `1.5px solid ${T.panel}`,
-          }}
-        />
-      )}
-    </button>
-  );
-}
-
-// ─── Panel Section ────────────────────────────────────────────────────────────
-function Section({ title, children, T, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div style={{ borderBottom: `1px solid ${T.border}` }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
-          padding: "10px 16px",
-          background: "transparent",
-          border: "none",
-          color: T.muted,
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          cursor: "pointer",
-        }}
-      >
-        {title}
-        <span
-          style={{
-            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-            transition: "transform 0.15s",
-            opacity: 0.5,
-          }}
-        >
-          ▾
-        </span>
-      </button>
-      {open && <div style={{ padding: "0 16px 14px" }}>{children}</div>}
-    </div>
-  );
-}
-
-const inputStyle = (T) => ({
-  width: "100%",
-  padding: "7px 10px",
-  borderRadius: 6,
-  border: `1px solid ${T.border}`,
-  background: T.surface,
-  color: T.text,
-  fontSize: 13,
-  outline: "none",
-  boxSizing: "border-box",
-});
-
 // ─── Sync Badge ───────────────────────────────────────────────────────────────
 function SyncBadge({ status, T }) {
   const cfg = {
@@ -1193,7 +384,158 @@ function LoadingScreen({ T, message }) {
   );
 }
 
+// ─── History Panel ────────────────────────────────────────────────────────────
+function HistoryPanel({
+  history,
+  redoStack,
+  T,
+  onUndo,
+  onRedo,
+  onClose,
+  panelOpen = false,
+}) {
+  const PANEL_W = 268;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 60,
+        right: panelOpen ? PANEL_W + 12 : 12,
+        width: 220,
+        background: T.panel,
+        border: `1px solid ${T.border}`,
+        borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        zIndex: 500,
+        overflow: "hidden",
+        transition: "right 0.2s ease",
+      }}
+    >
+      <div
+        style={{
+          padding: "10px 14px",
+          borderBottom: `1px solid ${T.border}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
+          History
+        </span>
+        <button
+          onClick={onClose}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: T.muted,
+            cursor: "pointer",
+            display: "flex",
+          }}
+        >
+          <Icon name="x" size={12} />
+        </button>
+      </div>
+      <div style={{ maxHeight: 300, overflowY: "auto", padding: "6px 0" }}>
+        {redoStack.length > 0 &&
+          [...redoStack]
+            .map((_, i) => (
+              <div
+                key={`redo-${i}`}
+                style={{
+                  padding: "6px 14px",
+                  fontSize: 11,
+                  color: T.muted,
+                  opacity: 0.4,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  for (let j = 0; j <= i; j++) onRedo();
+                }}
+              >
+                <Icon name="redo" size={11} /> Step{" "}
+                {history.length + redoStack.length - i} (redo)
+              </div>
+            ))
+            .reverse()}
+        {history.length === 0 && redoStack.length === 0 && (
+          <div
+            style={{
+              padding: "16px 14px",
+              fontSize: 12,
+              color: T.muted,
+              textAlign: "center",
+            }}
+          >
+            No history yet
+          </div>
+        )}
+        {[...history]
+          .map((_, i) => (
+            <div
+              key={`hist-${i}`}
+              style={{
+                padding: "6px 14px",
+                fontSize: 11,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                background:
+                  i === history.length - 1 ? T.surface : "transparent",
+                color: i === history.length - 1 ? T.accent : T.text,
+              }}
+              onClick={() => {
+                const steps = history.length - 1 - i;
+                for (let j = 0; j < steps; j++) onUndo();
+              }}
+              onMouseEnter={(e) => {
+                if (i !== history.length - 1)
+                  e.currentTarget.style.background = T.surface + "60";
+              }}
+              onMouseLeave={(e) => {
+                if (i !== history.length - 1)
+                  e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {i === history.length - 1 ? (
+                <Icon name="eye" size={11} />
+              ) : (
+                <Icon name="history" size={11} />
+              )}
+              Step {i + 1} {i === history.length - 1 ? "(current)" : ""}
+            </div>
+          ))
+          .reverse()}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page Templates ───────────────────────────────────────────────────────────
+const makeRootNode = (title = "Central Idea") => ({
+  id: "root",
+  text: title,
+  x: 2000,
+  y: 2000,
+  color: "#7c3aed",
+  shape: "rounded",
+  fontSize: 16,
+  bold: true,
+  italic: false,
+  note: "",
+  tag: "",
+  emoji: "",
+  collapsed: false,
+  locked: false,
+  image: "",
+  fontFamily: "Inter",
+  groupId: null,
+});
+
 const PAGE_TEMPLATES = [
   {
     id: "blank",
@@ -1210,10 +552,10 @@ const PAGE_TEMPLATES = [
     desc: "Central idea with 4 branches",
     nodes: (title) => {
       const cx = 2000,
-        cy = 2000,
-        branches = ["Ideas", "Problems", "Solutions", "Next Steps"];
-      const colors = ["#7c3aed", "#0d9488", "#d97706", "#e11d48"],
-        angles = [-120, -60, 60, 120];
+        cy = 2000;
+      const branches = ["Ideas", "Problems", "Solutions", "Next Steps"];
+      const colors = ["#7c3aed", "#0d9488", "#d97706", "#e11d48"];
+      const angles = [-120, -60, 60, 120];
       return [
         makeRootNode(title),
         ...branches.map((b, i) => ({
@@ -1237,15 +579,14 @@ const PAGE_TEMPLATES = [
         })),
       ];
     },
-    edges: () => [
-      ...["b0", "b1", "b2", "b3"].map((to, i) => ({
+    edges: () =>
+      ["b0", "b1", "b2", "b3"].map((to, i) => ({
         id: `e${i}`,
         from: "root",
         to,
         label: "",
         style: "curve",
       })),
-    ],
   },
   {
     id: "project",
@@ -1284,15 +625,14 @@ const PAGE_TEMPLATES = [
         })),
       ];
     },
-    edges: () => [
-      ...["p0", "p1", "p2", "p3"].map((to, i) => ({
+    edges: () =>
+      ["p0", "p1", "p2", "p3"].map((to, i) => ({
         id: `e${i}`,
         from: "root",
         to,
         label: "",
         style: "curve",
       })),
-    ],
   },
   {
     id: "weekly",
@@ -1301,8 +641,8 @@ const PAGE_TEMPLATES = [
     desc: "Mon–Sun with a review node",
     nodes: (title) => {
       const cx = 2000,
-        cy = 2000,
-        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        cy = 2000;
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
       const dayColors = [
         "#7c3aed",
         "#1d4ed8",
@@ -1376,7 +716,7 @@ const PAGE_TEMPLATES = [
     nodes: (title) => {
       const cx = 2000,
         cy = 2000;
-      const quadrants = [
+      const q = [
         { text: "Strengths 💪", color: "#0d9488", x: cx - 220, y: cy - 160 },
         { text: "Weaknesses ⚠️", color: "#d97706", x: cx + 220, y: cy - 160 },
         {
@@ -1389,16 +729,16 @@ const PAGE_TEMPLATES = [
       ];
       return [
         makeRootNode(title),
-        ...quadrants.map((q, i) => ({
+        ...q.map((s, i) => ({
           id: `q${i}`,
-          text: q.text,
-          color: q.color,
+          text: s.text,
+          color: s.color,
           shape: "rounded",
           fontSize: 14,
           bold: true,
           italic: false,
-          x: q.x,
-          y: q.y,
+          x: s.x,
+          y: s.y,
           note: "",
           tag: "",
           emoji: "",
@@ -1410,15 +750,14 @@ const PAGE_TEMPLATES = [
         })),
       ];
     },
-    edges: () => [
-      ...["q0", "q1", "q2", "q3"].map((to, i) => ({
+    edges: () =>
+      ["q0", "q1", "q2", "q3"].map((to, i) => ({
         id: `eq${i}`,
         from: "root",
         to,
         label: "",
         style: "elbow",
       })),
-    ],
   },
 ];
 
@@ -1451,7 +790,6 @@ function AddPagePopup({ T, onAdd, onClose, pageCount }) {
     setPageEmoji(tpl.emoji);
     setStep("name");
   };
-
   const confirm = () => {
     if (!chosen) return;
     onAdd(chosen, name.trim() || chosen.label, pageEmoji, pageColor);
@@ -1475,8 +813,6 @@ function AddPagePopup({ T, onAdd, onClose, pageCount }) {
         animation: "popupSlideUp 0.18s cubic-bezier(0.16,1,0.3,1)",
       }}
     >
-      <style>{`@keyframes popupSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
-
       {step === "pick" && (
         <>
           <div
@@ -1620,7 +956,6 @@ function AddPagePopup({ T, onAdd, onClose, pageCount }) {
             </span>
           </div>
           <div style={{ padding: "14px 16px 16px" }}>
-            {/* Emoji & Color picker */}
             <label
               style={{
                 fontSize: 11,
@@ -1639,7 +974,6 @@ function AddPagePopup({ T, onAdd, onClose, pageCount }) {
                 alignItems: "flex-start",
               }}
             >
-              {/* Emoji picker button */}
               <div style={{ position: "relative" }}>
                 <button
                   onClick={() => setShowEmojiPicker((v) => !v)}
@@ -1699,7 +1033,6 @@ function AddPagePopup({ T, onAdd, onClose, pageCount }) {
                   </div>
                 )}
               </div>
-              {/* Color swatches */}
               <div
                 style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}
               >
@@ -2022,7 +1355,6 @@ function PageTabBar({
     if (editingId && editName.trim()) onRename(editingId, editName.trim());
     setEditingId(null);
   };
-
   const handleContextMenu = (e, page) => {
     e.preventDefault();
     e.stopPropagation();
@@ -2078,7 +1410,6 @@ function PageTabBar({
               if (!isActive) e.currentTarget.style.background = "transparent";
             }}
           >
-            {/* Page emoji/icon */}
             <span
               style={{
                 fontSize: 14,
@@ -2131,6 +1462,7 @@ function PageTabBar({
                   e.stopPropagation();
                   onDelete(page.id);
                 }}
+                className="tab-close"
                 style={{
                   background: "transparent",
                   border: "none",
@@ -2142,7 +1474,6 @@ function PageTabBar({
                   alignItems: "center",
                   opacity: 0,
                 }}
-                className="tab-close"
                 onMouseEnter={(e) => {
                   e.currentTarget.style.color = "#ef4444";
                   e.currentTarget.style.opacity = "1";
@@ -2159,7 +1490,7 @@ function PageTabBar({
         );
       })}
 
-      {/* Add page button */}
+      {/* New page button */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <button
           onClick={() => setShowPopup((v) => !v)}
@@ -2267,481 +1598,10 @@ function PageTabBar({
           onClose={() => setTabCtxMenu(null)}
         />
       )}
-
       <style>{`div[style*="minWidth:90"]:hover .tab-close { opacity: 0.5 !important; }`}</style>
     </div>
   );
 }
-
-// ─── History Panel ────────────────────────────────────────────────────────────
-function HistoryPanel({ history, redoStack, T, onUndo, onRedo, onClose }) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: 60,
-        right: 270,
-        width: 220,
-        background: T.panel,
-        border: `1px solid ${T.border}`,
-        borderRadius: 10,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        zIndex: 500,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          padding: "10px 14px",
-          borderBottom: `1px solid ${T.border}`,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
-          History
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: T.muted,
-            cursor: "pointer",
-            display: "flex",
-          }}
-        >
-          <Icon name="x" size={12} />
-        </button>
-      </div>
-      <div style={{ maxHeight: 300, overflowY: "auto", padding: "6px 0" }}>
-        {redoStack.length > 0 &&
-          redoStack
-            .map((_, i) => (
-              <div
-                key={`redo-${i}`}
-                style={{
-                  padding: "6px 14px",
-                  fontSize: 11,
-                  color: T.muted,
-                  opacity: 0.4,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  cursor: "pointer",
-                }}
-                onClick={() => {
-                  for (let j = 0; j <= i; j++) onRedo();
-                }}
-              >
-                <Icon name="redo" size={11} /> Step{" "}
-                {history.length + redoStack.length - i} (redo)
-              </div>
-            ))
-            .reverse()}
-        {history.length === 0 && redoStack.length === 0 && (
-          <div
-            style={{
-              padding: "16px 14px",
-              fontSize: 12,
-              color: T.muted,
-              textAlign: "center",
-            }}
-          >
-            No history yet
-          </div>
-        )}
-        {history
-          .map((_, i) => (
-            <div
-              key={`hist-${i}`}
-              style={{
-                padding: "6px 14px",
-                fontSize: 11,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                cursor: "pointer",
-                background:
-                  i === history.length - 1 ? T.surface : "transparent",
-                color: i === history.length - 1 ? T.accent : T.text,
-              }}
-              onClick={() => {
-                const steps = history.length - 1 - i;
-                for (let j = 0; j < steps; j++) onUndo();
-              }}
-              onMouseEnter={(e) => {
-                if (i !== history.length - 1)
-                  e.currentTarget.style.background = T.surface + "60";
-              }}
-              onMouseLeave={(e) => {
-                if (i !== history.length - 1)
-                  e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {i === history.length - 1 ? (
-                <Icon name="eye" size={11} />
-              ) : (
-                <Icon name="history" size={11} />
-              )}
-              Step {i + 1} {i === history.length - 1 ? "(current)" : ""}
-            </div>
-          ))
-          .reverse()}
-      </div>
-    </div>
-  );
-}
-
-// ─── Theme Switcher Popup ─────────────────────────────────────────────────────
-function ThemeSwitcher({ T, theme, onTheme, onClose }) {
-  const ref = useRef();
-  useEffect(() => {
-    const h = (e) => {
-      if (!ref.current?.contains(e.target)) onClose();
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  });
-  return (
-    <div
-      ref={ref}
-      style={{
-        position: "absolute",
-        top: 54,
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: T.panel,
-        border: `1px solid ${T.border}`,
-        borderRadius: 10,
-        padding: 8,
-        zIndex: 800,
-        display: "flex",
-        gap: 6,
-        flexWrap: "wrap",
-        width: 280,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      }}
-    >
-      {Object.entries(THEMES).map(([name, t]) => (
-        <button
-          key={name}
-          onClick={() => {
-            onTheme(name);
-            onClose();
-          }}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 4,
-            padding: "8px 10px",
-            borderRadius: 8,
-            border: `1px solid ${theme === name ? t.accent : T.border}`,
-            background: theme === name ? t.accent + "22" : T.surface,
-            cursor: "pointer",
-            width: 60,
-          }}
-        >
-          <div style={{ display: "flex", gap: 2 }}>
-            {[t.bg, t.accent, t.text].map((c, i) => (
-              <div
-                key={i}
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: c,
-                  border: `1px solid ${T.border}`,
-                }}
-              />
-            ))}
-          </div>
-          <span
-            style={{
-              fontSize: 9,
-              color: theme === name ? T.accent : T.muted,
-              fontWeight: theme === name ? 700 : 400,
-            }}
-          >
-            {name}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Connections Panel (inside right panel "Node" tab) ────────────────────────
-function ConnectionsList({ nodeId, nodes, edges, onFocus, T }) {
-  const incoming = edges
-    .filter((e) => e.to === nodeId)
-    .map((e) => ({
-      ...e,
-      dir: "in",
-      other: nodes.find((n) => n.id === e.from),
-    }));
-  const outgoing = edges
-    .filter((e) => e.from === nodeId)
-    .map((e) => ({
-      ...e,
-      dir: "out",
-      other: nodes.find((n) => n.id === e.to),
-    }));
-  const all = [...incoming, ...outgoing];
-  if (!all.length)
-    return (
-      <div style={{ fontSize: 12, color: "#64748b", padding: "8px 0" }}>
-        No connections
-      </div>
-    );
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      {all.map((c) => (
-        <button
-          key={c.id}
-          onClick={() => onFocus(c.other?.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "6px 8px",
-            borderRadius: 6,
-            border: `1px solid ${T.border}`,
-            background: T.surface,
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: c.other?.color || T.muted,
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 11,
-              color: T.text,
-              flex: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {c.other?.text || "?"}
-          </span>
-          <span
-            style={{
-              fontSize: 9,
-              color: T.muted,
-              background: T.panel,
-              padding: "2px 5px",
-              borderRadius: 4,
-              flexShrink: 0,
-            }}
-          >
-            {c.dir === "in" ? "← in" : "out →"}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Groups Panel ─────────────────────────────────────────────────────────────
-function GroupsPanel({
-  nodes,
-  groups,
-  multiSel,
-  T,
-  onGroup,
-  onUngroup,
-  onSelectGroup,
-  onDeleteGroup,
-  onRenameGroup,
-}) {
-  const [newGroupName, setNewGroupName] = useState("");
-  return (
-    <div>
-      {/* Create new group from selection */}
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 11, color: T.muted, marginBottom: 6 }}>
-          {multiSel.size > 1
-            ? `${multiSel.size} nodes selected`
-            : "Select multiple nodes first"}
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <input
-            value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
-            placeholder="Group name…"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && multiSel.size > 1) {
-                onGroup([...multiSel], newGroupName || "Group");
-                setNewGroupName("");
-              }
-            }}
-            style={{ ...inputStyle(T), flex: 1, fontSize: 12 }}
-          />
-          <button
-            onClick={() => {
-              if (multiSel.size > 1) {
-                onGroup([...multiSel], newGroupName || "Group");
-                setNewGroupName("");
-              }
-            }}
-            disabled={multiSel.size < 2}
-            style={{
-              padding: "0 10px",
-              borderRadius: 6,
-              border: "none",
-              background: multiSel.size > 1 ? T.accent : T.border,
-              color: "white",
-              cursor: multiSel.size > 1 ? "pointer" : "default",
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            Group
-          </button>
-        </div>
-      </div>
-      {/* Existing groups */}
-      {groups.length === 0 && (
-        <div
-          style={{
-            fontSize: 12,
-            color: T.muted,
-            textAlign: "center",
-            padding: "12px 0",
-          }}
-        >
-          No groups yet
-        </div>
-      )}
-      {groups.map((g) => {
-        const memberCount = nodes.filter((n) => n.groupId === g.id).length;
-        return (
-          <div
-            key={g.id}
-            style={{
-              marginBottom: 6,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 4,
-              }}
-            >
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 2,
-                  background: g.color || T.accent,
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: T.text,
-                  flex: 1,
-                }}
-              >
-                {g.name}
-              </span>
-              <span style={{ fontSize: 10, color: T.muted }}>
-                {memberCount} nodes
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button
-                onClick={() => onSelectGroup(g.id)}
-                style={{
-                  flex: 1,
-                  padding: "4px 0",
-                  borderRadius: 5,
-                  border: `1px solid ${T.border}`,
-                  background: "transparent",
-                  color: T.muted,
-                  cursor: "pointer",
-                  fontSize: 10,
-                }}
-              >
-                Select
-              </button>
-              <button
-                onClick={() => onUngroup(g.id)}
-                style={{
-                  flex: 1,
-                  padding: "4px 0",
-                  borderRadius: 5,
-                  border: `1px solid ${T.border}`,
-                  background: "transparent",
-                  color: T.muted,
-                  cursor: "pointer",
-                  fontSize: 10,
-                }}
-              >
-                Ungroup
-              </button>
-              <button
-                onClick={() => onDeleteGroup(g.id)}
-                style={{
-                  flex: 1,
-                  padding: "4px 0",
-                  borderRadius: 5,
-                  border: `1px solid rgba(239,68,68,0.3)`,
-                  background: "transparent",
-                  color: "#ef4444",
-                  cursor: "pointer",
-                  fontSize: 10,
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Default root node ────────────────────────────────────────────────────────
-const makeRootNode = (title = "Central Idea") => ({
-  id: "root",
-  text: title,
-  x: 2000,
-  y: 2000,
-  color: "#7c3aed",
-  shape: "rounded",
-  fontSize: 16,
-  bold: true,
-  italic: false,
-  note: "",
-  tag: "",
-  emoji: "",
-  collapsed: false,
-  locked: false,
-  image: "",
-  fontFamily: "Inter",
-  groupId: null,
-});
 
 // ─── Map Canvas ───────────────────────────────────────────────────────────────
 function MapCanvas({
@@ -2752,6 +1612,7 @@ function MapCanvas({
   initialGroups,
   theme,
   T,
+  onThemeChange, // ← saves theme to localStorage via MindMapPro
   presentMode,
   setPresentMode,
   onSyncNodes,
@@ -2778,48 +1639,38 @@ function MapCanvas({
   const [panStart, setPanStart] = useState(null);
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState("");
-  const [panelTab, setPanelTab] = useState("node");
   const [panelOpen, setPanelOpen] = useState(true);
   const [mode, setMode] = useState("select");
   const [edgeStyle, setEdgeStyle] = useState("curve");
   const [showGrid, setShowGrid] = useState(true);
-  const [showMini, setShowMini] = useState(true);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [searchQ, setSearchQ] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
-  const [lasso, setLasso] = useState(null);
-  const [lassoStart, setLassoStart] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [palette, setPalette] = useState("Violet");
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
-  const [animatedEdges, setAnimatedEdges] = useState(false);
+  const [edgeAnimStyle, setEdgeAnimStyle] = useState("none");
   const [edgeLabelEdit, setEdgeLabelEdit] = useState(null);
-  const [imageInput, setImageInput] = useState("");
   const [hoveredNode, setHoveredNode] = useState(null);
   const [addBtnHover, setAddBtnHover] = useState(null);
   const [syncStatus, setSyncStatus] = useState("idle");
   const [showHistory, setShowHistory] = useState(false);
-  const [showThemes, setShowThemes] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState(theme);
-  const [localTheme, setLocalTheme] = useState(T);
-
+  const [presentIdx, setPresentIdx] = useState(0);
+  const [toolbarOpen, setToolbarOpen] = useState(true);
   const svgRef = useRef();
   const editRef = useRef();
   const syncTimer = useRef(null);
   const hoverLeaveTimer = useRef(null);
+  const zoomAnimRef = useRef(null); // rAF id for smooth viewBox animations
+  const zoomTargetRef = useRef(null); // target viewBox for smooth animations
+  const visibleNodesRef = useRef([]); // always-current visibleNodes for presentNav closure
   const { toasts, add: toast } = useToast();
 
-  // When theme prop changes, update local
-  useEffect(() => {
-    setSelectedTheme(theme);
-    setLocalTheme(T);
-  }, [theme]);
-
-  const CT = THEMES[selectedTheme] || T; // current theme
-
+  // CT is fully controlled by MindMapPro (theme → T prop → CT here)
+  const CT = T;
   useEffect(() => {
     onSyncNodes(nodes);
   }, [nodes]);
@@ -2829,6 +1680,26 @@ function MapCanvas({
   useEffect(() => {
     onSyncGroups(groups);
   }, [groups]);
+
+  // When present mode activates → reset index + show full map first
+  useEffect(() => {
+    if (presentMode) {
+      setPresentIdx(0);
+      if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current);
+      zoomTargetRef.current = null;
+      fitAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presentMode]);
+
+  // Auto-fit on mount so the map is always visible without pressing "Fit" manually
+  useEffect(() => {
+    if (nodes.length > 0) {
+      const t = setTimeout(fitAll, 350); // small delay → DOM fully painted
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount only (MapCanvas remounts on page switch via key=)
 
   const selectedNode = nodes.find((n) => n.id === selected);
   const searchHits = searchQ
@@ -2931,30 +1802,101 @@ function MapCanvas({
     return () => el.removeEventListener("wheel", onWheel);
   });
 
-  const fitAll = () => {
-    if (!nodes.length) return;
-    const xs = nodes.map((n) => n.x),
-      ys = nodes.map((n) => n.y),
-      pad = 120;
-    const w = Math.max(...xs) - Math.min(...xs) + pad * 2,
-      h = Math.max(...ys) - Math.min(...ys) + pad * 2;
-    setViewBox({
-      x: Math.min(...xs) - pad,
-      y: Math.min(...ys) - pad,
-      w: Math.max(w, 400),
-      h: Math.max(h, 300),
-    });
-    setZoomLevel(Math.round((SVG_W / Math.max(w, 400)) * 100));
-    toast("Fit to screen");
-  };
+  /**
+   * Core lerp animation engine — smoothly moves viewBox toward targetVB.
+   * lerp = 0.12 → ease-out curve, arrives in ~35 frames at 60 fps.
+   * onDone is called once when the animation settles.
+   */
+  const smoothZoom = useCallback((targetVB, onDone) => {
+    zoomTargetRef.current = targetVB;
+    if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current);
+    const step = () => {
+      const t = zoomTargetRef.current;
+      if (!t) return;
+      setViewBox((curr) => {
+        const L = 0.12;
+        const nx = curr.x + (t.x - curr.x) * L;
+        const ny = curr.y + (t.y - curr.y) * L;
+        const nw = curr.w + (t.w - curr.w) * L;
+        const nh = curr.h + (t.h - curr.h) * L;
+        // settled?
+        if (
+          Math.abs(t.x - nx) < 0.4 &&
+          Math.abs(t.y - ny) < 0.4 &&
+          Math.abs(t.w - nw) < 0.4 &&
+          Math.abs(t.h - nh) < 0.4
+        ) {
+          zoomAnimRef.current = null;
+          if (onDone) onDone(t);
+          return t;
+        }
+        zoomAnimRef.current = requestAnimationFrame(step);
+        return { x: nx, y: ny, w: nw, h: nh };
+      });
+    };
+    zoomAnimRef.current = requestAnimationFrame(step);
+  }, []);
+
+  /** Smoothly fit all nodes into view */
+  const fitAll = useCallback(
+    (silent = false) => {
+      if (!nodes.length) return;
+      const xs = nodes.map((n) => n.x),
+        ys = nodes.map((n) => n.y),
+        pad = 120;
+      const fw = Math.max(Math.max(...xs) - Math.min(...xs) + pad * 2, 400);
+      const fh = Math.max(Math.max(...ys) - Math.min(...ys) + pad * 2, 300);
+      smoothZoom(
+        { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad, w: fw, h: fh },
+        () => setZoomLevel(Math.round((SVG_W / fw) * 100)),
+      );
+      if (!silent) toast("Fit to screen");
+    },
+    [nodes, smoothZoom],
+  );
 
   const focusNode = (id) => {
     const n = nodes.find((x) => x.id === id);
     if (!n) return;
-    setViewBox((v) => ({ ...v, x: n.x - v.w / 2, y: n.y - v.h / 2 }));
+    smoothZoom({
+      x: n.x - viewBox.w / 2,
+      y: n.y - viewBox.h / 2,
+      w: viewBox.w,
+      h: viewBox.h,
+    });
     setSelected(id);
     setMultiSel(new Set([id]));
   };
+
+  /** Smoothly pan+zoom to a specific node (used by present mode navigation) */
+  const smoothGoTo = useCallback(
+    (node, zoomScale = 1) => {
+      if (!node) return;
+      smoothZoom({
+        x: node.x - SVG_W / zoomScale / 2,
+        y: node.y - SVG_H / zoomScale / 2,
+        w: SVG_W / zoomScale,
+        h: SVG_H / zoomScale,
+      });
+    },
+    [smoothZoom],
+  );
+
+  /** Navigate to prev / next node in present mode */
+  const presentNav = useCallback(
+    (dir) => {
+      // Use ref so this callback is never stale and avoids TDZ
+      // (visibleNodes is computed later in the render body)
+      const vNodes = visibleNodesRef.current;
+      if (!vNodes.length) return;
+      setPresentIdx((prev) => {
+        const next = (prev + dir + vNodes.length) % vNodes.length;
+        smoothGoTo(vNodes[next], 1.15);
+        return next;
+      });
+    },
+    [smoothGoTo],
+  ); // ← no visibleNodes dep → no TDZ
 
   const addChild = useCallback(
     async (parentId, label = "New Idea") => {
@@ -2965,16 +1907,16 @@ function MapCanvas({
       snapshot();
       const childCount = edges.filter((e) => e.from === pid).length;
       const angle = ((childCount * 50 - 80) * Math.PI) / 180;
-      const dist = 200;
       const colorSet = PALETTES[palette];
       const color = colorSet[childCount % colorSet.length];
       const tempId = uid(),
         tempEdgeId = uid();
+      // text starts empty — user types fresh when edit opens
       const newNode = {
         id: tempId,
-        text: label,
-        x: snap(parent.x + Math.cos(angle) * dist),
-        y: snap(parent.y + Math.sin(angle) * dist),
+        text: "",
+        x: snap(parent.x + Math.cos(angle) * 200),
+        y: snap(parent.y + Math.sin(angle) * 200),
         color,
         shape: "rounded",
         fontSize: 14,
@@ -3001,9 +1943,10 @@ function MapCanvas({
       setSelected(tempId);
       setMultiSel(new Set([tempId]));
       setHoveredNode(null);
+      // open edit with empty string so user types directly
       setTimeout(() => {
         setEditId(tempId);
-        setEditText(label);
+        setEditText("");
       }, 80);
       toast("Node added");
       if (mapId) {
@@ -3075,8 +2018,6 @@ function MapCanvas({
         prevEdges = [...edges];
       setNodes((ns) => ns.filter((n) => !set.has(n.id)));
       setEdges((es) => es.filter((e) => !set.has(e.from) && !set.has(e.to)));
-      // Remove from groups
-      setGroups((gs) => gs.map((g) => g));
       setSelected("root");
       setMultiSel(new Set(["root"]));
       toast(`Deleted ${set.size} node(s)`);
@@ -3183,20 +2124,17 @@ function MapCanvas({
     toast("Duplicated");
   };
 
-  // ─── Groups ────────────────────────────────────────────────────────────────
+  // ── Groups ────────────────────────────────────────────────────────────────
   const createGroup = (nodeIds, name) => {
     snapshot();
     const gid = uid();
-    const memberNodes = nodes.filter((n) => nodeIds.includes(n.id));
-    const colors = memberNodes.map((n) => n.color);
-    const color = colors[0] || CT.accent;
+    const color = nodes.find((n) => nodeIds.includes(n.id))?.color || CT.accent;
     setGroups((gs) => [...gs, { id: gid, name, color }]);
     setNodes((ns) =>
       ns.map((n) => (nodeIds.includes(n.id) ? { ...n, groupId: gid } : n)),
     );
     toast(`Group "${name}" created`);
   };
-
   const ungroupGroup = (gid) => {
     snapshot();
     setGroups((gs) => gs.filter((g) => g.id !== gid));
@@ -3205,7 +2143,6 @@ function MapCanvas({
     );
     toast("Ungrouped");
   };
-
   const selectGroup = (gid) => {
     const ids = nodes.filter((n) => n.groupId === gid).map((n) => n.id);
     if (ids.length) {
@@ -3213,7 +2150,6 @@ function MapCanvas({
       setSelected(ids[0]);
     }
   };
-
   const deleteGroup = (gid) => {
     snapshot();
     setGroups((gs) => gs.filter((g) => g.id !== gid));
@@ -3223,7 +2159,7 @@ function MapCanvas({
     toast("Group deleted");
   };
 
-  // ─── Export PNG ────────────────────────────────────────────────────────────
+  // ── Export / Import ───────────────────────────────────────────────────────
   const exportPNG = useCallback(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -3232,10 +2168,8 @@ function MapCanvas({
       pad = 80;
     const minX = Math.min(...xs) - pad,
       minY = Math.min(...ys) - pad;
-    const maxX = Math.max(...xs) + pad,
-      maxY = Math.max(...ys) + pad;
-    const W = maxX - minX,
-      H = maxY - minY;
+    const W = Math.max(...xs) + pad - minX,
+      H = Math.max(...ys) + pad - minY;
     const clone = svg.cloneNode(true);
     clone.setAttribute("viewBox", `${minX} ${minY} ${W} ${H}`);
     clone.setAttribute("width", W);
@@ -3269,6 +2203,367 @@ function MapCanvas({
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
   }, [nodes, CT]);
 
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify({ nodes, edges, groups }, null, 2)], {
+      type: "application/json",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mindmap.json";
+    a.click();
+    toast("Exported JSON", "success");
+  };
+  const exportMarkdown = () => {
+    const build = (id, depth) => {
+      const n = nodes.find((x) => x.id === id);
+      if (!n) return "";
+      const prefix = "  ".repeat(depth) + (depth ? "- " : "# ");
+      const children = edges.filter((e) => e.from === id).map((e) => e.to);
+      return (
+        prefix +
+        n.text +
+        "\n" +
+        children.map((c) => build(c, depth + 1)).join("")
+      );
+    };
+    const blob = new Blob([build("root", 0)], { type: "text/markdown" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mindmap.md";
+    a.click();
+    toast("Exported Markdown", "success");
+  };
+  const exportSVG = () => {
+    const svg = svgRef.current;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const blob = new Blob([clone.outerHTML], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mindmap.svg";
+    a.click();
+    toast("Exported SVG", "success");
+  };
+  const importJSON = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        snapshot();
+        setNodes(d.nodes);
+        setEdges(d.edges);
+        if (d.groups) setGroups(d.groups);
+        scheduleSync(d.nodes, d.edges);
+        toast("Imported", "success");
+      } catch {
+        toast("Invalid JSON", "error");
+      }
+    };
+    r.readAsText(file);
+  };
+
+  const autoArrange = (type = "radial") => {
+    snapshot();
+    const root = nodes.find((n) => n.id === "root");
+    if (!root) return;
+    const cx = root.x,
+      cy = root.y;
+    const positions = {};
+
+    // ── helpers ─────────────────────────────────────────────────────────────
+    const childrenOf = (id, seen) =>
+      edges
+        .filter((e) => e.from === id)
+        .map((e) => e.to)
+        .filter((c) => !seen.has(c));
+
+    // Count leaf nodes under a subtree (for proportional spacing)
+    const leafCount = (id, seen = new Set()) => {
+      if (seen.has(id)) return 1;
+      seen.add(id);
+      const ch = childrenOf(id, seen);
+      if (!ch.length) return 1;
+      return ch.reduce((s, c) => s + leafCount(c, seen), 0);
+    };
+
+    // ── 1. Radial ────────────────────────────────────────────────────────────
+    if (type === "radial") {
+      const seen = new Set();
+      const dfs = (id, angle, spread, dist) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        const p = positions[id] || { x: cx, y: cy };
+        const ch = childrenOf(id, seen);
+        ch.forEach((cid, i) => {
+          const a =
+            angle - spread / 2 + (spread / (ch.length || 1)) * (i + 0.5);
+          positions[cid] = {
+            x: snap(p.x + Math.cos((a * Math.PI) / 180) * dist),
+            y: snap(p.y + Math.sin((a * Math.PI) / 180) * dist),
+          };
+          dfs(cid, a, spread * 0.65, dist * 0.82);
+        });
+      };
+      positions["root"] = { x: cx, y: cy };
+      dfs("root", 0, 360, 230);
+
+      // ── 2. Tree Left→Right ───────────────────────────────────────────────────
+    } else if (type === "horizontal") {
+      const seen = new Set();
+      const dfs = (id, px, py) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        const ch = childrenOf(id, seen);
+        ch.forEach((cid, i) => {
+          const ny = py + (i - (ch.length - 1) / 2) * 130;
+          positions[cid] = { x: snap(px + 220), y: snap(ny) };
+          dfs(cid, px + 220, ny);
+        });
+      };
+      positions["root"] = { x: cx, y: cy };
+      dfs("root", cx, cy);
+
+      // ── 3. Tree Top→Bottom ───────────────────────────────────────────────────
+    } else if (type === "vertical") {
+      const seen = new Set();
+      const place = (id, x, depth) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        positions[id] = { x: snap(x), y: snap(cy + depth * 170) };
+        const ch = childrenOf(id, seen);
+        if (!ch.length) return;
+        const total = ch.reduce(
+          (s, c) => s + leafCount(c, new Set([...seen])),
+          0,
+        );
+        let ox = x - (total * 150) / 2;
+        ch.forEach((cid) => {
+          const lc = leafCount(cid, new Set([...seen]));
+          place(cid, ox + (lc * 150) / 2, depth + 1);
+          ox += lc * 150;
+        });
+      };
+      place("root", cx, 0);
+
+      // ── 4. Grid ──────────────────────────────────────────────────────────────
+    } else if (type === "grid") {
+      // BFS order so root is first
+      const order = [];
+      const q = ["root"],
+        visited = new Set(["root"]);
+      while (q.length) {
+        const id = q.shift();
+        order.push(id);
+        edges
+          .filter((e) => e.from === id)
+          .forEach((e) => {
+            if (!visited.has(e.to)) {
+              visited.add(e.to);
+              q.push(e.to);
+            }
+          });
+      }
+      const cols = Math.max(3, Math.ceil(Math.sqrt(order.length)));
+      const gX = 210,
+        gY = 150;
+      const totalW = (cols - 1) * gX;
+      const totalH = (Math.ceil(order.length / cols) - 1) * gY;
+      order.forEach((id, i) => {
+        const col = i % cols,
+          row = Math.floor(i / cols);
+        positions[id] = {
+          x: snap(cx - totalW / 2 + col * gX),
+          y: snap(cy - totalH / 2 + row * gY),
+        };
+      });
+
+      // ── 5. Fishbone (Ishikawa) ────────────────────────────────────────────────
+    } else if (type === "fishbone") {
+      const mainCh = edges.filter((e) => e.from === "root").map((e) => e.to);
+      const half = Math.ceil(mainCh.length / 2);
+      const spineGap = 240;
+      const totalSpine = (mainCh.length - 1) * spineGap;
+      positions["root"] = { x: snap(cx + totalSpine / 2 + 120), y: cy };
+      mainCh.forEach((cid, i) => {
+        const bx = cx + i * spineGap;
+        const isTop = i < half;
+        const by = cy + (isTop ? -180 : 180);
+        positions[cid] = { x: snap(bx), y: snap(by) };
+        const sub = edges.filter((e) => e.from === cid).map((e) => e.to);
+        sub.forEach((scid, j) => {
+          positions[scid] = {
+            x: snap(bx - (j + 1) * 110),
+            y: snap(by + (isTop ? -90 : 90)),
+          };
+        });
+      });
+    }
+
+    const next = nodes.map((n) =>
+      positions[n.id] ? { ...n, ...positions[n.id] } : n,
+    );
+    setNodes(next);
+    scheduleSync(next, edges);
+    toast("Layout applied");
+    setTimeout(fitAll, 120); // auto-fit after rearranging
+  };
+
+  // ── Edge path ─────────────────────────────────────────────────────────────
+  const getEdgePath = (from, to, style) => {
+    if (!from || !to) return "";
+    const dx = to.x - from.x,
+      dy = to.y - from.y;
+    switch (style) {
+      case "straight":
+        return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+      case "elbow": {
+        const mx = (from.x + to.x) / 2;
+        return `M ${from.x} ${from.y} L ${mx} ${from.y} L ${mx} ${to.y} L ${to.x} ${to.y}`;
+      }
+      case "arc": {
+        const r = Math.sqrt(dx * dx + dy * dy) * 0.6;
+        return `M ${from.x} ${from.y} A ${r} ${r} 0 0 1 ${to.x} ${to.y}`;
+      }
+      default: {
+        const cx = from.x + dx * 0.5;
+        return `M ${from.x} ${from.y} C ${cx} ${from.y} ${cx} ${to.y} ${to.x} ${to.y}`;
+      }
+    }
+  };
+
+  /**
+   * Returns {x, y, side} — the CENTER of whichever side of the node faces the target.
+   * "side" tells getSmartPath which direction the bezier control point should pull.
+   */
+  const getNodeEdgePoint = (node, W, H, targetX, targetY) => {
+    const cx = node.x,
+      cy = node.y;
+    const dx = targetX - cx,
+      dy = targetY - cy;
+    if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01)
+      return { x: cx, y: cy, side: "right" };
+    const hw = W / 2,
+      hh = H / 2;
+
+    // Circle: exact boundary point
+    if (node.shape === "circle") {
+      const r = Math.min(hw, hh);
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const side =
+        Math.abs(dx) >= Math.abs(dy)
+          ? dx > 0
+            ? "right"
+            : "left"
+          : dy > 0
+            ? "bottom"
+            : "top";
+      return { x: cx + (dx / len) * r, y: cy + (dy / len) * r, side };
+    }
+
+    // Pill: ellipse boundary
+    if (node.shape === "pill") {
+      const denom = Math.sqrt((dx * dx) / (hw * hw) + (dy * dy) / (hh * hh));
+      const side =
+        Math.abs(dx) / hw >= Math.abs(dy) / hh
+          ? dx > 0
+            ? "right"
+            : "left"
+          : dy > 0
+            ? "bottom"
+            : "top";
+      return { x: cx + dx / denom, y: cy + dy / denom, side };
+    }
+
+    // Rectangular (rounded / hexagon / diamond):
+    // Snap to the SIDE CENTER that faces the target.
+    // Compare normalised distances — whichever axis is dominant determines the side.
+    if (Math.abs(dx) / hw >= Math.abs(dy) / hh) {
+      // Horizontally dominant → left or right side, Y locked to node center
+      const side = dx > 0 ? "right" : "left";
+      return { x: cx + (dx > 0 ? hw : -hw), y: cy, side };
+    } else {
+      // Vertically dominant → top or bottom side, X locked to node center
+      const side = dy > 0 ? "bottom" : "top";
+      return { x: cx, y: cy + (dy > 0 ? hh : -hh), side };
+    }
+  };
+
+  /**
+   * Direction-aware bezier.
+   * Control points pull outward in the direction each node's exit/entry side faces,
+   * producing smooth organic curves identical to the reference design.
+   */
+  const getSmartPath = (fromPt, toPt) => {
+    const dist = Math.hypot(toPt.x - fromPt.x, toPt.y - fromPt.y);
+    const tension = Math.min(dist * 0.45, 240);
+    const ctrl = (pt, side) => {
+      switch (side) {
+        case "right":
+          return { x: pt.x + tension, y: pt.y };
+        case "left":
+          return { x: pt.x - tension, y: pt.y };
+        case "bottom":
+          return { x: pt.x, y: pt.y + tension };
+        case "top":
+          return { x: pt.x, y: pt.y - tension };
+        default:
+          return { x: pt.x, y: pt.y };
+      }
+    };
+    const cp1 = ctrl(fromPt, fromPt.side);
+    const cp2 = ctrl(toPt, toPt.side);
+    return `M ${fromPt.x} ${fromPt.y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${toPt.x} ${toPt.y}`;
+  };
+
+  const nodeBounds = (node) => {
+    const base = node.fontSize || 14;
+    const textLen = Math.min(node.text.length * base * 0.58 + 40, 220);
+    const W =
+      node.shape === "circle" ? 90 : node.image ? 130 : Math.max(90, textLen);
+    const H = node.shape === "circle" ? 90 : node.image ? 80 : base * 2.2 + 18;
+    return { W, H };
+  };
+
+  const visibleNodeIds = useMemo(() => {
+    const visible = new Set();
+    const visit = (id) => {
+      visible.add(id);
+      const n = nodes.find((x) => x.id === id);
+      if (n?.collapsed) return;
+      edges.filter((e) => e.from === id).forEach((e) => visit(e.to));
+    };
+    visit("root");
+    return visible;
+  }, [nodes, edges]);
+
+  const visibleEdges = edges.filter(
+    (e) => visibleNodeIds.has(e.from) && visibleNodeIds.has(e.to),
+  );
+  const visibleNodes = nodes.filter((n) => visibleNodeIds.has(n.id));
+  visibleNodesRef.current = visibleNodes; // keep ref in sync for presentNav
+
+  const groupBounds = useMemo(() => {
+    return groups
+      .map((g) => {
+        const members = visibleNodes.filter((n) => n.groupId === g.id);
+        if (!members.length) return null;
+        const xs = members.map((n) => n.x),
+          ys = members.map((n) => n.y);
+        const pad = 40;
+        return {
+          ...g,
+          x: Math.min(...xs) - pad,
+          y: Math.min(...ys) - pad,
+          w: Math.max(...xs) - Math.min(...xs) + pad * 2,
+          h: Math.max(...ys) - Math.min(...ys) + pad * 2,
+        };
+      })
+      .filter(Boolean);
+  }, [groups, visibleNodes]);
+
+  // ── Mouse handlers ────────────────────────────────────────────────────────
   const onNodeMouseDown = (e, id) => {
     e.stopPropagation();
     if (e.button === 2) return;
@@ -3338,17 +2633,8 @@ function MapCanvas({
         const dy = (e.clientY - panStart.cy) * (viewBox.h / r.height);
         setViewBox((v) => ({ ...v, x: panStart.vx - dx, y: panStart.vy - dy }));
       }
-      if (lassoStart) {
-        const pt = svgPt(e);
-        setLasso({
-          x: Math.min(lassoStart.x, pt.x),
-          y: Math.min(lassoStart.y, pt.y),
-          w: Math.abs(pt.x - lassoStart.x),
-          h: Math.abs(pt.y - lassoStart.y),
-        });
-      }
     },
-    [dragging, panStart, lassoStart, viewBox, snap],
+    [dragging, panStart, viewBox, snap],
   );
 
   const onMouseUp = useCallback(
@@ -3359,20 +2645,8 @@ function MapCanvas({
       }
       setDragging(null);
       setPanStart(null);
-      if (lasso) {
-        const { x, y, w, h } = lasso;
-        const hit = nodes
-          .filter((n) => n.x >= x && n.x <= x + w && n.y >= y && n.y <= y + h)
-          .map((n) => n.id);
-        if (hit.length) {
-          setMultiSel(new Set(hit));
-          setSelected(hit[0]);
-        }
-        setLasso(null);
-        setLassoStart(null);
-      }
     },
-    [dragging, lasso, nodes, edges, snapshot, scheduleSync],
+    [dragging, nodes, edges, snapshot, scheduleSync],
   );
 
   const onSvgMouseDown = (e) => {
@@ -3396,13 +2670,9 @@ function MapCanvas({
       return;
     }
     if (mode === "select") {
-      const pt = svgPt(e);
-      setLassoStart(pt);
-      setLasso(null);
-      if (!e.shiftKey) {
-        setMultiSel(new Set());
-        setSelected(null);
-      }
+      // Plain click on empty canvas → just deselect
+      setMultiSel(new Set());
+      setSelected(null);
     }
   };
 
@@ -3418,7 +2688,12 @@ function MapCanvas({
   const commitEdit = () => {
     if (!editId) return;
     snapshot();
-    const newText = editText || nodes.find((n) => n.id === editId)?.text;
+    const trimmed = editText.trim();
+    const existingTxt = nodes.find((n) => n.id === editId)?.text || "";
+    // If user typed something → use it.
+    // If not → keep the node's existing text (for re-edits).
+    // If both are empty (brand-new node, user pressed Escape) → "New Node" as fallback.
+    const newText = trimmed || existingTxt || "New Node";
     setNodes((ns) =>
       ns.map((n) => (n.id === editId ? { ...n, text: newText } : n)),
     );
@@ -3481,8 +2756,28 @@ function MapCanvas({
       ]
     : [];
 
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
+      // ── Present mode: arrow nav + Esc to exit ──────────────────────────
+      if (presentMode) {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") {
+          e.preventDefault();
+          presentNav(1);
+          return;
+        }
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          presentNav(-1);
+          return;
+        }
+        if (e.key === "Escape") {
+          setPresentMode(false);
+          return;
+        }
+        return; // block all other shortcuts while presenting
+      }
+      // ── Normal mode shortcuts ──────────────────────────────────────────
       if (editId) {
         if (e.key === "Escape") setEditId(null);
         return;
@@ -3527,7 +2822,6 @@ function MapCanvas({
         setShowSearch(false);
         setContextMenu(null);
         setShowHistory(false);
-        setShowThemes(false);
       }
       if (e.key === "1") setMode("select");
       if (e.key === "2") setMode("pan");
@@ -3541,178 +2835,7 @@ function MapCanvas({
     return () => window.removeEventListener("keydown", h);
   }, [editId, addChild, deleteNodes, undo, redo, multiSel, nodes, doZoom]);
 
-  const exportJSON = () => {
-    const blob = new Blob([JSON.stringify({ nodes, edges, groups }, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "mindmap.json";
-    a.click();
-    toast("Exported JSON", "success");
-  };
-  const exportMarkdown = () => {
-    const build = (id, depth) => {
-      const n = nodes.find((x) => x.id === id);
-      if (!n) return "";
-      const prefix = "  ".repeat(depth) + (depth ? "- " : "# ");
-      const children = edges.filter((e) => e.from === id).map((e) => e.to);
-      return (
-        prefix +
-        n.text +
-        "\n" +
-        children.map((c) => build(c, depth + 1)).join("")
-      );
-    };
-    const blob = new Blob([build("root", 0)], { type: "text/markdown" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "mindmap.md";
-    a.click();
-    toast("Exported Markdown", "success");
-  };
-  const importJSON = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const r = new FileReader();
-    r.onload = (ev) => {
-      try {
-        const d = JSON.parse(ev.target.result);
-        snapshot();
-        setNodes(d.nodes);
-        setEdges(d.edges);
-        if (d.groups) setGroups(d.groups);
-        scheduleSync(d.nodes, d.edges);
-        toast("Imported", "success");
-      } catch {
-        toast("Invalid JSON", "error");
-      }
-    };
-    r.readAsText(file);
-  };
-  const exportSVG = () => {
-    const svg = svgRef.current;
-    const clone = svg.cloneNode(true);
-    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const blob = new Blob([clone.outerHTML], { type: "image/svg+xml" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "mindmap.svg";
-    a.click();
-    toast("Exported SVG", "success");
-  };
-
-  const autoArrange = (type = "radial") => {
-    snapshot();
-    const root = nodes.find((n) => n.id === "root");
-    if (!root) return;
-    const positions = {},
-      arranged = new Set();
-    const dfs = (id, angle, spread, dist) => {
-      if (arranged.has(id)) return;
-      arranged.add(id);
-      const parent = positions[id] || { x: root.x, y: root.y };
-      const children = edges
-        .filter((e) => e.from === id)
-        .map((e) => e.to)
-        .filter((c) => !arranged.has(c));
-      children.forEach((cid, i) => {
-        const a =
-          type === "horizontal"
-            ? (i - (children.length - 1) / 2) * 60
-            : angle -
-              spread / 2 +
-              (spread / (children.length || 1)) * (i + 0.5);
-        const nx =
-          type === "horizontal"
-            ? parent.x + dist
-            : parent.x + Math.cos((a * Math.PI) / 180) * dist;
-        const ny =
-          type === "horizontal"
-            ? parent.y + (i - (children.length - 1) / 2) * 120
-            : parent.y + Math.sin((a * Math.PI) / 180) * dist;
-        positions[cid] = { x: snap(nx), y: snap(ny) };
-        dfs(cid, a, spread * 0.65, dist * 0.82);
-      });
-    };
-    positions["root"] = { x: root.x, y: root.y };
-    dfs("root", 0, 360, 210);
-    const next = nodes.map((n) =>
-      positions[n.id] ? { ...n, ...positions[n.id] } : n,
-    );
-    setNodes(next);
-    scheduleSync(next, edges);
-    toast("Layout applied");
-  };
-
-  const getEdgePath = (from, to, style) => {
-    if (!from || !to) return "";
-    const dx = to.x - from.x,
-      dy = to.y - from.y;
-    switch (style) {
-      case "straight":
-        return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-      case "elbow": {
-        const mx = (from.x + to.x) / 2;
-        return `M ${from.x} ${from.y} L ${mx} ${from.y} L ${mx} ${to.y} L ${to.x} ${to.y}`;
-      }
-      case "arc": {
-        const r = Math.sqrt(dx * dx + dy * dy) * 0.6;
-        return `M ${from.x} ${from.y} A ${r} ${r} 0 0 1 ${to.x} ${to.y}`;
-      }
-      default: {
-        const cx = from.x + dx * 0.5;
-        return `M ${from.x} ${from.y} C ${cx} ${from.y} ${cx} ${to.y} ${to.x} ${to.y}`;
-      }
-    }
-  };
-
-  const nodeBounds = (node) => {
-    const base = node.fontSize || 14;
-    const textLen = Math.min(node.text.length * base * 0.58 + 40, 220);
-    const W =
-      node.shape === "circle" ? 90 : node.image ? 130 : Math.max(90, textLen);
-    const H = node.shape === "circle" ? 90 : node.image ? 80 : base * 2.2 + 18;
-    return { W, H };
-  };
-
-  const visibleNodeIds = useMemo(() => {
-    const visible = new Set();
-    const visit = (id) => {
-      visible.add(id);
-      const n = nodes.find((x) => x.id === id);
-      if (n?.collapsed) return;
-      edges.filter((e) => e.from === id).forEach((e) => visit(e.to));
-    };
-    visit("root");
-    return visible;
-  }, [nodes, edges]);
-
-  const visibleEdges = edges.filter(
-    (e) => visibleNodeIds.has(e.from) && visibleNodeIds.has(e.to),
-  );
-  const visibleNodes = nodes.filter((n) => visibleNodeIds.has(n.id));
-
-  // Group bounding boxes for rendering
-  const groupBounds = useMemo(() => {
-    return groups
-      .map((g) => {
-        const members = visibleNodes.filter((n) => n.groupId === g.id);
-        if (members.length === 0) return null;
-        const xs = members.map((n) => n.x),
-          ys = members.map((n) => n.y);
-        const pad = 40;
-        return {
-          ...g,
-          x: Math.min(...xs) - pad,
-          y: Math.min(...ys) - pad,
-          w: Math.max(...xs) - Math.min(...xs) + pad * 2,
-          h: Math.max(...ys) - Math.min(...ys) + pad * 2,
-        };
-      })
-      .filter(Boolean);
-  }, [groups, visibleNodes]);
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       style={{
@@ -3723,6 +2846,9 @@ function MapCanvas({
         flexDirection: "column",
       }}
     >
+      <EdgeAnimationKeyframes />
+
+      {/* ── SVG Canvas ── */}
       <svg
         ref={svgRef}
         style={{
@@ -3830,37 +2956,59 @@ function MapCanvas({
 
         {/* Edges */}
         {visibleEdges.map((edge) => {
-          const from = nodes.find((n) => n.id === edge.from),
-            to = nodes.find((n) => n.id === edge.to);
+          const from = nodes.find((n) => n.id === edge.from);
+          const to = nodes.find((n) => n.id === edge.to);
           if (!from || !to) return null;
+
+          // ── boundary-to-boundary connection ──────────────────────────────
+          const { W: fW, H: fH } = nodeBounds(from);
+          const { W: tW, H: tH } = nodeBounds(to);
+          const fromPt = getNodeEdgePoint(from, fW, fH, to.x, to.y);
+          const toPt = getNodeEdgePoint(to, tW, tH, from.x, from.y);
+          const curStyle = edge.style || edgeStyle;
+          // "curve" uses direction-aware bezier; other styles use the generic path
+          const path =
+            curStyle === "curve"
+              ? getSmartPath(fromPt, toPt)
+              : getEdgePath(fromPt, toPt, curStyle);
+          const mx = (fromPt.x + toPt.x) / 2;
+          const my = (fromPt.y + toPt.y) / 2;
+
+          // ── colour: use the child (non-root) node's colour ───────────────
+          const childNode = edge.from === "root" ? to : from;
+          const edgeColor = childNode.color || CT.accent;
           const isActive = multiSel.has(edge.from) || multiSel.has(edge.to);
-          const path = getEdgePath(from, to, edge.style || edgeStyle);
-          const mx = (from.x + to.x) / 2,
-            my = (from.y + to.y) / 2;
+          const strokeColor = isActive ? CT.accent : edgeColor;
+
           return (
             <g key={edge.id}>
+              {/* wide invisible hit area so clicking to delete is easy */}
               <path
                 d={path}
                 fill="none"
                 stroke="transparent"
-                strokeWidth={12}
+                strokeWidth={14}
                 style={{ cursor: "pointer" }}
                 onClick={() => removeEdge(edge.id)}
               />
+
+              {/* visible edge — no arrowhead, matches reference style */}
               <path
                 d={path}
                 fill="none"
-                stroke={isActive ? CT.accent : CT.muted}
-                strokeWidth={isActive ? 2 : 1.4}
-                strokeOpacity={isActive ? 1 : 0.45}
-                markerEnd={isActive ? "url(#arrowActive)" : "url(#arrowhead)"}
-                strokeDasharray={animatedEdges ? "8 4" : undefined}
-                style={
-                  animatedEdges
-                    ? { animation: "dash 0.6s linear infinite" }
-                    : undefined
-                }
+                stroke={strokeColor}
+                strokeWidth={isActive ? 2.5 : 2}
+                strokeOpacity={isActive ? 1 : 0.85}
+                strokeLinecap="round"
+                {...getEdgeAnimationStyle(edgeAnimStyle, strokeColor)}
               />
+              <AnimatedDotOverlay
+                styleId={edgeAnimStyle}
+                pathD={path}
+                color={strokeColor}
+              />
+
+              {/* edge label */}
               {(edge.label || isActive) && (
                 <g>
                   {edge.label && (
@@ -3937,8 +3085,8 @@ function MapCanvas({
           const { W, H } = nodeBounds(node);
           const isSel = multiSel.has(node.id),
             isSearchHit = searchHits.has(node.id);
-          const isLinking = linking === node.id,
-            collapseCount = edges.filter((e) => e.from === node.id).length;
+          const isLinking = linking === node.id;
+          const collapseCount = edges.filter((e) => e.from === node.id).length;
           const hasCollapsed = node.collapsed && collapseCount > 0;
           const isHovered =
             hoveredNode === node.id && !dragging && mode === "select";
@@ -3999,6 +3147,29 @@ function MapCanvas({
                   style={{ animation: "pulse 1s ease infinite" }}
                 />
               )}
+              {/* Present mode: glowing ring around the focused node */}
+              {presentMode && visibleNodes[presentIdx]?.id === node.id && (
+                <rect
+                  x={-12}
+                  y={-12}
+                  width={W + 24}
+                  height={H + 24}
+                  rx={
+                    node.shape === "pill"
+                      ? H / 2 + 12
+                      : node.shape === "circle"
+                        ? W / 2 + 12
+                        : 20
+                  }
+                  fill={node.color + "18"}
+                  stroke={node.color}
+                  strokeWidth={3}
+                  style={{
+                    animation: "presentRing 1.8s ease-in-out infinite",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
               {isSel && (
                 <rect
                   x={-3}
@@ -4018,7 +3189,6 @@ function MapCanvas({
                   opacity={0.9}
                 />
               )}
-              {/* Group indicator dot */}
               {nodeGroup && !isSel && (
                 <circle
                   cx={W}
@@ -4031,9 +3201,9 @@ function MapCanvas({
               {node.shape === "hexagon" ? (
                 <polygon
                   points={`${W * 0.25},0 ${W * 0.75},0 ${W},${H / 2} ${W * 0.75},${H} ${W * 0.25},${H} 0,${H / 2}`}
-                  fill={node.color + "1a"}
+                  fill={node.id === "root" ? node.color : node.color + "20"}
                   stroke={node.color}
-                  strokeWidth={isSel ? 2 : 1.5}
+                  strokeWidth={isSel ? 2.5 : 2}
                 />
               ) : node.shape === "diamond" ? (
                 <rect
@@ -4042,9 +3212,9 @@ function MapCanvas({
                   width={W - 16}
                   height={H - 16}
                   rx={6}
-                  fill={node.color + "1a"}
+                  fill={node.id === "root" ? node.color : node.color + "20"}
                   stroke={node.color}
-                  strokeWidth={isSel ? 2 : 1.5}
+                  strokeWidth={isSel ? 2.5 : 2}
                   transform={`rotate(45,${W / 2},${H / 2})`}
                 />
               ) : (
@@ -4056,18 +3226,17 @@ function MapCanvas({
                       ? H / 2
                       : node.shape === "circle"
                         ? W / 2
-                        : 10
+                        : 11
                   }
-                  fill={node.color + "18"}
-                  stroke={
-                    isSel
-                      ? node.color
-                      : isHovered
-                        ? node.color + "99"
-                        : node.color + "60"
+                  fill={node.id === "root" ? node.color : CT.surface}
+                  stroke={node.color}
+                  strokeWidth={isSel ? 2.5 : isHovered ? 2.2 : 2}
+                  style={{ transition: "stroke-width 0.15s, filter 0.15s" }}
+                  filter={
+                    isHovered && node.id !== "root"
+                      ? `drop-shadow(0 0 6px ${node.color}66)`
+                      : undefined
                   }
-                  strokeWidth={isSel ? 2 : isHovered ? 1.8 : 1.5}
-                  style={{ transition: "stroke 0.15s,stroke-width 0.15s" }}
                 />
               )}
               {node.image && (
@@ -4105,14 +3274,15 @@ function MapCanvas({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === "Escape") commitEdit();
                     }}
+                    placeholder="Type here…"
                     style={{
                       width: "100%",
                       background: "transparent",
                       border: "none",
                       outline: "none",
-                      color: CT.text,
+                      color: node.id === "root" ? "#ffffff" : CT.text,
                       fontSize: node.fontSize || 14,
-                      fontWeight: node.bold ? 700 : 400,
+                      fontWeight: node.bold || node.id === "root" ? 700 : 400,
                       fontStyle: node.italic ? "italic" : "normal",
                       fontFamily: node.fontFamily || "Inter",
                       textAlign: "center",
@@ -4128,9 +3298,9 @@ function MapCanvas({
                     (node.fontSize || 14) * 0.35
                   }
                   textAnchor="middle"
-                  fill={CT.text}
+                  fill={node.id === "root" ? "#ffffff" : CT.text}
                   fontSize={node.fontSize || 14}
-                  fontWeight={node.bold ? 700 : 400}
+                  fontWeight={node.bold || node.id === "root" ? 700 : 400}
                   fontStyle={node.italic ? "italic" : "normal"}
                   fontFamily={node.fontFamily || "Inter"}
                   style={{ pointerEvents: "none" }}
@@ -4278,18 +3448,6 @@ function MapCanvas({
           );
         })}
 
-        {lasso && (
-          <rect
-            x={lasso.x}
-            y={lasso.y}
-            width={lasso.w}
-            height={lasso.h}
-            fill={CT.accent + "15"}
-            stroke={CT.accent}
-            strokeWidth={1.5}
-            strokeDasharray="5 3"
-          />
-        )}
         {linking && (
           <circle
             cx={nodes.find((n) => n.id === linking)?.x || 0}
@@ -4303,178 +3461,106 @@ function MapCanvas({
         )}
       </svg>
 
-      {/* ── Toolbar ── */}
+      {/* ── Toolbar (drop animation) ── */}
       {!presentMode && (
-        <div
-          style={{
-            position: "absolute",
-            top: 14,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            background: CT.panel,
-            border: `1px solid ${CT.border}`,
-            borderRadius: 10,
-            padding: "3px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-          }}
-        >
+        <>
+          {/* Toolbar slides down/up */}
           <div
             style={{
-              display: "flex",
-              gap: 1,
-              padding: "0 2px",
-              borderRight: `1px solid ${CT.border}`,
-              marginRight: 4,
+              position: "absolute",
+              top: toolbarOpen ? 14 : -120,
+              left: panelOpen ? "calc((100% - 268px) / 2)" : "50%",
+              transform: "translateX(-50%)",
+              opacity: toolbarOpen ? 1 : 0,
+              pointerEvents: toolbarOpen ? "all" : "none",
+              zIndex: 100,
+              transition:
+                "top 0.38s cubic-bezier(0.16,1,0.3,1), opacity 0.22s ease, left 0.2s ease",
             }}
           >
-            {[
-              ["cursor", "Select", "select", "1"],
-              ["hand", "Pan", "pan", "2"],
-              ["link", "Link", "link", "3"],
-            ].map(([ico, lab, m, key]) => (
-              <TBtn
-                key={m}
-                icon={ico}
-                label={lab}
-                active={mode === m}
-                onClick={() => {
-                  setMode(m);
-                  setLinking(null);
-                }}
-                shortcut={key}
-                T={CT}
-              />
-            ))}
-          </div>
-          <TBtn
-            icon="plus"
-            label="Child"
-            onClick={() => addChild()}
-            shortcut="Tab"
-            T={CT}
-          />
-          <TBtn
-            icon="trash"
-            danger
-            onClick={() => deleteNodes(multiSel)}
-            shortcut="Del"
-            T={CT}
-          />
-          <TBtn
-            icon="copy"
-            label="Dup"
-            onClick={duplicateNode}
-            shortcut="⌘D"
-            T={CT}
-          />
-          <div
-            style={{
-              width: 1,
-              height: 24,
-              background: CT.border,
-              margin: "0 4px",
-            }}
-          />
-          <TBtn icon="undo" onClick={undo} shortcut="⌘Z" T={CT} />
-          <TBtn icon="redo" onClick={redo} shortcut="⌘Y" T={CT} />
-          <TBtn
-            icon="history"
-            onClick={() => setShowHistory((h) => !h)}
-            active={showHistory}
-            T={CT}
-            badge={history.length > 0}
-          />
-          <div
-            style={{
-              width: 1,
-              height: 24,
-              background: CT.border,
-              margin: "0 4px",
-            }}
-          />
-          <TBtn
-            icon="magic"
-            label="Layout"
-            onClick={() => autoArrange("radial")}
-            T={CT}
-          />
-          <TBtn icon="fit" onClick={fitAll} shortcut="0" T={CT} />
-          <TBtn
-            icon="zoomin"
-            onClick={() => doZoom(0.85)}
-            shortcut="+"
-            T={CT}
-          />
-          <TBtn
-            icon="zoomout"
-            onClick={() => doZoom(1.15)}
-            shortcut="-"
-            T={CT}
-          />
-          <div
-            style={{
-              padding: "0 10px",
-              fontSize: 12,
-              fontWeight: 600,
-              color: CT.muted,
-              borderLeft: `1px solid ${CT.border}`,
-              marginLeft: 2,
-            }}
-          >
-            {zoomLevel}%
-          </div>
-          <div
-            style={{
-              width: 1,
-              height: 24,
-              background: CT.border,
-              margin: "0 4px",
-            }}
-          />
-          {/* Theme switcher button */}
-          <div style={{ position: "relative" }}>
-            <TBtn
-              icon="theme"
-              onClick={() => setShowThemes((s) => !s)}
-              active={showThemes}
-              T={CT}
+            <Toolbar
+              CT={CT}
+              mode={mode}
+              setMode={setMode}
+              setLinking={setLinking}
+              showHistory={showHistory}
+              setShowHistory={setShowHistory}
+              showSearch={showSearch}
+              setShowSearch={setShowSearch}
+              setPanelOpen={setPanelOpen}
+              panelOpen={panelOpen}
+              selectedTheme={theme}
+              setSelectedTheme={onThemeChange}
+              zoomLevel={zoomLevel}
+              historyLength={history.length}
+              multiSel={multiSel}
+              addChild={addChild}
+              deleteNodes={deleteNodes}
+              duplicateNode={duplicateNode}
+              undo={undo}
+              redo={redo}
+              autoArrange={autoArrange}
+              fitAll={fitAll}
+              doZoom={doZoom}
+              exportPNG={exportPNG}
+              saveNow={saveNow}
             />
-            {showThemes && (
-              <ThemeSwitcher
-                T={CT}
-                theme={selectedTheme}
-                onTheme={(t) => setSelectedTheme(t)}
-                onClose={() => setShowThemes(false)}
-              />
-            )}
           </div>
-          {/* Export PNG */}
-          <TBtn icon="export" onClick={exportPNG} T={CT} />
-          <TBtn
-            icon="save"
-            label="Save"
-            onClick={saveNow}
-            shortcut="⌘S"
-            T={CT}
-          />
-          <TBtn
-            icon="search"
-            onClick={() => setShowSearch((s) => !s)}
-            shortcut="⌘F"
-            T={CT}
-          />
-          <TBtn
-            icon="chevronR"
-            onClick={() => setPanelOpen((p) => !p)}
-            T={CT}
-          />
-        </div>
+
+          {/* Toggle handle — slides from below toolbar to top of screen */}
+          <button
+            onClick={() => setToolbarOpen((v) => !v)}
+            title={toolbarOpen ? "Hide toolbar" : "Show toolbar"}
+            style={{
+              position: "absolute",
+              top: toolbarOpen ? 60 : 0,
+              left: panelOpen ? "calc((100% - 268px) / 2)" : "50%",
+              transform: "translateX(-50%)",
+              zIndex: 101,
+              padding: "4px 22px 5px",
+              borderRadius: "0 0 12px 12px",
+              border: `1px solid ${CT.border}`,
+              borderTop: "none",
+              background: CT.panel,
+              color: CT.muted,
+              cursor: "pointer",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.07em",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              whiteSpace: "nowrap",
+              transition: [
+                "top 0.38s cubic-bezier(0.16,1,0.3,1)",
+                "left 0.2s ease",
+                "background 0.15s",
+                "color 0.15s",
+                "box-shadow 0.2s",
+              ].join(", "),
+              boxShadow: toolbarOpen
+                ? "0 3px 14px rgba(0,0,0,0.35)"
+                : `0 4px 22px rgba(0,0,0,0.6), 0 0 0 1px ${CT.border}`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = CT.accent + "22";
+              e.currentTarget.style.color = CT.accent;
+              e.currentTarget.style.boxShadow = `0 0 18px ${CT.accent}55, 0 4px 16px rgba(0,0,0,0.4)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = CT.panel;
+              e.currentTarget.style.color = CT.muted;
+              e.currentTarget.style.boxShadow = toolbarOpen
+                ? "0 3px 14px rgba(0,0,0,0.35)"
+                : `0 4px 22px rgba(0,0,0,0.6)`;
+            }}
+          >
+            {toolbarOpen ? "▲" : "▼  Toolbar"}
+          </button>
+        </>
       )}
 
-      {/* History Panel */}
+      {/* ── History Panel ── */}
       {showHistory && !presentMode && (
         <HistoryPanel
           history={history}
@@ -4483,16 +3569,17 @@ function MapCanvas({
           onUndo={undo}
           onRedo={redo}
           onClose={() => setShowHistory(false)}
+          panelOpen={panelOpen}
         />
       )}
 
-      {/* Search */}
+      {/* ── Search bar ── */}
       {showSearch && !presentMode && (
         <div
           style={{
             position: "absolute",
             top: 70,
-            left: "50%",
+            left: panelOpen ? "calc((100% - 268px) / 2)" : "50%",
             transform: "translateX(-50%)",
             background: CT.panel,
             border: `1px solid ${CT.border}`,
@@ -4502,6 +3589,7 @@ function MapCanvas({
             gap: 8,
             padding: "8px 14px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+            transition: "left 0.2s ease",
           }}
         >
           <Icon name="search" size={14} />
@@ -4530,119 +3618,36 @@ function MapCanvas({
               <span style={{ fontSize: 11, color: CT.muted }}>
                 {searchHits.size} found
               </span>
-              {[...searchHits]
-                .map((id, i) => (
-                  <button
-                    key={id}
-                    onClick={() => focusNode(id)}
-                    style={{
-                      fontSize: 11,
-                      background: CT.surface,
-                      border: `1px solid ${CT.border}`,
-                      color: CT.accent,
-                      padding: "2px 8px",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {nodes.find((n) => n.id === id)?.text?.slice(0, 12) ||
-                      `#${i + 1}`}
-                  </button>
-                ))
-                .slice(0, 3)}
+              {[...searchHits].slice(0, 3).map((id, i) => (
+                <button
+                  key={id}
+                  onClick={() => focusNode(id)}
+                  style={{
+                    fontSize: 11,
+                    background: CT.surface,
+                    border: `1px solid ${CT.border}`,
+                    color: CT.accent,
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                  }}
+                >
+                  {nodes.find((n) => n.id === id)?.text?.slice(0, 12) ||
+                    `#${i + 1}`}
+                </button>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Status bar */}
-      {!presentMode && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 48,
-            right: showMini ? 190 : 20,
-            background: CT.panel,
-            border: `1px solid ${CT.border}`,
-            borderRadius: 7,
-            display: "flex",
-            alignItems: "center",
-            gap: 0,
-            fontSize: 11,
-            color: CT.muted,
-            overflow: "hidden",
-          }}
-        >
-          <SyncBadge status={syncStatus} T={CT} />
-          {[
-            `${nodes.length} nodes`,
-            `${edges.length} edges`,
-            `${groups.length} groups`,
-            multiSel.size > 1 ? `${multiSel.size} selected` : "",
-          ]
-            .filter(Boolean)
-            .map((v, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "6px 12px",
-                  borderLeft: `1px solid ${CT.border}`,
-                }}
-              >
-                {v}
-              </div>
-            ))}
-          <div
-            style={{
-              padding: "6px 12px",
-              borderLeft: `1px solid ${CT.border}`,
-            }}
-          >
-            <button
-              onClick={() => setShowGrid((g) => !g)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: showGrid ? CT.accent : CT.muted,
-                cursor: "pointer",
-                fontSize: 11,
-              }}
-            >
-              Grid
-            </button>
-          </div>
-          <div
-            style={{
-              padding: "6px 12px",
-              borderLeft: `1px solid ${CT.border}`,
-            }}
-          >
-            <button
-              onClick={() => setShowMini((m) => !m)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: showMini ? CT.accent : CT.muted,
-                cursor: "pointer",
-                fontSize: 11,
-              }}
-            >
-              Map
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showMini && !presentMode && (
-        <Minimap nodes={visibleNodes} viewBox={viewBox} T={CT} />
-      )}
-
+      {/* ── Link mode hint ── */}
       {mode === "link" && !presentMode && (
         <div
           style={{
             position: "absolute",
             bottom: 96,
-            left: "50%",
+            left: panelOpen ? "calc((100% - 268px) / 2)" : "50%",
             transform: "translateX(-50%)",
             background: CT.panel,
             border: `1px solid ${CT.border}`,
@@ -4651,6 +3656,7 @@ function MapCanvas({
             padding: "7px 16px",
             fontSize: 12,
             fontWeight: 500,
+            transition: "left 0.2s ease",
           }}
         >
           {linking
@@ -4660,987 +3666,114 @@ function MapCanvas({
         </div>
       )}
 
-      {/* ── Right Panel ── */}
-      {panelOpen && !presentMode && (
+      {/* ── Right Panel (slide from right + side arrow tab) ── */}
+      {!presentMode && (
         <div
           style={{
             position: "absolute",
             top: 0,
             right: 0,
+            bottom: 0,
             width: 268,
-            height: "100%",
+            transform: panelOpen ? "translateX(0)" : "translateX(100%)",
+            transition: "transform 0.38s cubic-bezier(0.16,1,0.3,1)",
+            zIndex: 50,
             display: "flex",
             flexDirection: "column",
-            background: CT.panel,
-            borderLeft: `1px solid ${CT.border}`,
-            overflow: "hidden",
           }}
         >
-          <div
+          {/* Side arrow toggle tab */}
+          <button
+            onClick={() => setPanelOpen((v) => !v)}
+            title={panelOpen ? "Hide panel  ›" : "Show panel  ‹"}
             style={{
+              position: "absolute",
+              left: -34,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 34,
+              height: 64,
+              borderRadius: "14px 0 0 14px",
+              border: `1px solid ${CT.border}`,
+              borderRight: "none",
+              background: CT.panel,
+              color: panelOpen ? CT.muted : CT.accent,
+              cursor: "pointer",
+              fontSize: 20,
+              lineHeight: 1,
               display: "flex",
-              borderBottom: `1px solid ${CT.border}`,
-              flexShrink: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background 0.15s, color 0.15s, box-shadow 0.2s",
+              boxShadow: panelOpen
+                ? "none"
+                : `-4px 0 24px ${CT.accent}55, inset 0 0 0 1px ${CT.accent}33`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = CT.accent + "22";
+              e.currentTarget.style.color = CT.accent;
+              e.currentTarget.style.boxShadow = `-4px 0 28px ${CT.accent}77, inset 0 0 0 1px ${CT.accent}55`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = CT.panel;
+              e.currentTarget.style.color = panelOpen ? CT.muted : CT.accent;
+              e.currentTarget.style.boxShadow = panelOpen
+                ? "none"
+                : `-4px 0 24px ${CT.accent}55, inset 0 0 0 1px ${CT.accent}33`;
             }}
           >
-            {[
-              ["node", "Node"],
-              ["connect", "Links"],
-              ["group", "Groups"],
-              ["style", "Style"],
-              ["map", "Map"],
-            ].map(([t, l]) => (
-              <button
-                key={t}
-                onClick={() => setPanelTab(t)}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: panelTab === t ? CT.surface : "transparent",
-                  color: panelTab === t ? CT.text : CT.muted,
-                  borderBottom:
-                    panelTab === t
-                      ? `2px solid ${CT.accent}`
-                      : "2px solid transparent",
-                }}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {/* ── NODE TAB ── */}
-            {panelTab === "node" && selectedNode && (
-              <>
-                <Section title="Label & Content" T={CT}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    <input
-                      value={selectedNode.emoji || ""}
-                      onChange={(e) => upNode("emoji", e.target.value)}
-                      placeholder="😀"
-                      style={{
-                        ...inputStyle(CT),
-                        width: 44,
-                        textAlign: "center",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <input
-                      value={selectedNode.text}
-                      onChange={(e) => upNode("text", e.target.value)}
-                      style={{ ...inputStyle(CT), flex: 1 }}
-                    />
-                  </div>
-                  <textarea
-                    value={selectedNode.note || ""}
-                    onChange={(e) => upNode("note", e.target.value)}
-                    placeholder="Add a note…"
-                    rows={3}
-                    style={{
-                      ...inputStyle(CT),
-                      resize: "vertical",
-                      lineHeight: 1.5,
-                    }}
-                  />
-                  <div style={{ marginTop: 8 }}>
-                    <input
-                      value={selectedNode.tag || ""}
-                      onChange={(e) => upNode("tag", e.target.value)}
-                      placeholder="#tag"
-                      style={{ ...inputStyle(CT) }}
-                    />
-                  </div>
-                </Section>
-                <Section title="Color" T={CT}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                    {NODE_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => upNode("color", c)}
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          border: "none",
-                          background: c,
-                          cursor: "pointer",
-                          outline:
-                            selectedNode.color === c
-                              ? "2px solid white"
-                              : "2px solid transparent",
-                          outlineOffset: 2,
-                          transition: "transform 0.1s",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.transform = "scale(1.15)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.transform = "scale(1)")
-                        }
-                      />
-                    ))}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 8,
-                      display: "flex",
-                      gap: 6,
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      style={{ fontSize: 11, color: CT.muted, flexShrink: 0 }}
-                    >
-                      Custom
-                    </label>
-                    <input
-                      type="color"
-                      value={selectedNode.color}
-                      onChange={(e) => upNode("color", e.target.value)}
-                      style={{
-                        width: 36,
-                        height: 28,
-                        border: `1px solid ${CT.border}`,
-                        borderRadius: 6,
-                        padding: 2,
-                        background: "transparent",
-                        cursor: "pointer",
-                      }}
-                    />
-                  </div>
-                </Section>
-                <Section title="Typography" T={CT}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    <label
-                      style={{
-                        fontSize: 11,
-                        color: CT.muted,
-                        width: 70,
-                        flexShrink: 0,
-                        paddingTop: 8,
-                      }}
-                    >
-                      Size {selectedNode.fontSize || 14}px
-                    </label>
-                    <input
-                      type="range"
-                      min={10}
-                      max={36}
-                      value={selectedNode.fontSize || 14}
-                      onChange={(e) => upNode("fontSize", +e.target.value)}
-                      style={{ flex: 1, accentColor: CT.accent }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    {[
-                      ["B", "bold"],
-                      ["I", "italic"],
-                    ].map(([l, k]) => (
-                      <button
-                        key={k}
-                        onClick={() => upNode(k, !selectedNode[k])}
-                        style={{
-                          padding: "5px 14px",
-                          borderRadius: 6,
-                          border: `1px solid ${CT.border}`,
-                          background: selectedNode[k] ? CT.accent : CT.surface,
-                          color: selectedNode[k] ? "white" : CT.text,
-                          fontSize: 13,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                  <select
-                    value={selectedNode.fontFamily || "Inter"}
-                    onChange={(e) => upNode("fontFamily", e.target.value)}
-                    style={{ ...inputStyle(CT) }}
-                  >
-                    {FONT_FAMILIES.map((f) => (
-                      <option key={f} value={f}>
-                        {f.replace(/'/g, "")}
-                      </option>
-                    ))}
-                  </select>
-                </Section>
-                <Section title="Shape" T={CT}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {["rounded", "pill", "diamond", "hexagon", "circle"].map(
-                      (s) => (
-                        <button
-                          key={s}
-                          onClick={() => upNode("shape", s)}
-                          style={{
-                            padding: "5px 12px",
-                            borderRadius: 6,
-                            border: `1px solid ${selectedNode.shape === s ? CT.accent : CT.border}`,
-                            background:
-                              selectedNode.shape === s
-                                ? CT.accent + "22"
-                                : CT.surface,
-                            color:
-                              selectedNode.shape === s ? CT.text : CT.muted,
-                            fontSize: 11,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {s}
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </Section>
-                <Section title="Image URL" T={CT} defaultOpen={false}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <input
-                      value={imageInput}
-                      onChange={(e) => setImageInput(e.target.value)}
-                      placeholder="https://…"
-                      style={{ ...inputStyle(CT), flex: 1 }}
-                    />
-                    <button
-                      onClick={() => {
-                        upNode("image", imageInput);
-                        setImageInput("");
-                        toast("Image set", "success");
-                      }}
-                      style={{
-                        padding: "0 12px",
-                        borderRadius: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: CT.text,
-                        cursor: "pointer",
-                        fontSize: 12,
-                      }}
-                    >
-                      Set
-                    </button>
-                  </div>
-                  {selectedNode.image && (
-                    <button
-                      onClick={() => upNode("image", "")}
-                      style={{
-                        marginTop: 6,
-                        width: "100%",
-                        padding: "5px",
-                        borderRadius: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: 11,
-                      }}
-                    >
-                      Remove Image
-                    </button>
-                  )}
-                </Section>
-                <Section title="Options" T={CT} defaultOpen={false}>
-                  {[
-                    ["locked", "🔒 Locked", "Lock node"],
-                    ["collapsed", "⬇ Collapsed", "Hide children"],
-                  ].map(([k, l, desc]) => (
-                    <div
-                      key={k}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{l}</div>
-                        <div style={{ fontSize: 10, color: CT.muted }}>
-                          {desc}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => upNode(k, !selectedNode[k])}
-                        style={{
-                          width: 40,
-                          height: 22,
-                          borderRadius: 11,
-                          border: "none",
-                          cursor: "pointer",
-                          background: selectedNode[k] ? CT.accent : "#333",
-                          position: "relative",
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 3,
-                            width: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            background: "white",
-                            transition: "left 0.15s",
-                            left: selectedNode[k] ? 21 : 3,
-                          }}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                  <div style={{ display: "flex", gap: 6, paddingTop: 4 }}>
-                    <button
-                      onClick={() => {
-                        snapshot();
-                        addChild();
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: CT.text,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                    >
-                      + Child
-                    </button>
-                    <button
-                      onClick={duplicateNode}
-                      style={{
-                        flex: 1,
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: CT.text,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Duplicate
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => deleteNodes(multiSel)}
-                    style={{
-                      width: "100%",
-                      marginTop: 8,
-                      padding: "8px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(239,68,68,0.3)",
-                      background: "rgba(239,68,68,0.08)",
-                      color: "#ef4444",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 500,
-                    }}
-                  >
-                    Delete Node{multiSel.size > 1 ? `s (${multiSel.size})` : ""}
-                  </button>
-                </Section>
-              </>
-            )}
-            {panelTab === "node" && !selectedNode && (
-              <div
-                style={{
-                  padding: 24,
-                  textAlign: "center",
-                  color: CT.muted,
-                  fontSize: 13,
-                }}
-              >
-                Click a node to edit it
-              </div>
-            )}
+            {panelOpen ? "›" : "‹"}
+          </button>
 
-            {/* ── CONNECTIONS TAB ── */}
-            {panelTab === "connect" && (
-              <div style={{ padding: "14px 16px" }}>
-                {selectedNode ? (
-                  <>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: CT.text,
-                        marginBottom: 4,
-                      }}
-                    >
-                      {selectedNode.emoji} {selectedNode.text}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: CT.muted,
-                        marginBottom: 12,
-                      }}
-                    >
-                      All connections for this node
-                    </div>
-                    <ConnectionsList
-                      nodeId={selected}
-                      nodes={nodes}
-                      edges={edges}
-                      onFocus={focusNode}
-                      T={CT}
-                    />
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      color: CT.muted,
-                      fontSize: 12,
-                      paddingTop: 16,
-                    }}
-                  >
-                    Select a node to see its connections
-                  </div>
-                )}
-                <div
-                  style={{
-                    marginTop: 20,
-                    padding: "12px",
-                    borderRadius: 8,
-                    border: `1px solid ${CT.border}`,
-                    background: CT.surface,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: CT.muted,
-                      marginBottom: 8,
-                      fontWeight: 700,
-                    }}
-                  >
-                    ALL EDGES ({edges.length})
-                  </div>
-                  <div
-                    style={{
-                      maxHeight: 180,
-                      overflowY: "auto",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 4,
-                    }}
-                  >
-                    {edges.map((e) => {
-                      const from = nodes.find((n) => n.id === e.from),
-                        to = nodes.find((n) => n.id === e.to);
-                      return (
-                        <div
-                          key={e.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            fontSize: 11,
-                            color: CT.muted,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              background: from?.color || CT.muted,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              flex: 1,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {from?.text?.slice(0, 10) || "?"}
-                          </span>
-                          <span style={{ opacity: 0.5 }}>→</span>
-                          <div
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              background: to?.color || CT.muted,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              flex: 1,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {to?.text?.slice(0, 10) || "?"}
-                          </span>
-                          <button
-                            onClick={() => removeEdge(e.id)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "#ef4444",
-                              cursor: "pointer",
-                              fontSize: 10,
-                              padding: "0 4px",
-                              flexShrink: 0,
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {edges.length === 0 && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: CT.muted,
-                          textAlign: "center",
-                          padding: "8px 0",
-                        }}
-                      >
-                        No edges yet
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── GROUPS TAB ── */}
-            {panelTab === "group" && (
-              <div style={{ padding: "14px 16px" }}>
-                <GroupsPanel
-                  nodes={nodes}
-                  groups={groups}
-                  multiSel={multiSel}
-                  T={CT}
-                  onGroup={createGroup}
-                  onUngroup={ungroupGroup}
-                  onSelectGroup={selectGroup}
-                  onDeleteGroup={deleteGroup}
-                  onRenameGroup={(gid, name) => {
-                    setGroups((gs) =>
-                      gs.map((g) => (g.id === gid ? { ...g, name } : g)),
-                    );
-                  }}
-                />
-              </div>
-            )}
-
-            {/* ── STYLE TAB ── */}
-            {panelTab === "style" && (
-              <>
-                <Section title="Edge Style" T={CT}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {EDGE_STYLES.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setEdgeStyle(s)}
-                        style={{
-                          padding: "5px 12px",
-                          borderRadius: 6,
-                          border: `1px solid ${edgeStyle === s ? CT.accent : CT.border}`,
-                          background:
-                            edgeStyle === s ? CT.accent + "22" : CT.surface,
-                          color: edgeStyle === s ? CT.text : CT.muted,
-                          fontSize: 11,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <span style={{ fontSize: 12, color: CT.muted }}>
-                      Animated edges
-                    </span>
-                    <button
-                      onClick={() => setAnimatedEdges((a) => !a)}
-                      style={{
-                        width: 40,
-                        height: 22,
-                        borderRadius: 11,
-                        border: "none",
-                        cursor: "pointer",
-                        background: animatedEdges ? CT.accent : "#333",
-                        position: "relative",
-                        transition: "background 0.2s",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 3,
-                          width: 16,
-                          height: 16,
-                          borderRadius: 8,
-                          background: "white",
-                          transition: "left 0.15s",
-                          left: animatedEdges ? 21 : 3,
-                        }}
-                      />
-                    </button>
-                  </div>
-                </Section>
-                <Section title="Auto-Layout" T={CT}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[
-                      ["Radial", "radial"],
-                      ["Tree", "horizontal"],
-                    ].map(([l, t]) => (
-                      <button
-                        key={t}
-                        onClick={() => autoArrange(t)}
-                        style={{
-                          flex: 1,
-                          padding: "8px",
-                          borderRadius: 6,
-                          border: `1px solid ${CT.border}`,
-                          background: CT.surface,
-                          color: CT.text,
-                          cursor: "pointer",
-                          fontSize: 12,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-                <Section title="Color Palette" T={CT}>
-                  {Object.keys(PALETTES).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPalette(p)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        width: "100%",
-                        padding: "7px 10px",
-                        borderRadius: 6,
-                        marginBottom: 4,
-                        border: `1px solid ${palette === p ? CT.accent : CT.border}`,
-                        background:
-                          palette === p ? CT.accent + "15" : CT.surface,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ display: "flex", gap: 3 }}>
-                        {PALETTES[p].map((c) => (
-                          <div
-                            key={c}
-                            style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: 3,
-                              background: c,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <span style={{ fontSize: 12, color: CT.text }}>{p}</span>
-                    </button>
-                  ))}
-                </Section>
-                <Section title="Canvas" T={CT}>
-                  {[
-                    ["Show grid", showGrid, setShowGrid],
-                    ["Show labels", showLabels, setShowLabels],
-                    ["Snap to grid", snapToGrid, setSnapToGrid],
-                    ["Show minimap", showMini, setShowMini],
-                  ].map(([l, val, set]) => (
-                    <div
-                      key={l}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <span style={{ fontSize: 12, color: CT.muted }}>{l}</span>
-                      <button
-                        onClick={() => set((v) => !v)}
-                        style={{
-                          width: 40,
-                          height: 22,
-                          borderRadius: 11,
-                          border: "none",
-                          cursor: "pointer",
-                          background: val ? CT.accent : "#333",
-                          position: "relative",
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 3,
-                            width: 16,
-                            height: 16,
-                            borderRadius: 8,
-                            background: "white",
-                            transition: "left 0.15s",
-                            left: val ? 21 : 3,
-                          }}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </Section>
-              </>
-            )}
-
-            {/* ── MAP TAB ── */}
-            {panelTab === "map" && (
-              <>
-                <Section title="Theme" T={CT}>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 6,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {Object.keys(THEMES).map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setSelectedTheme(t)}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 3,
-                          padding: "6px 8px",
-                          borderRadius: 8,
-                          border: `1px solid ${selectedTheme === t ? CT.accent : CT.border}`,
-                          background:
-                            selectedTheme === t ? CT.accent + "18" : CT.surface,
-                          cursor: "pointer",
-                          minWidth: 56,
-                        }}
-                      >
-                        <div style={{ display: "flex", gap: 2 }}>
-                          {[THEMES[t].bg, THEMES[t].accent, THEMES[t].text].map(
-                            (c, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  width: 10,
-                                  height: 10,
-                                  borderRadius: 2,
-                                  background: c,
-                                }}
-                              />
-                            ),
-                          )}
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 9,
-                            color: selectedTheme === t ? CT.accent : CT.muted,
-                            fontWeight: selectedTheme === t ? 700 : 400,
-                          }}
-                        >
-                          {t}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </Section>
-                {mapId && (
-                  <Section title="Sync" T={CT}>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: CT.muted,
-                        marginBottom: 8,
-                        wordBreak: "break-all",
-                      }}
-                    >
-                      Map ID:{" "}
-                      <span style={{ color: CT.text, fontFamily: "monospace" }}>
-                        {mapId}
-                      </span>
-                    </div>
-                    <button
-                      onClick={saveNow}
-                      style={{
-                        width: "100%",
-                        padding: "8px",
-                        borderRadius: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: CT.text,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <Icon name="save" size={13} /> Save Now
-                    </button>
-                  </Section>
-                )}
-                <Section title="Export" T={CT}>
-                  {[
-                    ["⬇ JSON", "json", exportJSON],
-                    ["⬇ Markdown", "md", exportMarkdown],
-                    ["⬇ SVG", "svg", exportSVG],
-                    ["⬇ PNG Image", "png", exportPNG],
-                  ].map(([l, k, fn]) => (
-                    <button
-                      key={k}
-                      onClick={fn}
-                      style={{
-                        width: "100%",
-                        padding: "8px",
-                        borderRadius: 6,
-                        marginBottom: 6,
-                        border: `1px solid ${CT.border}`,
-                        background: CT.surface,
-                        color: CT.text,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        textAlign: "left",
-                      }}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </Section>
-                <Section title="Import" T={CT}>
-                  <label
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      padding: "8px",
-                      borderRadius: 6,
-                      border: `1px solid ${CT.border}`,
-                      background: CT.surface,
-                      color: CT.text,
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 500,
-                      textAlign: "center",
-                    }}
-                  >
-                    ⬆ Import JSON
-                    <input
-                      type="file"
-                      accept=".json"
-                      style={{ display: "none" }}
-                      onChange={importJSON}
-                    />
-                  </label>
-                </Section>
-                <Section title="Stats" T={CT} defaultOpen={false}>
-                  {[
-                    ["Nodes", nodes.length],
-                    ["Edges", edges.length],
-                    ["Groups", groups.length],
-                    ["History", history.length],
-                    ["Selected", multiSel.size],
-                  ].map(([l, v]) => (
-                    <div
-                      key={l}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "5px 0",
-                        borderBottom: `1px solid ${CT.border}`,
-                      }}
-                    >
-                      <span style={{ fontSize: 12, color: CT.muted }}>{l}</span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: CT.text,
-                        }}
-                      >
-                        {v}
-                      </span>
-                    </div>
-                  ))}
-                </Section>
-                <Section title="Keyboard Shortcuts" T={CT} defaultOpen={false}>
-                  {[
-                    ["Tab", "Add child"],
-                    ["Del", "Delete node"],
-                    ["⌘Z", "Undo"],
-                    ["⌘Y", "Redo"],
-                    ["⌘D", "Duplicate"],
-                    ["⌘A", "Select all"],
-                    ["⌘F", "Search"],
-                    ["⌘S", "Save"],
-                    ["⌘G", "Group selected"],
-                    ["1/2/3", "Select/Pan/Link"],
-                    ["0", "Fit all"],
-                    ["+/-", "Zoom"],
-                    ["P", "Present mode"],
-                    ["Esc", "Cancel"],
-                  ].map(([k, v]) => (
-                    <div
-                      key={k}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "4px 0",
-                        borderBottom: `1px solid ${CT.border}`,
-                      }}
-                    >
-                      <span style={{ fontSize: 11, color: CT.muted }}>{v}</span>
-                      <kbd
-                        style={{
-                          fontSize: 10,
-                          color: CT.text,
-                          background: CT.surface,
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          border: `1px solid ${CT.border}`,
-                        }}
-                      >
-                        {k}
-                      </kbd>
-                    </div>
-                  ))}
-                </Section>
-              </>
-            )}
-          </div>
+          {/* Panel content */}
+          <RightPanel
+            CT={CT}
+            selected={selected}
+            selectedNode={selectedNode}
+            nodes={nodes}
+            edges={edges}
+            groups={groups}
+            multiSel={multiSel}
+            edgeStyle={edgeStyle}
+            setEdgeStyle={setEdgeStyle}
+            edgeAnimStyle={edgeAnimStyle}
+            setEdgeAnimStyle={setEdgeAnimStyle}
+            showGrid={showGrid}
+            setShowGrid={setShowGrid}
+            showLabels={showLabels}
+            setShowLabels={setShowLabels}
+            snapToGrid={snapToGrid}
+            setSnapToGrid={setSnapToGrid}
+            palette={palette}
+            setPalette={setPalette}
+            selectedTheme={theme}
+            setSelectedTheme={onThemeChange}
+            mapId={mapId}
+            historyLength={history.length}
+            upNode={upNode}
+            deleteNodes={deleteNodes}
+            duplicateNode={duplicateNode}
+            addChild={addChild}
+            removeEdge={removeEdge}
+            focusNode={focusNode}
+            saveNow={saveNow}
+            exportJSON={exportJSON}
+            exportMarkdown={exportMarkdown}
+            exportSVG={exportSVG}
+            exportPNG={exportPNG}
+            importJSON={importJSON}
+            createGroup={createGroup}
+            ungroupGroup={ungroupGroup}
+            selectGroup={selectGroup}
+            deleteGroup={deleteGroup}
+            autoArrange={autoArrange}
+            snapshot={snapshot}
+            toast={toast}
+          />
         </div>
       )}
 
+      {/* Context menu */}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -5650,27 +3783,200 @@ function MapCanvas({
           onClose={() => setContextMenu(null)}
         />
       )}
+
       <ToastStack toasts={toasts} T={CT} />
 
-      {presentMode && (
-        <div style={{ position: "fixed", top: 12, right: 12, zIndex: 9999 }}>
-          <button
-            onClick={() => setPresentMode(false)}
-            style={{
-              padding: "6px 16px",
-              borderRadius: 8,
-              border: `1px solid ${CT.border}`,
-              background: CT.panel,
-              color: CT.text,
-              fontSize: 12,
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            ✕ Exit Presentation
-          </button>
-        </div>
-      )}
+      {/* ── Presenter bar ── */}
+      {presentMode &&
+        (() => {
+          const curNode = visibleNodes[presentIdx];
+          return (
+            <div
+              style={{
+                position: "fixed",
+                bottom: 24,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                background: "rgba(10,10,20,0.92)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 16,
+                overflow: "hidden",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.75)",
+                backdropFilter: "blur(24px)",
+                fontFamily: "Inter, system-ui, sans-serif",
+                userSelect: "none",
+              }}
+            >
+              {/* Node name + progress */}
+              <div
+                style={{
+                  padding: "10px 18px",
+                  borderRight: "1px solid rgba(255,255,255,0.1)",
+                  minWidth: 160,
+                  maxWidth: 240,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#fff",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {curNode?.emoji ? `${curNode.emoji} ` : ""}
+                  {curNode?.text || "—"}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 5,
+                  }}
+                >
+                  {/* Progress bar */}
+                  <div
+                    style={{
+                      flex: 1,
+                      height: 2,
+                      background: "rgba(255,255,255,0.12)",
+                      borderRadius: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        borderRadius: 1,
+                        transition: "width 0.35s ease",
+                        background: curNode?.color || CT.accent,
+                        width: `${((presentIdx + 1) / visibleNodes.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.4)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {presentIdx + 1} / {visibleNodes.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Prev */}
+              {[
+                {
+                  label: "‹",
+                  title: "Previous  ←",
+                  action: () => presentNav(-1),
+                },
+                { label: "›", title: "Next  →", action: () => presentNav(1) },
+              ].map((btn) => (
+                <button
+                  key={btn.label}
+                  onClick={btn.action}
+                  title={btn.title}
+                  style={{
+                    width: 46,
+                    height: 56,
+                    border: "none",
+                    background: "transparent",
+                    color: "rgba(255,255,255,0.8)",
+                    cursor: "pointer",
+                    fontSize: 24,
+                    lineHeight: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "rgba(255,255,255,0.08)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  {btn.label}
+                </button>
+              ))}
+
+              <div
+                style={{
+                  width: 1,
+                  height: 32,
+                  background: "rgba(255,255,255,0.1)",
+                }}
+              />
+
+              {/* Fit all */}
+              <button
+                onClick={fitAll}
+                title="Show full map"
+                style={{
+                  width: 42,
+                  height: 56,
+                  border: "none",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.5)",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(255,255,255,0.08)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                ⊞
+              </button>
+
+              {/* Exit */}
+              <button
+                onClick={() => setPresentMode(false)}
+                title="Exit  Esc"
+                style={{
+                  padding: "0 18px",
+                  height: 56,
+                  border: "none",
+                  borderLeft: "1px solid rgba(255,255,255,0.1)",
+                  background: "transparent",
+                  color: "#ef4444",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(239,68,68,0.1)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                ✕ Exit
+              </button>
+            </div>
+          );
+        })()}
     </div>
   );
 }
@@ -5679,12 +3985,19 @@ function MapCanvas({
 export default function MindMapPro({ mapId: propMapId }) {
   const [mapId, setMapId] = useState(propMapId || null);
   const [loadState, setLoadState] = useState("loading");
-  const [theme, setTheme] = useState("Obsidian");
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("mindmap_theme");
+    return saved && THEMES[saved] ? saved : "Obsidian";
+  });
   const [presentMode, setPresentMode] = useState(false);
-  const T = THEMES[theme];
-
   const [pages, setPages] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
+  const T = THEMES[theme];
+
+  // Persist theme across sessions
+  useEffect(() => {
+    localStorage.setItem("mindmap_theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const init = async () => {
@@ -5777,8 +4090,8 @@ export default function MindMapPro({ mapId: propMapId }) {
   }, [pages, mapId]);
 
   const addPage = (template, name, emoji, color) => {
-    const newId = uid();
-    const title = name || `Page ${pages.length + 1}`;
+    const newId = uid(),
+      title = name || `Page ${pages.length + 1}`;
     const tpl = template || PAGE_TEMPLATES[0];
     setPages((ps) => [
       ...ps,
@@ -5799,7 +4112,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     setPages((ps) =>
       ps.map((p) => (p.id === pageId ? { ...p, title: newTitle } : p)),
     );
-
   const deletePage = (pageId) => {
     if (pages.length <= 1) return;
     const idx = pages.findIndex((p) => p.id === pageId);
@@ -5808,7 +4120,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     if (activePageId === pageId)
       setActivePageId(newPages[Math.max(0, idx - 1)].id);
   };
-
   const duplicatePage = (pageId) => {
     const src = pages.find((p) => p.id === pageId);
     if (!src) return;
@@ -5829,7 +4140,6 @@ export default function MindMapPro({ mapId: propMapId }) {
     setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, color } : p)));
   const changePageEmoji = (pageId, emoji) =>
     setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, emoji } : p)));
-
   const syncPageNodes = (pageId, nodes) =>
     setPages((ps) => ps.map((p) => (p.id === pageId ? { ...p, nodes } : p)));
   const syncPageEdges = (pageId, edges) =>
@@ -5903,7 +4213,9 @@ export default function MindMapPro({ mapId: propMapId }) {
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes addBtnFadeIn{from{opacity:0;transform:scale(0.6)}to{opacity:1;transform:scale(1)}}
         @keyframes popupSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes presentRing{0%,100%{opacity:0.5;stroke-width:2}50%{opacity:1;stroke-width:3.5}}
       `}</style>
+
       <div
         style={{
           flex: 1,
@@ -5924,6 +4236,7 @@ export default function MindMapPro({ mapId: propMapId }) {
             initialGroups={activePage.groups ?? []}
             theme={theme}
             T={T}
+            onThemeChange={setTheme}
             presentMode={presentMode}
             setPresentMode={setPresentMode}
             onSyncNodes={(nodes) => syncPageNodes(activePageId, nodes)}

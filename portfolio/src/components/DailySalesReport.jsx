@@ -1414,7 +1414,7 @@ const Toast = ({ msg, type }) => {
 };
 
 // ─── Enhanced Record Card with Expand/Collapse ────────────────────────────────
-const RecordCard = ({ record, onDelete }) => {
+const RecordCard = ({ record, onDelete, onEdit }) => {
   const [expanded, setExpanded] = useState(false);
   const color = pctColor(record.pct);
   const sc = stageColor(record.stage);
@@ -1612,25 +1612,45 @@ const RecordCard = ({ record, onDelete }) => {
               />
             </div>
           </div>
-          <button
-            className="dsr-btn-danger"
-            onClick={() => onDelete(id)}
-            style={{
-              color: "#BE123C",
-              background: "transparent",
-              border: "1px solid #FECACA",
-              height: 30,
-              padding: "0 10px",
-              borderRadius: 6,
-              fontSize: 11,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-          >
-            🗑 Delete
-          </button>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <button
+              className="dsr-btn-edit"
+              onClick={() => onEdit(record)}
+              style={{
+                color: "#1D4ED8",
+                background: "transparent",
+                border: "1px solid #BFDBFE",
+                height: 30,
+                padding: "0 10px",
+                borderRadius: 6,
+                fontSize: 11,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "background 0.15s",
+              }}
+            >
+              ✏️ Edit
+            </button>
+            <button
+              className="dsr-btn-danger"
+              onClick={() => onDelete(id)}
+              style={{
+                color: "#BE123C",
+                background: "transparent",
+                border: "1px solid #FECACA",
+                height: 30,
+                padding: "0 10px",
+                borderRadius: 6,
+                fontSize: 11,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                transition: "background 0.15s",
+              }}
+            >
+              🗑 Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1810,11 +1830,205 @@ const RecordCard = ({ record, onDelete }) => {
   );
 };
 
+// ─── Monthly Analysis Card ─────────────────────────────────────────────────────
+const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => {
+  return (
+    <div
+      className="dsr-record-card"
+      style={{
+        background: "#fff",
+        border: "1px solid #E5E7EB",
+        borderRadius: 12,
+        overflow: "hidden",
+        borderLeft: "4px solid #00B8A2",
+      }}
+    >
+      <div style={{ padding: "14px 14px 16px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#0B2E4E",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              minWidth: 0,
+            }}
+          >
+            {month.label}
+            {delta !== null && delta !== 0 && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: delta > 0 ? "#16A34A" : "#DC2626",
+                }}
+              >
+                {delta > 0 ? `▲ +${delta}` : `▼ ${delta}`} vs last mth
+              </span>
+            )}
+          </div>
+          <button
+            className={`dsr-expand-btn${expanded ? " expanded" : ""}`}
+            onClick={onToggle}
+          >
+            {expanded ? "▲ Collapse" : "▼ Details"}
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 8,
+          }}
+        >
+          {[
+            ["Visits", month.totalVisits, "#3B82F6"],
+            ["Customers", month.uniqueCustomers, "#00B8A2"],
+            ["Potential", `₹${month.totalPot}L`, "#F59E0B"],
+            ["Avg YTD/ABP", `${month.avgPct}%`, "#A855F7"],
+          ].map(([label, val, clr]) => (
+            <div
+              key={label}
+              style={{
+                textAlign: "center",
+                padding: "8px 4px",
+                background: "#F9FAFB",
+                borderRadius: 8,
+                border: "1px solid #F3F4F6",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "#9CA3AF",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  marginBottom: 3,
+                }}
+              >
+                {label}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: clr }}>
+                {val}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`dsr-card-detail-section${expanded ? " open" : ""}`}>
+        <div
+          style={{
+            margin: "0 14px",
+            borderTop: "1px dashed #E5E7EB",
+            paddingTop: 12,
+            paddingBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#8A9BB0",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: 10,
+            }}
+          >
+            👥 Customer-wise visits this month
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {month.customerRows.map((c) => {
+              const sc = stageColor(c.latest.stage);
+              return (
+                <div
+                  key={c.name}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 10px",
+                    background: "#F9FAFB",
+                    borderRadius: 8,
+                    border: "1px solid #F3F4F6",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#111827",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {c.name}
+                    </div>
+                    <div
+                      style={{ fontSize: 10, color: "#9CA3AF", marginTop: 1 }}
+                    >
+                      {c.latest.area} · {c.latest.distributor}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      padding: "2px 7px",
+                      borderRadius: 4,
+                      fontWeight: 600,
+                      background: sc.bg,
+                      color: sc.text,
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.latest.stage ? c.latest.stage.split(".")[0] : "—"}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#00B8A2",
+                      background: "#F0FDFA",
+                      padding: "2px 8px",
+                      borderRadius: 20,
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.visits}× visit{c.visits > 1 ? "s" : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const TABS = [
   { id: "records", icon: "📋", label: "Records" },
   { id: "add", icon: "➕", label: "Add Record" },
   { id: "customers", icon: "🏪", label: "Customers" },
+  { id: "analysis", icon: "📈", label: "Analysis" },
 ];
 
 const Sidebar = ({ active, onChange, recordCount }) => (
@@ -2323,6 +2537,335 @@ const CustomerModal = ({
   );
 };
 
+// ─── Record Edit Modal ────────────────────────────────────────────────────────
+const RecordEditModal = ({
+  record,
+  customers,
+  customerList,
+  onSave,
+  onClose,
+  saving,
+}) => {
+  const [data, setData] = useState({
+    date: record.date ? new Date(record.date).toISOString().slice(0, 10) : "",
+    area: record.area || "",
+    distributor: record.distributor || "",
+    customer: record.customer || "",
+    objective: record.objective || "",
+    stage: record.stage || "",
+    outcome: record.outcome || "",
+    potDyes: record.potDyes ?? "",
+    potAux: record.potAux ?? "",
+    exDyes: record.exDyes ?? "",
+    exAux: record.exAux ?? "",
+    abp: record.abp ?? "",
+    ytd: record.ytd ?? "",
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCustomerSelect = (e) => {
+    const val = e.target.value;
+    if (customers[val]) {
+      const c = customers[val];
+      setData((prev) => ({
+        ...prev,
+        customer: val,
+        area: c.area || "",
+        distributor: c.distributor || "",
+        stage: c.stage || "",
+      }));
+    } else {
+      setData((prev) => ({ ...prev, customer: val }));
+    }
+  };
+
+  const id = record._id || record.id;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(11,46,78,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 200,
+        padding: 16,
+        backdropFilter: "blur(2px)",
+      }}
+    >
+      <div
+        className="dsr-modal-box"
+        style={{
+          background: "#fff",
+          borderRadius: 14,
+          padding: 20,
+          width: "100%",
+          maxWidth: 480,
+          maxHeight: "90vh",
+          overflowY: "auto",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        }}
+      >
+        <div
+          className="dsr-edit-stripe"
+          style={{ background: "linear-gradient(135deg, #1D4ED8, #2563EB)" }}
+        >
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
+              ✏️ Edit record
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "rgba(255,255,255,0.6)",
+                marginTop: 2,
+              }}
+            >
+              {record.customer} · {fmtDate(record.date)}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              border: "none",
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: 14,
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div
+          className="dsr-grid2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+            gap: 10,
+          }}
+        >
+          <div style={{ marginBottom: 12 }}>
+            <FieldLabel required>Date</FieldLabel>
+            <input
+              className="dsr-input"
+              style={inputStyle}
+              type="date"
+              name="date"
+              value={data.date}
+              onChange={handleChange}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <FieldLabel required>Customer</FieldLabel>
+            <select
+              className="dsr-input"
+              style={{ ...inputStyle, cursor: "pointer" }}
+              name="customer"
+              value={data.customer}
+              onChange={handleCustomerSelect}
+            >
+              <option value="">Select customer</option>
+              {customerList.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div
+          className="dsr-grid2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+            gap: 10,
+          }}
+        >
+          <FormInput
+            label="Area"
+            required
+            type="text"
+            name="area"
+            value={data.area}
+            onChange={handleChange}
+            placeholder="Area"
+          />
+          <FormSelect
+            label="Distributor"
+            required
+            name="distributor"
+            value={data.distributor}
+            onChange={handleChange}
+          >
+            <option value="">Select</option>
+            {DISTRIBUTOR_OPTIONS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </FormSelect>
+        </div>
+
+        <FormInput
+          label="Objective / Project description"
+          type="text"
+          name="objective"
+          value={data.objective}
+          onChange={handleChange}
+          placeholder="Describe objective or project"
+        />
+
+        <FormSelect
+          label="Project stage"
+          name="stage"
+          value={data.stage}
+          onChange={handleChange}
+        >
+          <option value="">Select stage</option>
+          {PROJECT_STAGE_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </FormSelect>
+
+        <FormInput
+          label="Visit outcome"
+          type="text"
+          name="outcome"
+          value={data.outcome}
+          onChange={handleChange}
+          placeholder="e.g. Positive, Follow-up needed…"
+        />
+
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "#8A9BB0",
+            marginBottom: 10,
+            marginTop: 4,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
+          💰 Numbers (₹ Lakhs)
+        </div>
+        <div
+          className="dsr-grid2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+            gap: 10,
+          }}
+        >
+          <FormInput
+            label="Potential Dyes /mth"
+            type="number"
+            name="potDyes"
+            value={data.potDyes}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <FormInput
+            label="Potential Aux /mth"
+            type="number"
+            name="potAux"
+            value={data.potAux}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <FormInput
+            label="Existing Dyes /mth"
+            type="number"
+            name="exDyes"
+            value={data.exDyes}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <FormInput
+            label="Existing Aux /mth"
+            type="number"
+            name="exAux"
+            value={data.exAux}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <FormInput
+            label="ABP AM26"
+            type="number"
+            name="abp"
+            value={data.abp}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <FormInput
+            label="YTD sale prev. mth"
+            type="number"
+            name="ytd"
+            value={data.ytd}
+            onChange={handleChange}
+            placeholder="0"
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              height: 40,
+              background: "#F3F4F6",
+              color: "#374151",
+              border: "1px solid #E5E7EB",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            className="dsr-btn-primary"
+            onClick={() => onSave(id, data)}
+            disabled={saving}
+            style={{
+              flex: 2,
+              height: 40,
+              background: "#2563EB",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+          >
+            {saving ? "⏳ Saving…" : "✓ Update record"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const DailySalesReport = () => {
   useEffect(() => {
@@ -2339,10 +2882,13 @@ const DailySalesReport = () => {
   const [modalMode, setModalMode] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [modalSaving, setModalSaving] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [recordSaving, setRecordSaving] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
+  const [expandedAnalysisMonths, setExpandedAnalysisMonths] = useState({});
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -2384,6 +2930,63 @@ const DailySalesReport = () => {
     }
     return map;
   }, [records]);
+
+  const monthlyAnalysis = useMemo(() => {
+    const map = {};
+    for (const r of records) {
+      if (!r.date) continue;
+      const d = new Date(r.date);
+      if (isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!map[key]) {
+        map[key] = {
+          key,
+          label: d.toLocaleDateString("en-IN", {
+            month: "long",
+            year: "numeric",
+          }),
+          records: [],
+        };
+      }
+      map[key].records.push(r);
+    }
+    return Object.values(map)
+      .sort((a, b) => (a.key < b.key ? 1 : -1))
+      .map((m) => {
+        const byCustomer = {};
+        m.records.forEach((r) => {
+          if (!byCustomer[r.customer]) byCustomer[r.customer] = [];
+          byCustomer[r.customer].push(r);
+        });
+        const customerRows = Object.entries(byCustomer)
+          .map(([name, recs]) => {
+            const sorted = [...recs].sort(
+              (a, b) => new Date(b.date) - new Date(a.date),
+            );
+            return { name, visits: recs.length, latest: sorted[0] };
+          })
+          .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name));
+        const totalPot = customerRows.reduce(
+          (s, c) => s + toNum(c.latest.potDyes) + toNum(c.latest.potAux),
+          0,
+        );
+        const avgPct = m.records.length
+          ? m.records.reduce((s, r) => s + (r.pct || 0), 0) / m.records.length
+          : 0;
+        return {
+          key: m.key,
+          label: m.label,
+          totalVisits: m.records.length,
+          uniqueCustomers: customerRows.length,
+          avgPct: avgPct.toFixed(1),
+          totalPot: totalPot.toFixed(1),
+          customerRows,
+        };
+      });
+  }, [records]);
+
+  const toggleAnalysisMonth = (key) =>
+    setExpandedAnalysisMonths((p) => ({ ...p, [key]: !p[key] }));
 
   const selectedCustomerLastRecord = useMemo(() => {
     const name = newRecord.customer;
@@ -2492,6 +3095,43 @@ const DailySalesReport = () => {
         }),
       });
       setRecords((prev) => [res.data, ...prev]);
+
+      // Project stage is now editable per visit — keep the customer master's
+      // "current stage" in sync so it doesn't silently revert next time this
+      // customer is selected again.
+      if (
+        customers[customer] &&
+        newRecord.stage &&
+        newRecord.stage !== customers[customer].stage
+      ) {
+        const custId = customers[customer]._id;
+        if (custId) {
+          try {
+            const custRes = await apiFetch(`/api/dsr/customers/${custId}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                name: customer,
+                area: customers[customer].area,
+                distributor: customers[customer].distributor,
+                stage: newRecord.stage,
+                potDyes: customers[customer].potDyes,
+                potAux: customers[customer].potAux,
+                exDyes: customers[customer].exDyes,
+                exAux: customers[customer].exAux,
+                abp: customers[customer].abp,
+              }),
+            });
+            const updatedCust = custRes.data;
+            setCustomers((prev) => ({
+              ...prev,
+              [customer]: { ...prev[customer], stage: updatedCust.stage },
+            }));
+          } catch {
+            // Record itself already saved fine — stage sync is best-effort.
+          }
+        }
+      }
+
       setNewRecord({ ...EMPTY_RECORD });
       setActiveTab("records");
       showToast("Record save ho gaya!");
@@ -2510,6 +3150,43 @@ const DailySalesReport = () => {
       showToast("Record delete ho gaya.");
     } catch (err) {
       showToast(err.message, "error");
+    }
+  };
+
+  const updateRecord = async (id, data) => {
+    if (!data.date || !data.area || !data.distributor || !data.customer) {
+      showToast("Date, Area, Distributor aur Customer zaroori hain.", "error");
+      return;
+    }
+    try {
+      setRecordSaving(true);
+      const res = await apiFetch(`/api/dsr/records/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          date: data.date,
+          area: data.area,
+          distributor: data.distributor,
+          customer: data.customer,
+          objective: data.objective,
+          stage: data.stage,
+          outcome: data.outcome,
+          potDyes: toNum(data.potDyes),
+          potAux: toNum(data.potAux),
+          exDyes: toNum(data.exDyes),
+          exAux: toNum(data.exAux),
+          abp: toNum(data.abp),
+          ytd: toNum(data.ytd),
+        }),
+      });
+      setRecords((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? res.data : r)),
+      );
+      showToast("Record update ho gaya!");
+      setEditingRecord(null);
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setRecordSaving(false);
     }
   };
 
@@ -3121,6 +3798,7 @@ const DailySalesReport = () => {
                     key={r._id || r.id}
                     record={r}
                     onDelete={deleteRecord}
+                    onEdit={setEditingRecord}
                   />
                 ))}
               </div>
@@ -3250,12 +3928,11 @@ const DailySalesReport = () => {
               </div>
               <FormSelect
                 label="Project stage"
+                keyBadge
+                highlight
                 name="stage"
                 value={newRecord.stage}
                 onChange={handleRecordChange}
-                disabled={
-                  !!(newRecord.customer && customers[newRecord.customer])
-                }
               >
                 <option value="">Select stage</option>
                 {PROJECT_STAGE_OPTIONS.map((s) => (
@@ -3599,6 +4276,72 @@ const DailySalesReport = () => {
             )}
           </SectionCard>
         )}
+
+        {/* ANALYSIS TAB */}
+        {activeTab === "analysis" && (
+          <>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 14,
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2E4E" }}>
+                📈 Monthly Visit Analysis
+              </div>
+              <div style={{ fontSize: 11, color: "#8A9BB0" }}>
+                {monthlyAnalysis.length} month
+                {monthlyAnalysis.length !== 1 ? "s" : ""} tracked
+              </div>
+            </div>
+
+            {monthlyAnalysis.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "48px 16px",
+                  color: "#8A9BB0",
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 8 }}>📈</div>
+                <div
+                  style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}
+                >
+                  Koi data nahi hai
+                </div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Records add karo, monthly analysis yahan dikhega
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {monthlyAnalysis.map((m, idx) => {
+                  const prev = monthlyAnalysis[idx + 1];
+                  const delta = prev ? m.totalVisits - prev.totalVisits : null;
+                  const isExpanded =
+                    expandedAnalysisMonths[m.key] !== undefined
+                      ? expandedAnalysisMonths[m.key]
+                      : idx === 0;
+                  return (
+                    <MonthAnalysisCard
+                      key={m.key}
+                      month={m}
+                      delta={delta}
+                      expanded={isExpanded}
+                      onToggle={() => toggleAnalysisMonth(m.key)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <MobileTabBar
@@ -3641,6 +4384,17 @@ const DailySalesReport = () => {
           onClose={() => setShowImporter(false)}
           apiBase={API}
           getToken={getToken}
+        />
+      )}
+
+      {editingRecord && (
+        <RecordEditModal
+          record={editingRecord}
+          customers={customers}
+          customerList={customerList}
+          onSave={updateRecord}
+          onClose={() => setEditingRecord(null)}
+          saving={recordSaving}
         />
       )}
     </div>

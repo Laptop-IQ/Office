@@ -1,2560 +1,3744 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import {
+  Search,
+  Plus,
+  Upload,
+  Download,
+  RefreshCw,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  MoreVertical,
+  Eye,
+  Edit3,
+  PhoneCall,
+  FileText,
+  ShoppingCart,
+  Wallet,
+  BookOpen,
+  StickyNote,
+  Paperclip,
+  Trash2,
+  Phone,
+  MessageCircle,
+  Mail,
+  Building2,
+  MapPin,
+  CreditCard,
+  Clock,
+  CalendarClock,
+  CheckCircle2,
+  AlertTriangle,
+  Ban,
+  Star,
+  Users,
+  IndianRupee,
+  Factory,
+  Beaker,
+  PackageSearch,
+  ArrowUpDown,
+  Filter as FilterIcon,
+  Loader2,
+  LayoutGrid,
+  List,
+  User,
+  Layers,
+  ShieldCheck,
+  Sparkles,
+  Check,
+  Tag,
+  RotateCcw,
+  Save,
+} from "lucide-react";
+import {
+  fetchCustomers,
+  fetchCustomerStats,
+  fetchCustomerById,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  bulkDeleteCustomers,
+  bulkAssignSalesPerson,
+  addTimelineEntry,
+} from "../api/customerApi"; // adjust path to wherever you place customerApi.js
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-const T = {
-  navy: "#0E1A2B",
-  navyLight: "#152335",
-  navyBorder: "#1E3047",
-  teal: "#00D4B8",
-  tealDark: "#00B8A2",
-  tealGlow: "rgba(0,212,184,0.15)",
-  amber: "#F59E0B",
-  amberLight: "#FEF3C7",
-  amberDark: "#D97706",
-  rose: "#F43F5E",
-  roseLight: "#FFF1F2",
-  violet: "#8B5CF6",
-  violetLight: "#EDE9FE",
-  emerald: "#10B981",
-  emeraldLight: "#D1FAE5",
-  blue: "#3B82F6",
-  blueLight: "#EFF6FF",
-  orange: "#F97316",
-  orangeLight: "#FFF7ED",
-  sky: "#0EA5E9",
-  skyLight: "#E0F2FE",
-  white: "#FFFFFF",
-  gray50: "#F9FAFB",
-  gray100: "#F3F4F6",
-  gray200: "#E5E7EB",
-  gray300: "#D1D5DB",
-  gray400: "#9CA3AF",
-  gray500: "#6B7280",
-  gray600: "#4B5563",
-  gray700: "#374151",
-  gray800: "#1F2937",
-  text: "#111827",
-  bg: "#F0F4F8",
-};
-
-// ─── Stage Config ─────────────────────────────────────────────────────────────
-const STAGES = [
-  {
-    id: "A",
-    label: "Promotion Complete",
-    short: "Promotion",
-    color: T.blue,
-    bg: T.blueLight,
-  },
-  {
-    id: "B",
-    label: "Lab Trials Complete",
-    short: "Lab Trial",
-    color: "#8B5CF6",
-    bg: T.violetLight,
-  },
-  {
-    id: "C",
-    label: "PR Enhanced",
-    short: "PR Enhanced",
-    color: T.teal,
-    bg: "#E0FAF7",
-  },
-  {
-    id: "D",
-    label: "Bulk Trials Complete",
-    short: "Bulk Trial",
-    color: T.amber,
-    bg: T.amberLight,
-  },
-  {
-    id: "E",
-    label: "Trial Report Sent",
-    short: "Trial Report",
-    color: T.orange,
-    bg: T.orangeLight,
-  },
-  {
-    id: "F",
-    label: "Commercials Conveyed",
-    short: "Commercials",
-    color: T.sky,
-    bg: T.skyLight,
-  },
-  {
-    id: "G",
-    label: "Proposal & Final Meet",
-    short: "Final Meet",
-    color: T.rose,
-    bg: T.roseLight,
-  },
-  {
-    id: "H",
-    label: "Products Regularized",
-    short: "Regularized",
-    color: T.emerald,
-    bg: T.emeraldLight,
-  },
+/* ────────────────────────────────────────────────────────────────
+   STATIC OPTIONS (match backend enum values)
+──────────────────────────────────────────────────────────────── */
+const TYPES = ["Distributor", "Dealer", "Manufacturer", "Retail"];
+const STATUSES = ["Active", "Inactive", "Blocked"];
+const CATEGORIES = ["Dyes", "Auxiliaries", "Fixatives", "Solvents", "Pigments"];
+const STATES = [
+  "Haryana",
+  "Gujarat",
+  "Punjab",
+  "Maharashtra",
+  "Tamil Nadu",
+  "Rajasthan",
+  "Uttar Pradesh",
+  "West Bengal",
+  "Andhra Pradesh",
+  "Karnataka",
+  "Delhi",
 ];
-const stageOf = (id) => STAGES.find((s) => s.id === id) || STAGES[0];
-
-const DISTRIBUTORS = ["All", "Supple", "Shree Jee Traders", "Other"];
-
-// ─── Seed Data ────────────────────────────────────────────────────────────────
-const SEED_CUSTOMERS = [
-  {
-    id: "c1",
-    name: "Rajesh Fabrics Pvt Ltd",
-    contact: "+91 98765 43210",
-    contactPerson: "Rajesh Sharma",
-    designation: "Purchase Manager",
-    email: "rajesh@rajeshfabrics.com",
-    area: "Panipat",
-    distributor: "Supple",
-    stage: "D",
-    potential: 18,
-    existing: 6,
-    abp: 120,
-    ytd: 48,
-    priority: "High",
-    tags: ["Dyes", "Bulk Buyer"],
-    timeline: [
-      {
-        date: "2026-03-10",
-        type: "Promotion",
-        note: "Introduced ECOFAST NAVY range. Good response from purchase team.",
-      },
-      {
-        date: "2026-04-05",
-        type: "Lab Trial",
-        note: "3 shades sent for lab evaluation. Shade Navy 232, Olive 5G, Red BF.",
-      },
-      {
-        date: "2026-05-20",
-        type: "Visit",
-        note: "Follow-up on lab trial results. Minor fixation issue raised by lab team.",
-      },
-      {
-        date: "2026-06-01",
-        type: "Bulk Trial",
-        note: "Bulk trial initiated for ECOFAST NAVY 232. 100kg material issued.",
-      },
-      {
-        date: "2026-06-15",
-        type: "Visit",
-        note: "Visited to check bulk trial. Sample approved, awaiting formal order.",
-      },
-    ],
-    nextFollowUp: "2026-06-22",
-    lastVisit: "2026-06-15",
-  },
-  {
-    id: "c2",
-    name: "Krishna Textiles",
-    contact: "+91 90123 45678",
-    contactPerson: "Krishnaswamy Iyer",
-    designation: "Director",
-    email: "director@krishnatex.in",
-    area: "Surat",
-    distributor: "Shree Jee Traders",
-    stage: "H",
-    potential: 30,
-    existing: 22,
-    abp: 200,
-    ytd: 180,
-    priority: "High",
-    tags: ["Dyes", "Auxiliaries", "Key Account"],
-    timeline: [
-      {
-        date: "2025-10-12",
-        type: "Promotion",
-        note: "Promoted SAFEAUX range. Director was impressed with sustainability story.",
-      },
-      {
-        date: "2025-11-08",
-        type: "Lab Trial",
-        note: "Trial for SAFEAUX SILICON NXT and ECOFAST BLK series.",
-      },
-      {
-        date: "2025-12-15",
-        type: "Bulk Trial",
-        note: "Bulk trial successful. 500kg order placed for ECOFAST BLK.",
-      },
-      {
-        date: "2026-01-20",
-        type: "Regularized",
-        note: "Products added to approved vendor list. Monthly supply started.",
-      },
-      {
-        date: "2026-06-12",
-        type: "Visit",
-        note: "Quarterly review. Introduced SAFEAUX SILICON NXT. New trial planned.",
-      },
-    ],
-    nextFollowUp: "2026-07-01",
-    lastVisit: "2026-06-12",
-  },
-  {
-    id: "c3",
-    name: "Modern Dyeing Co",
-    contact: "+91 88001 22334",
-    contactPerson: "Harpreet Singh",
-    designation: "Technical Head",
-    email: "technical@moderndyeing.com",
-    area: "Ludhiana",
-    distributor: "Supple",
-    stage: "B",
-    potential: 25,
-    existing: 0,
-    abp: 60,
-    ytd: 8,
-    priority: "Medium",
-    tags: ["Dyes"],
-    timeline: [
-      {
-        date: "2026-05-01",
-        type: "Promotion",
-        note: "First meeting. Presented ECOFAST OLIVE series. Technical head showed interest.",
-      },
-      {
-        date: "2026-06-10",
-        type: "Lab Trial",
-        note: "3 shades sent for lab trial. ECOFAST OLIVE 5G-149, 10G-180, BLK BF-100.",
-      },
-    ],
-    nextFollowUp: "2026-06-20",
-    lastVisit: "2026-06-10",
-  },
-  {
-    id: "c4",
-    name: "Bharat Processors Ltd",
-    contact: "+91 77900 11223",
-    contactPerson: "Suresh Patel",
-    designation: "GM Purchase",
-    email: "suresh.p@bharatproc.com",
-    area: "Bhiwandi",
-    distributor: "Shree Jee Traders",
-    stage: "F",
-    potential: 40,
-    existing: 15,
-    abp: 150,
-    ytd: 92,
-    priority: "High",
-    tags: ["Dyes", "Auxiliaries"],
-    timeline: [
-      {
-        date: "2025-12-01",
-        type: "Promotion",
-        note: "Introduced via distributor intro. Met GM Purchase.",
-      },
-      {
-        date: "2026-01-15",
-        type: "Lab Trial",
-        note: "Lab trial for 5 dye shades and 2 auxiliary products.",
-      },
-      {
-        date: "2026-02-28",
-        type: "Bulk Trial",
-        note: "Bulk trial completed. Report shared with positive findings.",
-      },
-      {
-        date: "2026-04-10",
-        type: "Trial Report",
-        note: "Formal trial report sent with ROI analysis. GM impressed.",
-      },
-      {
-        date: "2026-05-20",
-        type: "Commercials",
-        note: "Commercial proposal submitted. Price negotiation started.",
-      },
-      {
-        date: "2026-06-08",
-        type: "Visit",
-        note: "Price concern raised. Revised proposal sent. Decision expected by June end.",
-      },
-    ],
-    nextFollowUp: "2026-06-18",
-    lastVisit: "2026-06-08",
-  },
-  {
-    id: "c5",
-    name: "Anand Knit Works",
-    contact: "+91 94400 56789",
-    contactPerson: "Anand Rajan",
-    designation: "Owner",
-    email: "anand@anandknit.com",
-    area: "Tirupur",
-    distributor: "Supple",
-    stage: "C",
-    potential: 20,
-    existing: 4,
-    abp: 80,
-    ytd: 22,
-    priority: "Medium",
-    tags: ["Auxiliaries"],
-    timeline: [
-      {
-        date: "2026-02-10",
-        type: "Promotion",
-        note: "Cold call turned into meeting. Owner personally handles tech decisions.",
-      },
-      {
-        date: "2026-03-05",
-        type: "Lab Trial",
-        note: "Trial for SAFEAUX PREP LF and SAFEAUX SILICON NXT.",
-      },
-      {
-        date: "2026-06-05",
-        type: "PR Enhanced",
-        note: "PR team convinced. Pretreatment study ongoing with positive initial results.",
-      },
-    ],
-    nextFollowUp: "2026-07-05",
-    lastVisit: "2026-06-05",
-  },
-  {
-    id: "c6",
-    name: "Star Dye House",
-    contact: "+91 82200 99001",
-    contactPerson: "Mohammed Farooq",
-    designation: "Production Manager",
-    email: "prod@stardyehouse.in",
-    area: "Erode",
-    distributor: "Shree Jee Traders",
-    stage: "A",
-    potential: 12,
-    existing: 0,
-    abp: 50,
-    ytd: 0,
-    priority: "Low",
-    tags: ["Dyes"],
-    timeline: [
-      {
-        date: "2026-06-01",
-        type: "Promotion",
-        note: "First visit. Presented full ECOFAST range. Production manager was receptive.",
-      },
-    ],
-    nextFollowUp: "2026-07-01",
-    lastVisit: "2026-06-01",
-  },
-  {
-    id: "c7",
-    name: "Premium Processors",
-    contact: "+91 96600 33445",
-    contactPerson: "Deepak Verma",
-    designation: "Technical Director",
-    email: "deepak@premiumproc.com",
-    area: "Jaipur",
-    distributor: "Supple",
-    stage: "G",
-    potential: 35,
-    existing: 10,
-    abp: 180,
-    ytd: 145,
-    priority: "High",
-    tags: ["Dyes", "Auxiliaries", "Key Account"],
-    timeline: [
-      {
-        date: "2025-09-15",
-        type: "Promotion",
-        note: "Senior management meeting arranged by distributor.",
-      },
-      {
-        date: "2025-10-20",
-        type: "Lab Trial",
-        note: "Extensive lab trial across 8 shades.",
-      },
-      {
-        date: "2025-11-30",
-        type: "Bulk Trial",
-        note: "Bulk trial successful for all 8 shades.",
-      },
-      {
-        date: "2026-01-10",
-        type: "Trial Report",
-        note: "Trial report presented. Positive outcome.",
-      },
-      {
-        date: "2026-02-25",
-        type: "Commercials",
-        note: "Annual commercial proposal submitted.",
-      },
-      {
-        date: "2026-05-15",
-        type: "Final Meet",
-        note: "Final proposal meeting. Board approval pending. Decision imminent.",
-      },
-    ],
-    nextFollowUp: "2026-06-25",
-    lastVisit: "2026-05-15",
-  },
+const FOLLOWUPS = [
+  "today",
+  "tomorrow",
+  "overdue",
+  "completed",
+  "cancelled",
+  "upcoming",
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────
+   HELPERS
+──────────────────────────────────────────────────────────────── */
+const inr = (n) =>
+  "₹" + (n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+
 const fmtDate = (d) => {
   if (!d) return "—";
-  try {
-    return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return d;
-  }
+  return new Date(d).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 };
 
-const daysFromNow = (d) => {
-  if (!d) return 9999;
-  return Math.ceil((new Date(d) - new Date()) / 86400000);
-};
-
-const pct = (a, b) => (b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0);
-
-const getInitials = (name) =>
+const initialsOf = (name = "") =>
   name
     .split(" ")
     .map((w) => w[0])
     .join("")
-    .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2)
+    .toUpperCase();
 
-const tagColors = {
-  Dyes: { bg: "#EFF6FF", color: "#1D4ED8" },
-  Auxiliaries: { bg: "#EDE9FE", color: "#6D28D9" },
-  Fixatives: { bg: "#E0FAF7", color: "#0F766E" },
-  "Key Account": { bg: "#FEF3C7", color: "#B45309" },
-  "Bulk Buyer": { bg: "#D1FAE5", color: "#065F46" },
+/* ────────────────────────────────────────────────────────────────
+   IMPORT / EXPORT (CSV) — one shared column map so a file exported
+   from this page can be edited and re-imported without remapping.
+──────────────────────────────────────────────────────────────── */
+const IMPORT_EXPORT_COLUMNS = [
+  { key: "customerId", label: "Customer ID" },
+  { key: "company", label: "Company" },
+  { key: "name", label: "Contact Person" },
+  { key: "phone", label: "Phone" },
+  { key: "email", label: "Email" },
+  { key: "type", label: "Type" },
+  { key: "category", label: "Category" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "gst", label: "GST" },
+  { key: "pan", label: "PAN" },
+  { key: "creditLimit", label: "Credit Limit" },
+  { key: "outstanding", label: "Outstanding" },
+  { key: "status", label: "Status" },
+  { key: "lastOrderDate", label: "Last Order Date" },
+  { key: "nextFollowUpDate", label: "Next Follow-up" },
+];
+
+const csvEscape = (val) => {
+  const s = val === null || val === undefined ? "" : String(val);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
-const priorityConfig = {
-  High: { bg: T.roseLight, color: T.rose, icon: "🔴" },
-  Medium: { bg: T.amberLight, color: T.amberDark, icon: "🟡" },
-  Low: { bg: T.emeraldLight, color: "#065F46", icon: "🟢" },
+const buildCSV = (rows) => {
+  const header = IMPORT_EXPORT_COLUMNS.map((c) => csvEscape(c.label)).join(",");
+  const lines = rows.map((row) =>
+    IMPORT_EXPORT_COLUMNS.map((c) => {
+      let v = row[c.key];
+      if (c.key === "lastOrderDate" || c.key === "nextFollowUpDate") {
+        v = v ? new Date(v).toISOString().slice(0, 10) : "";
+      }
+      return csvEscape(v);
+    }).join(","),
+  );
+  return [header, ...lines].join("\n");
 };
 
-const timelineTypeConfig = {
-  Promotion: { color: T.blue, bg: T.blueLight, icon: "📣" },
-  "Lab Trial": { color: "#8B5CF6", bg: T.violetLight, icon: "🧪" },
-  "Bulk Trial": { color: T.amber, bg: T.amberLight, icon: "🏭" },
-  "PR Enhanced": { color: T.teal, bg: "#E0FAF7", icon: "📈" },
-  "Trial Report": { color: T.orange, bg: T.orangeLight, icon: "📄" },
-  Commercials: { color: T.sky, bg: T.skyLight, icon: "💼" },
-  "Final Meet": { color: T.rose, bg: T.roseLight, icon: "🤝" },
-  Regularized: { color: T.emerald, bg: T.emeraldLight, icon: "✅" },
-  Visit: { color: T.gray500, bg: T.gray100, icon: "🗺" },
+// Prefixing a UTF-8 BOM keeps ₹ / Indian-language characters intact
+// when the file is opened directly in Excel on Windows.
+const downloadCSV = (filename, csv) => {
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-const Badge = ({ label, color, bg, small }) => (
+// Minimal RFC4180-style CSV parser — handles quoted fields with
+// embedded commas, escaped quotes (""), and newlines inside quotes.
+const parseCSV = (text) => {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (inQuotes) {
+      if (char === '"' && next === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && next === "\n") i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
+};
+
+const STATUS_STYLES = {
+  Active: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/25",
+  Inactive: "bg-white/5 text-slate-400 ring-white/10",
+  Blocked: "bg-red-500/10 text-red-400 ring-red-500/25",
+};
+// Bright "enamel chip" treatment for the selected segment in the
+// quick status-toggle control (action card), matching the pattern
+// used for FollowUpModal's channel/outcome buttons.
+const STATUS_ACTIVE_STYLES = {
+  Active: "bg-emerald-400 text-emerald-950 shadow-md shadow-emerald-500/30",
+  Inactive: "bg-slate-400 text-slate-950 shadow-md shadow-slate-500/30",
+  Blocked: "bg-red-400 text-red-950 shadow-md shadow-red-500/30",
+};
+const TYPE_STYLES = {
+  Distributor: "bg-blue-500/10 text-blue-400",
+  Dealer: "bg-violet-500/10 text-violet-400",
+  Manufacturer: "bg-orange-500/10 text-orange-400",
+  Retail: "bg-teal-500/10 text-teal-400",
+};
+const BADGE_STYLES = {
+  VIP: "bg-[#CC9A4E]/15 text-[#E8C077] ring-1 ring-[#CC9A4E]/30",
+  "New Customer": "bg-blue-500/15 text-blue-300",
+  "High Value": "bg-emerald-500/15 text-emerald-300",
+  "Low Credit": "bg-orange-500/15 text-orange-300",
+  Blacklisted: "bg-red-500/15 text-red-300",
+};
+const FOLLOWUP_STYLES = {
+  today: {
+    label: "Today",
+    cls: "text-amber-400 bg-amber-500/10",
+    icon: CalendarClock,
+  },
+  tomorrow: {
+    label: "Tomorrow",
+    cls: "text-blue-400 bg-blue-500/10",
+    icon: Clock,
+  },
+  overdue: {
+    label: "Overdue",
+    cls: "text-red-400 bg-red-500/10",
+    icon: AlertTriangle,
+  },
+  completed: {
+    label: "Completed",
+    cls: "text-emerald-400 bg-emerald-500/10",
+    icon: CheckCircle2,
+  },
+  cancelled: {
+    label: "Cancelled",
+    cls: "text-slate-500 bg-white/5",
+    icon: Ban,
+  },
+  upcoming: {
+    label: "Upcoming",
+    cls: "text-slate-500 bg-white/5",
+    icon: Clock,
+  },
+};
+
+/* ────────────────────────────────────────────────────────────────
+   SMALL PRIMITIVES
+──────────────────────────────────────────────────────────────── */
+const StatusBadge = ({ status }) => (
   <span
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      padding: small ? "2px 7px" : "3px 10px",
-      borderRadius: 20,
-      fontSize: small ? 9 : 10,
-      fontWeight: 700,
-      letterSpacing: "0.04em",
-      textTransform: "uppercase",
-      background: bg,
-      color,
-      flexShrink: 0,
-    }}
+    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[status]}`}
   >
-    {label}
+    <span
+      className={`w-1.5 h-1.5 rounded-full ${status === "Active" ? "bg-emerald-400" : status === "Blocked" ? "bg-red-400" : "bg-slate-500"}`}
+    />
+    {status}
   </span>
 );
-
-const StagePill = ({ stageId, full }) => {
-  const s = stageOf(stageId);
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "3px 9px",
-        borderRadius: 6,
-        fontSize: 11,
-        fontWeight: 700,
-        background: s.bg,
-        color: s.color,
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ fontWeight: 900 }}>{s.id}</span>
-      {full ? `. ${s.label}` : `. ${s.short}`}
-    </span>
-  );
-};
-
-const StatBox = ({ label, value, color, sub }) => (
-  <div
-    style={{
-      background: T.gray50,
-      borderRadius: 8,
-      padding: "10px 12px",
-      borderTop: `2px solid ${color}`,
-    }}
+const TypeChip = ({ type }) => (
+  <span
+    className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium ${TYPE_STYLES[type]}`}
   >
-    <div
-      style={{
-        fontSize: 9,
-        color: T.gray400,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-        marginBottom: 3,
-      }}
+    {type}
+  </span>
+);
+const Badges = ({ badges = [] }) => (
+  <div className="flex flex-wrap gap-1">
+    {badges.map((b) => (
+      <span
+        key={b}
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${BADGE_STYLES[b]}`}
+      >
+        {b === "VIP" && <Star size={9} className="fill-current" />}
+        {b}
+      </span>
+    ))}
+  </div>
+);
+const Avatar = ({ name, size = 36 }) => (
+  <div
+    style={{ width: size, height: size }}
+    className="rounded-lg bg-gradient-to-br from-[#4C6FFF] to-[#1E3A8A] ring-1 ring-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md shadow-black/30"
+  >
+    {initialsOf(name)}
+  </div>
+);
+const Toast = ({ message, type, onClose }) => (
+  <div
+    className={`fixed bottom-5 right-5 z-[100] flex items-center gap-2 px-4 py-3 rounded-lg shadow-xl shadow-black/50 ring-1 text-sm font-medium text-white ${type === "error" ? "bg-red-950/90 ring-red-500/30" : "bg-[var(--surface-2)] ring-white/10"}`}
+  >
+    <span
+      className={`w-1.5 h-1.5 rounded-full shrink-0 ${type === "error" ? "bg-red-400" : "bg-emerald-400"}`}
+    />
+    {message}
+    <button
+      onClick={onClose}
+      className="text-slate-400 hover:text-white transition-colors"
     >
-      {label}
-    </div>
-    <div style={{ fontSize: 16, fontWeight: 800, color }}>{value}</div>
-    {sub && (
-      <div style={{ fontSize: 10, color: T.gray400, marginTop: 2 }}>{sub}</div>
-    )}
+      <X size={14} />
+    </button>
   </div>
 );
 
-// ─── Customer Detail Panel ─────────────────────────────────────────────────────
-const CustomerDetail = ({ customer, onClose, onEdit }) => {
-  const [activeSection, setActiveSection] = useState("overview");
-  const s = stageOf(customer.stage);
-  const ytdPct = pct(customer.ytd, customer.abp);
-  const followDays = daysFromNow(customer.nextFollowUp);
-  const prio = priorityConfig[customer.priority] || priorityConfig.Medium;
+/* ────────────────────────────────────────────────────────────────
+   STATS CARDS
+──────────────────────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, gradient, glow, loading }) => (
+  <div className="group relative overflow-hidden rounded-xl bg-[var(--surface)] ring-1 ring-white/10 hover:ring-white/20 shadow-lg shadow-black/40 transition-all duration-300 p-4">
+    <div
+      className={`absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-20 blur-xl ${gradient} transition-transform duration-500 group-hover:scale-125`}
+    />
+    <div className="relative flex items-start justify-between">
+      <div>
+        <p className="text-xs font-medium text-slate-500 mb-1.5">{label}</p>
+        {loading ? (
+          <div className="h-6 w-16 bg-white/5 rounded animate-pulse" />
+        ) : (
+          <p className="text-2xl font-bold text-slate-100 tracking-tight font-mono">
+            {value}
+          </p>
+        )}
+      </div>
+      <div
+        className={`w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0 ${gradient} ${glow}`}
+      >
+        <Icon size={18} />
+      </div>
+    </div>
+  </div>
+);
 
-  const sections = ["overview", "timeline", "numbers", "contacts"];
+const StatsRow = ({ stats, loading }) => {
+  const cards = [
+    {
+      icon: Users,
+      label: "Total Customers",
+      value: stats?.totalCustomers ?? 0,
+      gradient: "bg-blue-600",
+      glow: "shadow-lg shadow-blue-600/30",
+    },
+    {
+      icon: CheckCircle2,
+      label: "Active Customers",
+      value: stats?.activeCustomers ?? 0,
+      gradient: "bg-emerald-600",
+      glow: "shadow-lg shadow-emerald-600/30",
+    },
+    {
+      icon: CalendarClock,
+      label: "Pending Follow-ups",
+      value: stats?.pendingFollowUps ?? 0,
+      gradient: "bg-orange-500",
+      glow: "shadow-lg shadow-orange-500/30",
+    },
+    {
+      icon: IndianRupee,
+      label: "Monthly Sales",
+      value: inr(stats?.monthlySales),
+      gradient: "bg-teal-600",
+      glow: "shadow-lg shadow-teal-600/30",
+    },
+    {
+      icon: Wallet,
+      label: "Outstanding Payment",
+      value: inr(stats?.outstandingPayment),
+      gradient: "bg-red-500",
+      glow: "shadow-lg shadow-red-500/30",
+    },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      {cards.map((c) => (
+        <StatCard key={c.label} {...c} loading={loading} />
+      ))}
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   FILTER PANEL
+──────────────────────────────────────────────────────────────── */
+const FilterPanel = ({
+  filters,
+  setFilters,
+  expanded,
+  setExpanded,
+  onReset,
+  resultCount,
+  viewMode,
+  setViewMode,
+}) => {
+  const set = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
+  const Select = ({ k, label, options }) => (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+        {label}
+      </label>
+      <select
+        value={filters[k]}
+        onChange={set(k)}
+        style={{ colorScheme: "dark" }}
+        className="w-full h-9 px-2.5 rounded-lg border border-white/10 bg-white/5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+      >
+        <option value="All">All</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  return (
+    <div className="rounded-xl bg-[var(--surface)]/70 backdrop-blur-sm ring-1 ring-white/10 shadow-lg shadow-black/30">
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <FilterIcon size={15} className="text-blue-400" />
+          Filters
+          <span className="text-xs font-normal text-slate-500">
+            · {resultCount} results
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 ring-1 ring-white/10">
+            <button
+              onClick={() => setViewMode("table")}
+              title="Table view"
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === "table"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <List size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode("cards")}
+              title="Card view"
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                viewMode === "cards"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <LayoutGrid size={14} />
+            </button>
+          </div>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300"
+          >
+            {expanded ? "Collapse" : "Advanced Filter"}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <div className="relative">
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            value={filters.search}
+            onChange={set("search")}
+            placeholder="Search by customer, company, phone, GST, email…"
+            className="w-full h-10 pl-9 pr-3 rounded-lg border border-white/10 bg-white/5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+          />
+        </div>
+      </div>
+      {expanded && (
+        <div className="px-4 pb-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 border-t border-white/10 pt-4">
+          <Select k="type" label="Customer Type" options={TYPES} />
+          <Select k="status" label="Status" options={STATUSES} />
+          <Select k="category" label="Chemical Category" options={CATEGORIES} />
+          <Select k="state" label="State" options={STATES} />
+          <Select k="followUpStatus" label="Follow-up" options={FOLLOWUPS} />
+          <div className="flex items-end">
+            <button
+              onClick={onReset}
+              className="h-9 w-full px-4 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   ACTION POPUP — renders via portal so it's never clipped by the
+   table's horizontal scroll container (the old anchored dropdown
+   used to get cut off + show scrollbars inside the row)
+──────────────────────────────────────────────────────────────── */
+const ActionDropdown = ({
+  customer,
+  onView,
+  onEdit,
+  onDelete,
+  onQuickFollowUp,
+  onNotes,
+  onStatusChange,
+  onAssignSalesPerson,
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const actions = [
+    { icon: Eye, label: "View", action: () => onView(customer) },
+    { icon: Edit3, label: "Edit", action: () => onEdit(customer) },
+    {
+      icon: PhoneCall,
+      label: "Follow-up",
+      action: () => onQuickFollowUp(customer),
+    },
+    {
+      icon: Users,
+      label: "Assign",
+      action: () => onAssignSalesPerson(customer),
+    },
+    { icon: StickyNote, label: "Notes", action: () => onNotes(customer) },
+    {
+      icon: Trash2,
+      label: "Delete",
+      danger: true,
+      action: () => onDelete(customer),
+    },
+  ];
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 300,
-        background: "rgba(11,26,43,0.6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        backdropFilter: "blur(3px)",
-      }}
-    >
-      <div
-        style={{
-          background: T.white,
-          borderRadius: 18,
-          width: "100%",
-          maxWidth: 680,
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.22)",
-          overflow: "hidden",
-        }}
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-white/10 hover:text-slate-200 transition-colors"
       >
-        {/* Header */}
-        <div
-          style={{
-            background: `linear-gradient(135deg, ${T.navy} 0%, #185FA5 100%)`,
-            padding: "20px 22px 16px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 12,
-              marginBottom: 14,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 50,
-                  height: 50,
-                  borderRadius: "50%",
-                  background: "rgba(0,184,162,0.2)",
-                  border: "2px solid rgba(0,184,162,0.4)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 16,
-                  fontWeight: 800,
-                  color: T.teal,
-                  flexShrink: 0,
-                }}
-              >
-                {getInitials(customer.name)}
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: T.white,
-                    marginBottom: 3,
-                  }}
+        <MoreVertical size={16} />
+      </button>
+
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+              onClick={() => setOpen(false)}
+            />
+            <div className="relative w-full max-w-sm bg-[var(--surface-2)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden animate-[popIn_.15s_ease-out]">
+              {/* Header */}
+              <div className="relative bg-gradient-to-br from-[#182036] to-[#0F1420] px-5 py-4 text-white flex items-center gap-3 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+                <Avatar name={customer.company} size={40} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-sm truncate">
+                    {customer.company}
+                  </p>
+                  <p className="text-blue-300/80 text-[11px] font-mono">
+                    {customer.customerId}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center shrink-0"
                 >
-                  {customer.name}
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Quick status toggle */}
+              <div className="px-4 pt-4 pb-3 border-b border-white/10">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+                  Status
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {STATUSES.map((s) => {
+                    const active = customer.status === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          if (!active) onStatusChange(customer, s);
+                          setOpen(false);
+                        }}
+                        className={`h-8 rounded-lg text-xs font-semibold transition-all ${
+                          active
+                            ? STATUS_ACTIVE_STYLES[s]
+                            : "bg-white/5 text-slate-400 hover:bg-white/10"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
-                  {customer.area} · {customer.distributor}
+              </div>
+
+              {/* Actions grid */}
+              <div className="p-3 grid grid-cols-3 gap-1">
+                {actions.map((a) => (
+                  <button
+                    key={a.label}
+                    onClick={() => {
+                      a.action?.();
+                      setOpen(false);
+                    }}
+                    className={`relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
+                      a.danger
+                        ? "text-red-400 hover:bg-red-500/10"
+                        : "text-slate-300 hover:bg-blue-500/10 hover:text-blue-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center ${a.danger ? "bg-red-500/10" : "bg-blue-500/10"}`}
+                    >
+                      <a.icon
+                        size={16}
+                        className={a.danger ? "text-red-400" : "text-blue-400"}
+                      />
+                    </div>
+                    <span className="text-[10.5px] font-semibold text-center leading-tight">
+                      {a.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   TABLE
+──────────────────────────────────────────────────────────────── */
+const COLUMNS = [
+  { key: "customerId", label: "Customer ID" },
+  { key: "company", label: "Company" },
+  { key: "name", label: "Contact" },
+  { key: "type", label: "Type" },
+  { key: "city", label: "Location" },
+  { key: "salesPerson", label: "Sales Person" },
+  { key: "outstanding", label: "Outstanding" },
+  { key: "creditLimit", label: "Credit Limit" },
+  { key: "lastOrderDate", label: "Last Order" },
+  { key: "followUpStatus", label: "Follow-up" },
+  { key: "status", label: "Status" },
+];
+
+const SkeletonRow = () => (
+  <tr className="animate-pulse">
+    {Array.from({ length: COLUMNS.length + 2 }).map((_, i) => (
+      <td key={i} className="px-4 py-3.5">
+        <div className="h-3.5 bg-white/5 rounded w-full max-w-[100px]" />
+      </td>
+    ))}
+  </tr>
+);
+
+const CustomerTable = ({
+  rows,
+  loading,
+  selected,
+  setSelected,
+  sortKey,
+  sortDir,
+  onSort,
+  onView,
+  onEdit,
+  onDelete,
+  onQuickFollowUp,
+  onNotes,
+  onStatusChange,
+  onAssignSalesPerson,
+  onAddFirst,
+}) => {
+  const allChecked =
+    rows.length > 0 && rows.every((r) => selected.includes(r._id));
+  const toggleAll = () => setSelected(allChecked ? [] : rows.map((r) => r._id));
+  const toggleOne = (id) =>
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+    );
+
+  const SortHeader = ({ col }) => (
+    <th
+      onClick={() => onSort(col.key)}
+      className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer select-none hover:text-slate-300 whitespace-nowrap transition-colors"
+    >
+      <span className="inline-flex items-center gap-1">
+        {col.label}
+        {sortKey === col.key ? (
+          sortDir === "asc" ? (
+            <ChevronUp size={12} className="text-blue-400" />
+          ) : (
+            <ChevronDown size={12} className="text-blue-400" />
+          )
+        ) : (
+          <ArrowUpDown size={11} className="opacity-30" />
+        )}
+      </span>
+    </th>
+  );
+
+  return (
+    <div className="rounded-xl bg-[var(--surface)] ring-1 ring-white/10 shadow-lg shadow-black/30 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 z-10 bg-[var(--surface-2)] border-b border-white/10">
+            <tr>
+              <th className="px-4 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={toggleAll}
+                  className="rounded border-white/20 bg-white/5 accent-blue-500 focus:ring-blue-500/40 focus:ring-offset-0"
+                />
+              </th>
+              {COLUMNS.map((c) => (
+                <SortHeader key={c.key} col={c} />
+              ))}
+              <th className="px-4 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {loading &&
+              Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
+
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td colSpan={COLUMNS.length + 2} className="py-16">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <PackageSearch size={26} className="text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">
+                        No customers found
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Try adjusting your search or filters
+                      </p>
+                    </div>
+                    <button
+                      onClick={onAddFirst}
+                      className="mt-1 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-colors"
+                    >
+                      + Add First Customer
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {!loading &&
+              rows.map((c, i) => {
+                const fu =
+                  FOLLOWUP_STYLES[c.followUpStatus] || FOLLOWUP_STYLES.upcoming;
+                return (
+                  <tr
+                    key={c._id}
+                    className={`group hover:bg-blue-500/[0.06] transition-colors ${i % 2 === 1 ? "bg-white/[0.015]" : ""} ${selected.includes(c._id) ? "bg-blue-500/10" : ""}`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(c._id)}
+                        onChange={() => toggleOne(c._id)}
+                        className="rounded border-white/20 bg-white/5 accent-blue-500 focus:ring-blue-500/40 focus:ring-offset-0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                      {c.customerId}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5 min-w-[180px]">
+                        <Avatar name={c.company} />
+                        <div>
+                          <button
+                            onClick={() => onView(c)}
+                            className="font-semibold text-slate-100 hover:text-blue-400 text-left leading-tight transition-colors"
+                          >
+                            {c.company}
+                          </button>
+                          <div className="mt-1">
+                            <Badges badges={c.badges} />
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-slate-300 font-medium">{c.name}</div>
+                      <div className="text-xs text-slate-500">{c.phone}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <TypeChip type={c.type} />
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <MapPin size={12} className="text-slate-500" />
+                        {c.city}, {c.state}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
+                      {c.salesPerson?.name || "—"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`font-semibold font-mono ${c.outstanding > c.creditLimit ? "text-red-400" : c.outstanding > 0 ? "text-orange-400" : "text-slate-600"}`}
+                      >
+                        {inr(c.outstanding)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 font-mono whitespace-nowrap">
+                      {inr(c.creditLimit)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                      {fmtDate(c.lastOrderDate)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${fu.cls}`}
+                      >
+                        <fu.icon size={11} />
+                        {fu.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <ActionDropdown
+                        customer={c}
+                        onView={onView}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onQuickFollowUp={onQuickFollowUp}
+                        onNotes={onNotes}
+                        onStatusChange={onStatusChange}
+                        onAssignSalesPerson={onAssignSalesPerson}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   CUSTOMER CARDS — same data and actions as the table, laid out as
+   a responsive card grid. Reuses ActionDropdown as-is (it's already
+   portal-based, so it drops into a card with no changes) and shares
+   `selected`/`setSelected` with the table so the BulkBar keeps
+   working no matter which view is active.
+──────────────────────────────────────────────────────────────── */
+const CardSkeleton = () => (
+  <div className="rounded-xl bg-[var(--surface)] ring-1 ring-white/10 p-4 space-y-3 animate-pulse">
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-white/5 shrink-0" />
+      <div className="flex-1 space-y-1.5">
+        <div className="h-3.5 bg-white/5 rounded w-2/3" />
+        <div className="h-2.5 bg-white/5 rounded w-1/3" />
+      </div>
+    </div>
+    <div className="h-2.5 bg-white/5 rounded w-full" />
+    <div className="h-2.5 bg-white/5 rounded w-4/5" />
+    <div className="grid grid-cols-2 gap-2 pt-1">
+      <div className="h-10 bg-white/5 rounded-lg" />
+      <div className="h-10 bg-white/5 rounded-lg" />
+    </div>
+  </div>
+);
+
+const CustomerCard = ({
+  customer: c,
+  selected,
+  onToggleSelect,
+  onView,
+  onEdit,
+  onDelete,
+  onQuickFollowUp,
+  onNotes,
+  onStatusChange,
+  onAssignSalesPerson,
+}) => {
+  const fu = FOLLOWUP_STYLES[c.followUpStatus] || FOLLOWUP_STYLES.upcoming;
+  return (
+    <div
+      className={`group relative rounded-xl p-4 flex flex-col gap-3 shadow-lg shadow-black/30 transition-all duration-200 ${
+        selected
+          ? "bg-blue-500/[0.06] ring-1 ring-blue-500/50"
+          : "bg-[var(--surface)] ring-1 ring-white/10 hover:ring-white/20"
+      }`}
+    >
+      {/* Header row */}
+      <div className="flex items-start gap-2.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(c._id)}
+          className="mt-2 rounded border-white/20 bg-white/5 accent-blue-500 focus:ring-blue-500/40 focus:ring-offset-0 shrink-0"
+        />
+        <Avatar name={c.company} />
+        <div className="min-w-0 flex-1 pt-0.5">
+          <button
+            onClick={() => onView(c)}
+            className="font-semibold text-slate-100 hover:text-blue-400 text-left leading-tight block w-full truncate transition-colors"
+          >
+            {c.company}
+          </button>
+          <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+            {c.customerId}
+          </p>
+        </div>
+        <div className="shrink-0 -mr-1.5 -mt-1">
+          <ActionDropdown
+            customer={c}
+            onView={onView}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onQuickFollowUp={onQuickFollowUp}
+            onNotes={onNotes}
+            onStatusChange={onStatusChange}
+            onAssignSalesPerson={onAssignSalesPerson}
+          />
+        </div>
+      </div>
+
+      {c.badges?.length > 0 && <Badges badges={c.badges} />}
+
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <TypeChip type={c.type} />
+        <StatusBadge status={c.status} />
+      </div>
+
+      <div className="h-px bg-white/5" />
+
+      {/* Contact + location */}
+      <div className="space-y-1.5 text-xs text-slate-400">
+        <div className="flex items-center gap-2 min-w-0">
+          <User size={12} className="text-slate-500 shrink-0" />
+          <span className="text-slate-300 font-medium truncate">{c.name}</span>
+          <span className="text-slate-600 shrink-0">·</span>
+          <span className="truncate">{c.phone}</span>
+        </div>
+        <div className="flex items-center gap-2 min-w-0">
+          <MapPin size={12} className="text-slate-500 shrink-0" />
+          <span className="truncate">
+            {c.city}, {c.state}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 min-w-0">
+          <Factory size={12} className="text-slate-500 shrink-0" />
+          <span className="truncate">
+            {c.salesPerson?.name || "Unassigned"}
+          </span>
+        </div>
+      </div>
+
+      <div className="h-px bg-white/5" />
+
+      {/* Financials */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-white/5 ring-1 ring-white/10 px-2.5 py-2">
+          <p className="text-[9px] font-semibold text-slate-500 uppercase mb-0.5">
+            Credit Limit
+          </p>
+          <p className="text-sm font-bold font-mono text-slate-200">
+            {inr(c.creditLimit)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white/5 ring-1 ring-white/10 px-2.5 py-2">
+          <p className="text-[9px] font-semibold text-slate-500 uppercase mb-0.5">
+            Outstanding
+          </p>
+          <p
+            className={`text-sm font-bold font-mono ${c.outstanding > c.creditLimit ? "text-red-400" : c.outstanding > 0 ? "text-orange-400" : "text-slate-600"}`}
+          >
+            {inr(c.outstanding)}
+          </p>
+        </div>
+      </div>
+
+      {/* Footer meta */}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium shrink-0 ${fu.cls}`}
+        >
+          <fu.icon size={11} />
+          {fu.label}
+        </span>
+        <span className="text-[10px] text-slate-500 truncate">
+          Last order {fmtDate(c.lastOrderDate)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const CustomerCardGrid = ({
+  rows,
+  loading,
+  selected,
+  setSelected,
+  onView,
+  onEdit,
+  onDelete,
+  onQuickFollowUp,
+  onNotes,
+  onStatusChange,
+  onAssignSalesPerson,
+  onAddFirst,
+}) => {
+  const toggleOne = (id) =>
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+    );
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!rows.length) {
+    return (
+      <div className="rounded-xl bg-[var(--surface)] ring-1 ring-white/10 shadow-lg shadow-black/30 py-16">
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center">
+            <PackageSearch size={26} className="text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-200">
+              No customers found
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Try adjusting your search or filters
+            </p>
+          </div>
+          <button
+            onClick={onAddFirst}
+            className="mt-1 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-colors"
+          >
+            + Add First Customer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {rows.map((c) => (
+        <CustomerCard
+          key={c._id}
+          customer={c}
+          selected={selected.includes(c._id)}
+          onToggleSelect={toggleOne}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onQuickFollowUp={onQuickFollowUp}
+          onNotes={onNotes}
+          onStatusChange={onStatusChange}
+          onAssignSalesPerson={onAssignSalesPerson}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   PAGINATION
+──────────────────────────────────────────────────────────────── */
+const Pagination = ({ page, setPage, totalPages, total, pageSize }) => (
+  <div className="flex items-center justify-between px-1 py-3 text-sm text-slate-500">
+    <span>
+      Showing{" "}
+      <span className="font-semibold text-slate-300 font-mono">
+        {Math.min((page - 1) * pageSize + 1, total)}–
+        {Math.min(page * pageSize, total)}
+      </span>{" "}
+      of <span className="font-semibold text-slate-300 font-mono">{total}</span>{" "}
+      customers
+    </span>
+    <div className="flex items-center gap-1">
+      <button
+        disabled={page === 1}
+        onClick={() => setPage((p) => Math.max(1, p - 1))}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 text-slate-400 disabled:opacity-40 hover:bg-white/5 transition-colors"
+      >
+        <ChevronLeft size={15} />
+      </button>
+      {Array.from({ length: totalPages }).map((_, i) => (
+        <button
+          key={i}
+          onClick={() => setPage(i + 1)}
+          className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? "bg-blue-600 text-white shadow-md shadow-blue-600/30" : "border border-white/10 text-slate-400 hover:bg-white/5"}`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button
+        disabled={page === totalPages}
+        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 text-slate-400 disabled:opacity-40 hover:bg-white/5 transition-colors"
+      >
+        <ChevronRight size={15} />
+      </button>
+    </div>
+  </div>
+);
+
+/* ────────────────────────────────────────────────────────────────
+   QUICK VIEW DRAWER (fetches fresh detail incl. timeline)
+──────────────────────────────────────────────────────────────── */
+const QuickViewDrawer = ({ customerId, onClose, onFollowUpAdded }) => {
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [noteText, setNoteText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!customerId) return;
+    setLoading(true);
+    fetchCustomerById(customerId)
+      .then((res) => setCustomer(res.customer))
+      .catch(() => setCustomer(null))
+      .finally(() => setLoading(false));
+  }, [customerId]);
+
+  const handleAddNote = async () => {
+    if (!noteText.trim()) return;
+    setSaving(true);
+    try {
+      const res = await addTimelineEntry(customerId, {
+        type: "Note",
+        note: noteText.trim(),
+      });
+      setCustomer(res.customer);
+      setNoteText("");
+      onFollowUpAdded?.();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!customerId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+      <div className="relative w-full sm:w-[420px] bg-[var(--surface)] h-full shadow-2xl shadow-black/60 flex flex-col animate-[slideIn_.25s_ease-out]">
+        {loading || !customer ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="animate-spin text-blue-500" size={28} />
+          </div>
+        ) : (
+          <>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#182036] to-[#0F1420] px-5 pt-5 pb-6 text-white">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+              <div className="flex items-center gap-3">
+                <Avatar name={customer.company} size={52} />
+                <div>
+                  <p className="font-bold text-lg leading-tight">
+                    {customer.company}
+                  </p>
+                  <p className="text-blue-300/80 text-xs mt-1">
+                    {customer.name} · {customer.type}
+                  </p>
                 </div>
+              </div>
+              <div className="flex gap-2 mt-4 flex-wrap">
+                <StatusBadge status={customer.status} />
+                <Badges badges={customer.badges} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-5 py-3 border-b border-white/10">
+              {[
+                { icon: Phone, label: "Call", href: `tel:${customer.phone}` },
+                {
+                  icon: MessageCircle,
+                  label: "WhatsApp",
+                  href: `https://wa.me/${(customer.phone || "").replace(/\D/g, "")}`,
+                },
+                {
+                  icon: Mail,
+                  label: "Email",
+                  href: `mailto:${customer.email || ""}`,
+                },
+              ].map((b) => (
+                <a
+                  key={b.label}
+                  href={b.href}
+                  className="flex-1 flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-blue-500/10 text-blue-400 transition-colors"
+                >
+                  <b.icon size={16} />
+                  <span className="text-[10px] font-semibold">{b.label}</span>
+                </a>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  {
+                    label: "Credit Limit",
+                    value: inr(customer.creditLimit),
+                    icon: CreditCard,
+                    color: "text-blue-400",
+                  },
+                  {
+                    label: "Outstanding",
+                    value: inr(customer.outstanding),
+                    icon: Wallet,
+                    color:
+                      customer.outstanding > customer.creditLimit
+                        ? "text-red-400"
+                        : "text-orange-400",
+                  },
+                  {
+                    label: "Last Order",
+                    value: fmtDate(customer.lastOrderDate),
+                    icon: ShoppingCart,
+                    color: "text-slate-200",
+                  },
+                  {
+                    label: "Next Follow-up",
+                    value: fmtDate(customer.nextFollowUpDate),
+                    icon: CalendarClock,
+                    color: "text-slate-200",
+                  },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-lg bg-white/5 ring-1 ring-white/10 p-3"
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 uppercase mb-1">
+                      <s.icon size={11} /> {s.label}
+                    </div>
+                    <div className={`text-sm font-bold font-mono ${s.color}`}>
+                      {s.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+                  Company Details
+                </p>
+                <div className="space-y-2 text-sm">
+                  {[
+                    {
+                      icon: Building2,
+                      label: "GST",
+                      value: customer.gst || "—",
+                      mono: true,
+                    },
+                    {
+                      icon: FileText,
+                      label: "PAN",
+                      value: customer.pan || "—",
+                      mono: true,
+                    },
+                    {
+                      icon: MapPin,
+                      label: "Address",
+                      value: `${customer.city}, ${customer.state}`,
+                    },
+                    {
+                      icon: Phone,
+                      label: "Phone",
+                      value: customer.phone,
+                      mono: true,
+                    },
+                    {
+                      icon: Mail,
+                      label: "Email",
+                      value: customer.email || "—",
+                    },
+                    {
+                      icon: Beaker,
+                      label: "Category",
+                      value: customer.category,
+                    },
+                    {
+                      icon: Factory,
+                      label: "Sales Person",
+                      value: customer.salesPerson?.name || "Unassigned",
+                    },
+                  ].map((r) => (
+                    <div
+                      key={r.label}
+                      className="flex items-center gap-2.5 text-slate-400"
+                    >
+                      <r.icon size={13} className="text-slate-500 shrink-0" />
+                      <span className="text-slate-500 w-20 shrink-0">
+                        {r.label}
+                      </span>
+                      <span
+                        className={`font-medium text-slate-200 truncate ${r.mono ? "font-mono text-xs" : ""}`}
+                      >
+                        {r.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-3">
+                  Recent Activity ({customer.timeline?.length || 0})
+                </p>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Add a quick note…"
+                    className="flex-1 h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-600 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+                  />
+                  <button
+                    onClick={handleAddNote}
+                    disabled={saving}
+                    className="h-9 px-3 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      "Add"
+                    )}
+                  </button>
+                </div>
+                <div className="relative pl-5 space-y-4">
+                  <div className="absolute left-[7px] top-1 bottom-1 w-px bg-white/10" />
+                  {(customer.timeline || []).map((t, i) => (
+                    <div key={i} className="relative">
+                      <div className="absolute -left-5 top-1 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-blue-500/15" />
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-200">
+                          {t.type}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {fmtDate(t.date)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">{t.note}</p>
+                    </div>
+                  ))}
+                  {(!customer.timeline || customer.timeline.length === 0) && (
+                    <p className="text-xs text-slate-500">
+                      No activity logged yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes slideIn { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   CUSTOMER NOTES MODAL
+   Dedicated notes log per customer. Reuses the exact same
+   fetchCustomerById + addTimelineEntry({ type: "Note" }) contract
+   that already works inside QuickViewDrawer, so notes save through
+   the existing backend with zero new API endpoints required.
+──────────────────────────────────────────────────────────────── */
+const CustomerNotesModal = ({ customerId, onClose, onNoteAdded }) => {
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [noteText, setNoteText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!customerId) return;
+    setLoading(true);
+    setError("");
+    fetchCustomerById(customerId)
+      .then((res) => setCustomer(res.customer))
+      .catch(() => setError("Could not load notes for this customer."))
+      .finally(() => setLoading(false));
+  }, [customerId]);
+
+  if (!customerId) return null;
+
+  const notes = (customer?.timeline || [])
+    .filter((t) => t.type === "Note")
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const handleAdd = async () => {
+    if (!noteText.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await addTimelineEntry(customerId, {
+        type: "Note",
+        note: noteText.trim(),
+      });
+      setCustomer(res.customer);
+      setNoteText("");
+      onNoteAdded?.();
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Could not save note. Please retry.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-lg bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[85vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
+        {/* Header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#182036] to-[#0F1420] px-6 py-5 text-white shrink-0">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
+          >
+            <X size={16} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center">
+              <StickyNote size={18} className="text-blue-300" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-bold text-lg leading-tight">Notes</h2>
+              <p className="text-blue-300/80 text-xs mt-0.5 truncate">
+                {customer?.company || "Loading…"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Add note box */}
+        <div className="px-6 pt-5 pb-4 border-b border-white/10 shrink-0">
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Write a note about this customer…"
+            rows={3}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-600 text-sm resize-none transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 focus:bg-white/[0.07]"
+          />
+          {error && (
+            <p className="text-[11px] text-red-400 mt-1.5 flex items-center gap-1">
+              <AlertTriangle size={11} /> {error}
+            </p>
+          )}
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[10px] text-slate-500">
+              ⌘ / Ctrl + Enter to save
+            </span>
+            <button
+              onClick={handleAdd}
+              disabled={saving || !noteText.trim()}
+              className="h-9 px-4 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 disabled:opacity-50 flex items-center gap-1.5 transition-colors shrink-0"
+            >
+              {saving ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Plus size={13} />
+              )}
+              Add Note
+            </button>
+          </div>
+        </div>
+
+        {/* Notes list */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="animate-spin text-blue-500" size={22} />
+            </div>
+          ) : !customer ? (
+            <div className="text-center py-10">
+              <AlertTriangle
+                size={22}
+                className="mx-auto text-red-400/70 mb-2"
+              />
+              <p className="text-sm text-slate-500">
+                {error || "Could not load notes."}
+              </p>
+            </div>
+          ) : notes.length === 0 ? (
+            <div className="text-center py-10">
+              <StickyNote size={26} className="mx-auto text-slate-600 mb-2" />
+              <p className="text-sm text-slate-500">
+                No notes yet for this customer.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {notes.map((n, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl bg-white/5 ring-1 ring-white/10 p-3.5"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">
+                      Note
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {fmtDate(n.date)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {n.note}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   FOLLOW-UP MODAL — pro-level quick call/visit logging
+   Lets a sales rep log a follow-up outcome in a couple of taps
+   (type + outcome chips + optional note), schedule the next
+   reminder, and see the last few follow-ups for context — all
+   without leaving the modal. Reuses the same
+   fetchCustomerById + addTimelineEntry({ type: "Follow-up" })
+   contract, plus updateCustomer for scheduling the next date.
+──────────────────────────────────────────────────────────────── */
+const FOLLOWUP_CHANNELS = [
+  { id: "Call", icon: Phone },
+  { id: "WhatsApp", icon: MessageCircle },
+  { id: "Email", icon: Mail },
+  { id: "Meeting", icon: Users },
+  { id: "Visit", icon: MapPin },
+];
+
+const OUTCOME_OPTIONS = [
+  {
+    label: "Interested",
+    icon: CheckCircle2,
+    idle: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    active:
+      "bg-emerald-400 text-emerald-950 border-emerald-400 shadow-md shadow-emerald-500/30",
+  },
+  {
+    label: "Order Placed",
+    icon: ShoppingCart,
+    idle: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    active:
+      "bg-blue-400 text-blue-950 border-blue-400 shadow-md shadow-blue-500/30",
+  },
+  {
+    label: "Callback Later",
+    icon: Clock,
+    idle: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    active:
+      "bg-amber-400 text-amber-950 border-amber-400 shadow-md shadow-amber-500/30",
+  },
+  {
+    label: "Not Reachable",
+    icon: Ban,
+    idle: "bg-white/5 text-slate-400 border-white/10",
+    active:
+      "bg-slate-400 text-slate-950 border-slate-400 shadow-md shadow-slate-500/30",
+  },
+  {
+    label: "Not Interested",
+    icon: X,
+    idle: "bg-red-500/10 text-red-400 border-red-500/20",
+    active:
+      "bg-red-400 text-red-950 border-red-400 shadow-md shadow-red-500/30",
+  },
+];
+
+const addDaysISO = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+const QUICK_SCHEDULE = [
+  { label: "Tomorrow", value: () => addDaysISO(1) },
+  { label: "3 days", value: () => addDaysISO(3) },
+  { label: "1 week", value: () => addDaysISO(7) },
+];
+
+const FollowUpModal = ({ customer, open, onClose, onSaved }) => {
+  const [detail, setDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(true);
+  const [channel, setChannel] = useState("Call");
+  const [outcome, setOutcome] = useState(null);
+  const [note, setNote] = useState("");
+  const [nextDate, setNextDate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || !customer?._id) return;
+    setChannel("Call");
+    setOutcome(null);
+    setNote("");
+    setNextDate("");
+    setError("");
+    setLoadingDetail(true);
+    fetchCustomerById(customer._id)
+      .then((res) => setDetail(res.customer))
+      .catch(() => setDetail(customer))
+      .finally(() => setLoadingDetail(false));
+  }, [open, customer]);
+
+  if (!open || !customer) return null;
+
+  const history = (detail?.timeline || [])
+    .filter((t) => t.type === "Follow-up")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 4);
+
+  const handleSubmit = async () => {
+    if (!outcome && !note.trim()) {
+      setError("Pick an outcome or add a note before logging.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const summary = [outcome, note.trim()].filter(Boolean).join(" — ");
+      const res = await addTimelineEntry(customer._id, {
+        type: "Follow-up",
+        note: `[${channel}] ${summary}`,
+      });
+      let updatedCustomer = res.customer;
+      if (nextDate) {
+        // Partial update — assumes the backend's update route merges
+        // fields via findByIdAndUpdate rather than requiring a full payload.
+        const res2 = await updateCustomer(customer._id, {
+          nextFollowUpDate: nextDate,
+        });
+        updatedCustomer = res2.customer || updatedCustomer;
+      }
+      onSaved(updatedCustomer);
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not save the follow-up. Please retry.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-lg bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-[#4A2E12] via-[#3A2410] to-[#241505] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-500/10 blur-2xl" />
+          <div className="relative flex items-start justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center shrink-0">
+                <PhoneCall size={18} className="text-amber-300" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-bold text-lg leading-tight truncate">
+                  {customer.company}
+                </h2>
+                <p className="text-amber-200/70 text-xs mt-0.5 flex items-center gap-1.5">
+                  <span className="font-mono">{customer.customerId}</span>
+                  <span>·</span>
+                  <span>{customer.name}</span>
+                </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.08)",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 15,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
+              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <StagePill stageId={customer.stage} full />
-            <Badge label={customer.priority} color={prio.color} bg={prio.bg} />
-            {customer.tags.map((tag) => {
-              const tc = tagColors[tag] || { bg: T.gray100, color: T.gray600 };
-              return (
-                <Badge key={tag} label={tag} color={tc.color} bg={tc.bg} />
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Section Tabs */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: `1px solid ${T.gray200}`,
-            background: T.gray50,
-            flexShrink: 0,
-          }}
-        >
-          {sections.map((sec) => {
-            const labels = {
-              overview: "📊 Overview",
-              timeline: "📅 Timeline",
-              numbers: "💰 Numbers",
-              contacts: "👤 Contact",
-            };
-            return (
-              <button
-                key={sec}
-                onClick={() => setActiveSection(sec)}
-                style={{
-                  flex: 1,
-                  padding: "12px 8px",
-                  border: "none",
-                  background: "transparent",
-                  fontSize: 11,
-                  fontWeight: activeSection === sec ? 700 : 400,
-                  color: activeSection === sec ? T.teal : T.gray500,
-                  borderBottom: `2px solid ${activeSection === sec ? T.teal : "transparent"}`,
-                  cursor: "pointer",
-                  transition: "color 0.15s",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {labels[sec]}
-              </button>
-            );
-          })}
+          {/* Quick contact actions */}
+          <div className="relative flex gap-2 mt-4">
+            <a
+              href={`tel:${customer.phone}`}
+              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
+            >
+              <Phone size={13} /> Call
+            </a>
+            <a
+              href={`https://wa.me/${(customer.phone || "").replace(/\D/g, "")}`}
+              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition-colors"
+            >
+              <MessageCircle size={13} /> WhatsApp
+            </a>
+            {detail?.nextFollowUpDate && (
+              <div className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white/5 text-xs font-medium">
+                <CalendarClock size={13} /> Due{" "}
+                {fmtDate(detail.nextFollowUpDate)}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px" }}>
-          {/* OVERVIEW */}
-          {activeSection === "overview" && (
-            <div>
-              {/* Follow-up alert */}
-              {customer.nextFollowUp && followDays <= 3 && (
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    marginBottom: 16,
-                    background: followDays <= 0 ? T.roseLight : T.amberLight,
-                    border: `1px solid ${followDays <= 0 ? "#FECACA" : "#FDE68A"}`,
-                    borderLeft: `4px solid ${followDays <= 0 ? T.rose : T.amber}`,
-                    fontSize: 12,
-                    color: followDays <= 0 ? T.rose : T.amberDark,
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>
-                    {followDays <= 0 ? "⚠️" : "📌"}
-                  </span>
-                  {followDays <= 0
-                    ? `Follow-up OVERDUE by ${Math.abs(followDays)} days`
-                    : followDays === 0
-                      ? "Follow-up is TODAY"
-                      : `Follow-up in ${followDays} days`}
-                  {" — "}
-                  {fmtDate(customer.nextFollowUp)}
-                </div>
-              )}
-
-              {/* Stage progress */}
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: T.gray400,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 10,
-                  }}
-                >
-                  Pipeline Stage
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    overflowX: "auto",
-                    paddingBottom: 4,
-                  }}
-                >
-                  {STAGES.map((st, i) => {
-                    const isActive = st.id === customer.stage;
-                    const isPast =
-                      STAGES.findIndex((s) => s.id === customer.stage) > i;
-                    return (
-                      <div
-                        key={st.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: isActive ? 36 : 28,
-                            height: isActive ? 36 : 28,
-                            borderRadius: "50%",
-                            background: isActive
-                              ? st.color
-                              : isPast
-                                ? st.color + "60"
-                                : T.gray200,
-                            border: `2px solid ${isActive ? st.color : isPast ? st.color + "40" : T.gray300}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: isActive ? 13 : 10,
-                            fontWeight: 800,
-                            color: isActive || isPast ? T.white : T.gray400,
-                            boxShadow: isActive
-                              ? `0 0 0 3px ${st.color}30`
-                              : "none",
-                            transition: "all 0.2s",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {st.id}
-                        </div>
-                        {i < STAGES.length - 1 && (
-                          <div
-                            style={{
-                              width: 12,
-                              height: 2,
-                              background: isPast ? st.color + "60" : T.gray200,
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontSize: 11,
-                    color: s.color,
-                    fontWeight: 700,
-                  }}
-                >
-                  Stage {customer.stage}: {s.label}
-                </div>
-              </div>
-
-              {/* Quick stats */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 10,
-                  marginBottom: 16,
-                }}
-              >
-                <StatBox
-                  label="Potential /mth"
-                  value={`₹${customer.potential}L`}
-                  color={T.blue}
-                />
-                <StatBox
-                  label="Existing /mth"
-                  value={`₹${customer.existing}L`}
-                  color={T.emerald}
-                />
-                <StatBox
-                  label="ABP AM26"
-                  value={`₹${customer.abp}L`}
-                  color={T.violet}
-                />
-                <StatBox
-                  label="YTD Sale"
-                  value={`₹${customer.ytd}L`}
-                  color={T.teal}
-                  sub={`${ytdPct}% of ABP`}
-                />
-              </div>
-
-              {/* YTD progress bar */}
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 5,
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: T.gray500 }}>
-                    YTD vs ABP Progress
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color:
-                        ytdPct >= 80
-                          ? T.emerald
-                          : ytdPct >= 50
-                            ? T.amber
-                            : T.rose,
-                    }}
-                  >
-                    {ytdPct}%
-                  </span>
-                </div>
-                <div
-                  style={{ height: 8, background: T.gray100, borderRadius: 4 }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${ytdPct}%`,
-                      background:
-                        ytdPct >= 80
-                          ? T.emerald
-                          : ytdPct >= 50
-                            ? T.amber
-                            : T.rose,
-                      borderRadius: 4,
-                      transition: "width 0.6s ease",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Recent timeline summary */}
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: T.gray400,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 10,
-                  }}
-                >
-                  Recent Activity
-                </div>
-                {customer.timeline
-                  .slice(-3)
-                  .reverse()
-                  .map((item, i) => {
-                    const tc =
-                      timelineTypeConfig[item.type] || timelineTypeConfig.Visit;
-                    return (
-                      <div
-                        key={i}
-                        style={{ display: "flex", gap: 10, marginBottom: 10 }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
-                            background: tc.bg,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 14,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {tc.icon}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginBottom: 2,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: tc.color,
-                              }}
-                            >
-                              {item.type}
-                            </span>
-                            <span style={{ fontSize: 10, color: T.gray400 }}>
-                              {fmtDate(item.date)}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: T.gray600,
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {item.note}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 bg-[var(--surface)]">
+          {/* Channel */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+              How did you connect?
+            </p>
+            <div className="flex gap-2">
+              {FOLLOWUP_CHANNELS.map((c) => (
                 <button
-                  onClick={() => setActiveSection("timeline")}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: 8,
-                    border: `1px dashed ${T.gray300}`,
-                    background: "transparent",
-                    fontSize: 12,
-                    color: T.teal,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
+                  key={c.id}
+                  type="button"
+                  onClick={() => setChannel(c.id)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl border text-[10px] font-semibold transition-all ${
+                    channel === c.id
+                      ? "bg-amber-400 border-amber-400 text-amber-950 shadow-md shadow-amber-500/30"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
+                  }`}
                 >
-                  View full timeline ({customer.timeline.length} events) →
+                  <c.icon size={15} />
+                  {c.id}
                 </button>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
 
-          {/* TIMELINE */}
-          {activeSection === "timeline" && (
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: T.gray400,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: 16,
-                }}
-              >
-                Complete Activity Timeline — {customer.timeline.length} events
-              </div>
-              <div style={{ position: "relative", paddingLeft: 24 }}>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 11,
-                    top: 0,
-                    bottom: 0,
-                    width: 2,
-                    background: T.gray200,
-                  }}
-                />
-                {customer.timeline
-                  .slice()
-                  .reverse()
-                  .map((item, i) => {
-                    const tc =
-                      timelineTypeConfig[item.type] || timelineTypeConfig.Visit;
-                    return (
-                      <div
-                        key={i}
-                        style={{ position: "relative", marginBottom: 20 }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: -24,
-                            top: 6,
-                            width: 22,
-                            height: 22,
-                            borderRadius: "50%",
-                            background: tc.bg,
-                            border: `2px solid ${tc.color}`,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 10,
-                            zIndex: 1,
-                          }}
-                        >
-                          {tc.icon}
-                        </div>
-                        <div
-                          style={{
-                            background: T.gray50,
-                            borderRadius: 10,
-                            padding: "12px 14px",
-                            border: `1px solid ${T.gray200}`,
-                            borderLeft: `3px solid ${tc.color}`,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginBottom: 6,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: tc.color,
-                              }}
-                            >
-                              {item.type}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                color: T.gray400,
-                                background: T.white,
-                                padding: "2px 8px",
-                                borderRadius: 20,
-                                border: `1px solid ${T.gray200}`,
-                              }}
-                            >
-                              {fmtDate(item.date)}
-                            </span>
-                          </div>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              color: T.gray700,
-                              lineHeight: 1.5,
-                              margin: 0,
-                            }}
-                          >
-                            {item.note}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
+          {/* Outcome */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+              Outcome
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {OUTCOME_OPTIONS.map((o) => {
+                const active = outcome === o.label;
+                return (
+                  <button
+                    key={o.label}
+                    type="button"
+                    onClick={() => setOutcome(active ? null : o.label)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${active ? o.active : o.idle}`}
+                  >
+                    <o.icon size={13} />
+                    {o.label}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          {/* NUMBERS */}
-          {activeSection === "numbers" && (
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: T.gray400,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: 14,
-                }}
-              >
-                Financial Summary (₹ Lakhs)
-              </div>
+          {/* Note */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+              Notes{" "}
+              <span className="font-normal normal-case text-slate-600">
+                (optional)
+              </span>
+            </p>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="What was discussed? Any details worth remembering…"
+              rows={3}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-white/10 bg-white/5 text-slate-200 placeholder:text-slate-600 text-sm resize-none transition-all focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/50"
+            />
+          </div>
 
-              {/* Main numbers grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 10,
-                  marginBottom: 20,
-                }}
-              >
-                {[
-                  {
-                    label: "Monthly Potential",
-                    sub: "Max possible /month",
-                    value: `₹${customer.potential}L`,
-                    color: T.blue,
-                  },
-                  {
-                    label: "Current Existing",
-                    sub: "Active business /month",
-                    value: `₹${customer.existing}L`,
-                    color: T.emerald,
-                  },
-                  {
-                    label: "ABP AM26",
-                    sub: "Annual Business Plan",
-                    value: `₹${customer.abp}L`,
-                    color: T.violet,
-                  },
-                  {
-                    label: "YTD Sale",
-                    sub: "Till end of prev month",
-                    value: `₹${customer.ytd}L`,
-                    color: T.teal,
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    style={{
-                      background: T.white,
-                      border: `1px solid ${T.gray200}`,
-                      borderRadius: 10,
-                      padding: "14px 16px",
-                      borderTop: `3px solid ${item.color}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: T.gray400,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        marginBottom: 6,
-                      }}
-                    >
-                      {item.label}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 22,
-                        fontWeight: 800,
-                        color: item.color,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {item.value}
-                    </div>
-                    <div style={{ fontSize: 10, color: T.gray400 }}>
-                      {item.sub}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* ABP performance */}
-              <div
-                style={{
-                  background: T.navy,
-                  borderRadius: 12,
-                  padding: "16px 18px",
-                  color: T.white,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.5)",
-                    marginBottom: 14,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                  }}
+          {/* Schedule next follow-up */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+              Schedule next follow-up{" "}
+              <span className="font-normal normal-case text-slate-600">
+                (optional)
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {QUICK_SCHEDULE.map((q) => (
+                <button
+                  key={q.label}
+                  type="button"
+                  onClick={() => setNextDate(q.value())}
+                  className={`h-9 px-3 rounded-lg border text-xs font-semibold transition-colors ${
+                    nextDate === q.value()
+                      ? "bg-amber-400 border-amber-400 text-amber-950"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
+                  }`}
                 >
-                  ABP Performance Tracker
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 10,
-                  }}
+                  {q.label}
+                </button>
+              ))}
+              <input
+                type="date"
+                value={nextDate}
+                onChange={(e) => setNextDate(e.target.value)}
+                style={{ colorScheme: "dark" }}
+                className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-xs text-slate-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/50"
+              />
+              {nextDate && (
+                <button
+                  type="button"
+                  onClick={() => setNextDate("")}
+                  className="text-[11px] text-slate-500 hover:text-slate-300 underline"
                 >
-                  <span
-                    style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}
-                  >
-                    YTD vs ABP
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 900,
-                      color:
-                        ytdPct >= 80
-                          ? T.emerald
-                          : ytdPct >= 50
-                            ? T.amber
-                            : T.rose,
-                    }}
-                  >
-                    {ytdPct}%
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: 10,
-                    background: "rgba(255,255,255,0.1)",
-                    borderRadius: 5,
-                    marginBottom: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${ytdPct}%`,
-                      background:
-                        ytdPct >= 80
-                          ? T.emerald
-                          : ytdPct >= 50
-                            ? T.amber
-                            : T.rose,
-                      borderRadius: 5,
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: 10,
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "rgba(255,255,255,0.4)",
-                        marginBottom: 3,
-                      }}
-                    >
-                      Achieved
-                    </div>
-                    <div
-                      style={{ fontSize: 16, fontWeight: 800, color: T.teal }}
-                    >
-                      ₹{customer.ytd}L
-                    </div>
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "rgba(255,255,255,0.4)",
-                        marginBottom: 3,
-                      }}
-                    >
-                      Target
-                    </div>
-                    <div
-                      style={{ fontSize: 16, fontWeight: 800, color: T.white }}
-                    >
-                      ₹{customer.abp}L
-                    </div>
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "rgba(255,255,255,0.4)",
-                        marginBottom: 3,
-                      }}
-                    >
-                      Remaining
-                    </div>
-                    <div
-                      style={{ fontSize: 16, fontWeight: 800, color: T.amber }}
-                    >
-                      ₹{Math.max(0, customer.abp - customer.ytd)}L
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CONTACT */}
-          {activeSection === "contacts" && (
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: T.gray400,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: 14,
-                }}
-              >
-                Contact Information
-              </div>
-              <div
-                style={{
-                  background: T.white,
-                  border: `1px solid ${T.gray200}`,
-                  borderRadius: 12,
-                  padding: "18px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    marginBottom: 18,
-                    paddingBottom: 18,
-                    borderBottom: `1px solid ${T.gray100}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: "50%",
-                      background: T.blueLight,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: T.blue,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {getInitials(customer.contactPerson)}
-                  </div>
-                  <div>
-                    <div
-                      style={{ fontSize: 15, fontWeight: 700, color: T.text }}
-                    >
-                      {customer.contactPerson}
-                    </div>
-                    <div
-                      style={{ fontSize: 12, color: T.gray500, marginTop: 2 }}
-                    >
-                      {customer.designation}
-                    </div>
-                    <div
-                      style={{ fontSize: 11, color: T.gray400, marginTop: 1 }}
-                    >
-                      {customer.name}
-                    </div>
-                  </div>
-                </div>
-                {[
-                  { icon: "📞", label: "Phone", value: customer.contact },
-                  { icon: "📧", label: "Email", value: customer.email },
-                  { icon: "📍", label: "Area / City", value: customer.area },
-                  {
-                    icon: "🏪",
-                    label: "Distributor",
-                    value: customer.distributor,
-                  },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "10px 0",
-                      borderBottom: `1px solid ${T.gray100}`,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 16,
-                        width: 22,
-                        textAlign: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {row.icon}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: T.gray500,
-                        width: 80,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {row.label}
-                    </span>
-                    <span
-                      style={{ fontSize: 13, fontWeight: 600, color: T.text }}
-                    >
-                      {row.value || "—"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Next follow-up */}
-              {customer.nextFollowUp && (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: "12px 16px",
-                    borderRadius: 10,
-                    background:
-                      followDays <= 0
-                        ? T.roseLight
-                        : followDays <= 3
-                          ? T.amberLight
-                          : T.emeraldLight,
-                    border: `1px solid ${followDays <= 0 ? "#FECACA" : followDays <= 3 ? "#FDE68A" : "#A7F3D0"}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: T.gray500,
-                      marginBottom: 4,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Next Follow-up
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color:
-                        followDays <= 0
-                          ? T.rose
-                          : followDays <= 3
-                            ? T.amberDark
-                            : "#065F46",
-                    }}
-                  >
-                    {fmtDate(customer.nextFollowUp)}
-                    {followDays <= 0
-                      ? ` — OVERDUE by ${Math.abs(followDays)}d`
-                      : followDays === 0
-                        ? " — Today!"
-                        : ` — in ${followDays} days`}
-                  </div>
-                </div>
+                  Clear
+                </button>
               )}
+            </div>
+          </div>
+
+          {/* Recent history */}
+          {!loadingDetail && history.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+                Recent follow-ups
+              </p>
+              <div className="space-y-2">
+                {history.map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2.5 rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2.5"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <PhoneCall size={11} className="text-amber-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-slate-400 leading-snug">
+                        {h.note}
+                      </p>
+                      <p className="text-[10px] text-slate-600 mt-0.5">
+                        {fmtDate(h.date)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div
-          style={{
-            padding: "14px 22px",
-            borderTop: `1px solid ${T.gray200}`,
-            background: T.gray50,
-            display: "flex",
-            gap: 10,
-            flexShrink: 0,
-          }}
-        >
+        {error && (
+          <p className="px-6 text-xs text-red-400 flex items-center gap-1.5 pb-1 pt-2 shrink-0">
+            <AlertTriangle size={12} /> {error}
+          </p>
+        )}
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-white/10 bg-[var(--surface)] shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors"
+          >
+            Cancel
+          </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="h-11 px-5 rounded-xl bg-amber-500 text-amber-950 text-sm font-bold hover:bg-amber-400 shadow-md shadow-amber-500/25 disabled:opacity-60 flex items-center gap-1.5 transition-colors"
+          >
+            {saving ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Check size={15} />
+            )}
+            Log Follow-up
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   ASSIGN SALES PERSON MODAL — used both for a single customer (from
+   the action card) and for bulk assignment (from the selection bar),
+   so it takes an array of customerIds either way and always calls
+   the same bulkAssignSalesPerson(ids, salesPersonId) endpoint.
+   There's no "list all sales persons" endpoint available, so the
+   quick-pick list is built client-side from sales persons already
+   seen on loaded customers this session — the manual ID field is the
+   fallback for anyone not in that list yet.
+──────────────────────────────────────────────────────────────── */
+const AssignSalesPersonModal = ({
+  open,
+  onClose,
+  onSaved,
+  customerIds,
+  title,
+  subtitle,
+  knownSalesPersons,
+}) => {
+  const [salesPersonId, setSalesPersonId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setSalesPersonId("");
+      setError("");
+    }
+  }, [open, customerIds]);
+
+  if (!open || !customerIds?.length) return null;
+
+  const handleSubmit = async () => {
+    if (!salesPersonId.trim()) {
+      setError("Pick or enter a sales person to assign.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await bulkAssignSalesPerson(customerIds, salesPersonId.trim());
+      onSaved();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Could not assign the sales person. Please retry.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-md bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[85vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
+        {/* Header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#241b3d] via-[#1c1530] to-[#100c1c] px-6 py-5 text-white shrink-0">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
           <button
             onClick={onClose}
-            style={{
-              flex: 1,
-              height: 38,
-              background: T.gray100,
-              color: T.gray700,
-              border: `1px solid ${T.gray200}`,
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
+            className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"
           >
-            Close
+            <X size={16} />
           </button>
-          <button
-            onClick={() => onEdit(customer)}
-            style={{
-              flex: 2,
-              height: 38,
-              background: T.teal,
-              color: T.navy,
-              border: "none",
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            ✏️ Edit Customer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Avatar bg palette — one per letter band ─────────────────────────────────
-const avatarPalette = [
-  { bg: "#E6F1FB", color: "#0C447C" },
-  { bg: "#EAF3DE", color: "#27500A" },
-  { bg: "#EEEDFE", color: "#3C3489" },
-  { bg: "#FAEEDA", color: "#633806" },
-  { bg: "#FCEBEB", color: "#791F1F" },
-  { bg: "#E1F5EE", color: "#085041" },
-  { bg: "#FBEAF0", color: "#72243E" },
-  { bg: "#FAECE7", color: "#712B13" },
-];
-const avatarColor = (name) =>
-  avatarPalette[name.charCodeAt(0) % avatarPalette.length];
-
-// ─── Customer Card ────────────────────────────────────────────────────────────
-const CustomerCard = ({ customer, onClick }) => {
-  const s = stageOf(customer.stage);
-  const ytdPct = pct(customer.ytd, customer.abp);
-  const followDays = daysFromNow(customer.nextFollowUp);
-  const isOverdue = followDays < 0;
-  const isToday = followDays === 0;
-  const isUrgent = followDays <= 2 && followDays >= 0;
-  const isKeyAccount = customer.tags.includes("Key Account");
-  const av = avatarColor(customer.name);
-
-  // Progress bar color
-  const barColor = ytdPct >= 80 ? T.emerald : ytdPct >= 50 ? T.amber : T.rose;
-
-  // Priority dot color
-  const prioDot =
-    customer.priority === "High"
-      ? T.rose
-      : customer.priority === "Medium"
-        ? T.amber
-        : T.emerald;
-
-  // Follow-up strip config
-  const followBg = isOverdue
-    ? "#FFF1F2"
-    : isToday
-      ? T.amberLight
-      : isUrgent
-        ? "#FFFBEB"
-        : T.gray50;
-  const followColor = isOverdue
-    ? T.rose
-    : isToday
-      ? T.amberDark
-      : isUrgent
-        ? "#B45309"
-        : T.gray400;
-  const followIcon = isOverdue ? "⚠" : isToday ? "📌" : "🗓";
-  const followText = isOverdue
-    ? `Follow-up overdue · ${fmtDate(customer.nextFollowUp)}`
-    : isToday
-      ? `Follow-up today · ${fmtDate(customer.nextFollowUp)}`
-      : customer.nextFollowUp
-        ? `Follow-up ${followDays}d · ${fmtDate(customer.nextFollowUp)}`
-        : "No follow-up set";
-
-  return (
-    <div
-      onClick={() => onClick(customer)}
-      style={{
-        background: T.white,
-        borderRadius: 14,
-        border: `1px solid ${isKeyAccount ? s.color + "55" : T.gray200}`,
-        overflow: "hidden",
-        cursor: "pointer",
-        transition: "border-color 0.15s, box-shadow 0.15s, transform 0.12s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = s.color + "99";
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.08)";
-        e.currentTarget.style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = isKeyAccount
-          ? s.color + "55"
-          : T.gray200;
-        e.currentTarget.style.boxShadow = "none";
-        e.currentTarget.style.transform = "translateY(0)";
-      }}
-    >
-      {/* Stage accent bar — top */}
-      <div style={{ height: 3, background: s.color, width: "100%" }} />
-
-      {/* Key Account banner */}
-      {isKeyAccount && (
-        <div
-          style={{
-            background: T.amberLight,
-            padding: "4px 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            borderBottom: `1px solid #FDE68A`,
-          }}
-        >
-          <span style={{ fontSize: 11 }}>⭐</span>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#92400E",
-              letterSpacing: "0.03em",
-            }}
-          >
-            Key Account
-          </span>
-        </div>
-      )}
-
-      {/* Card body */}
-      <div style={{ padding: "13px 14px 0" }}>
-        {/* Row 1 — Avatar + Name + Stage pill */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            marginBottom: 8,
-          }}
-        >
-          <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: "50%",
-              background: av.bg,
-              color: av.color,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              flexShrink: 0,
-              border: `1.5px solid ${av.color}30`,
-            }}
-          >
-            {getInitials(customer.name)}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: T.text,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                lineHeight: 1.25,
-                marginBottom: 3,
-              }}
-            >
-              {customer.name}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center shrink-0">
+              <Users size={18} className="text-violet-300" />
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                fontSize: 11,
-                color: T.gray500,
-              }}
-            >
-              <span style={{ fontSize: 11 }}>📍</span>
-              <span>{customer.area}</span>
-              <span style={{ color: T.gray300 }}>·</span>
-              <span style={{ color: T.gray400 }}>{customer.distributor}</span>
+            <div className="min-w-0">
+              <h2 className="font-bold text-lg leading-tight">
+                Assign Sales Person
+              </h2>
+              <p className="text-violet-300/70 text-xs mt-0.5 truncate">
+                {title}
+                {subtitle ? ` · ${subtitle}` : ""}
+              </p>
             </div>
           </div>
-          <div style={{ flexShrink: 0 }}>
-            <StagePill stageId={customer.stage} />
-          </div>
         </div>
 
-        {/* Row 2 — Contact person + Priority */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-            gap: 8,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              minWidth: 0,
-            }}
-          >
-            <span style={{ fontSize: 13, color: T.gray400 }}>👤</span>
-            <span
-              style={{
-                fontSize: 12,
-                color: T.gray600,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {customer.contactPerson}
-            </span>
-            <span style={{ fontSize: 11, color: T.gray400, flexShrink: 0 }}>
-              · {customer.designation}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: prioDot,
-                display: "inline-block",
-              }}
-            />
-            <span style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
-              {customer.priority}
-            </span>
-          </div>
-        </div>
-
-        {/* Row 3 — Tags */}
-        {customer.tags.filter((t) => t !== "Key Account").length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              gap: 5,
-              flexWrap: "wrap",
-              marginBottom: 10,
-            }}
-          >
-            {customer.tags
-              .filter((t) => t !== "Key Account")
-              .map((tag) => {
-                const tc = tagColors[tag] || {
-                  bg: T.gray100,
-                  color: T.gray600,
-                };
-                return (
-                  <span
-                    key={tag}
-                    style={{
-                      fontSize: 11,
-                      padding: "2px 9px",
-                      borderRadius: 20,
-                      background: tc.bg,
-                      color: tc.color,
-                      fontWeight: 600,
-                      border: `1px solid ${tc.color}20`,
-                    }}
-                  >
-                    {tag}
-                  </span>
-                );
-              })}
-          </div>
-        )}
-
-        {/* Row 4 — YTD progress */}
-        <div style={{ marginBottom: 12 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 5,
-            }}
-          >
-            <span style={{ fontSize: 11, color: T.gray400, fontWeight: 500 }}>
-              YTD vs ABP
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: barColor }}>
-              {ytdPct}%
-            </span>
-          </div>
-          <div
-            style={{
-              height: 5,
-              background: T.gray100,
-              borderRadius: 3,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${ytdPct}%`,
-                background: barColor,
-                borderRadius: 3,
-                transition: "width 0.5s ease",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Number strip — 3 cells */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          borderTop: `1px solid ${T.gray100}`,
-        }}
-      >
-        {[
-          {
-            label: "Potential",
-            value: `₹${customer.potential}L`,
-            sub: "/month",
-            valueColor: T.blue,
-          },
-          {
-            label: "Existing",
-            value: `₹${customer.existing}L`,
-            sub: "/month",
-            valueColor: T.emerald,
-          },
-          {
-            label: "YTD Sale",
-            value: `₹${customer.ytd}L`,
-            sub: `of ₹${customer.abp}L`,
-            valueColor: T.text,
-          },
-        ].map((n, i) => (
-          <div
-            key={n.label}
-            style={{
-              padding: "9px 12px",
-              borderRight: i < 2 ? `1px solid ${T.gray100}` : "none",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                color: T.gray400,
-                fontWeight: 500,
-                marginBottom: 2,
-              }}
-            >
-              {n.label}
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {knownSalesPersons?.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">
+                Recently seen
+              </p>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {knownSalesPersons.map((sp) => {
+                  const active = salesPersonId === sp._id;
+                  return (
+                    <button
+                      key={sp._id}
+                      type="button"
+                      onClick={() => setSalesPersonId(sp._id)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-all text-left ${
+                        active
+                          ? "bg-violet-500/15 border-violet-500/40"
+                          : "bg-white/5 border-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-800 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                        {initialsOf(sp.name)}
+                      </div>
+                      <span
+                        className={`text-sm font-medium truncate ${active ? "text-violet-300" : "text-slate-300"}`}
+                      >
+                        {sp.name}
+                      </span>
+                      {active && (
+                        <Check
+                          size={14}
+                          className="text-violet-400 ml-auto shrink-0"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: n.valueColor,
-                lineHeight: 1.1,
-              }}
-            >
-              {n.value}
-            </div>
-            <div style={{ fontSize: 10, color: T.gray400, marginTop: 1 }}>
-              {n.sub}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Footer strip — follow-up + last visit + arrow */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "8px 14px",
-          background: followBg,
-          borderTop: `1px solid ${isOverdue ? "#FECACA" : isToday ? "#FDE68A" : T.gray100}`,
-          gap: 8,
-        }}
-      >
-        <div
-          style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}
-        >
-          <span style={{ fontSize: 13, flexShrink: 0 }}>{followIcon}</span>
-          <span
-            style={{
-              fontSize: 11,
-              color: followColor,
-              fontWeight: isOverdue || isToday ? 700 : 500,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {followText}
-          </span>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexShrink: 0,
-          }}
-        >
-          {customer.lastVisit && (
-            <span style={{ fontSize: 10, color: T.gray400 }}>
-              🕐 {fmtDate(customer.lastVisit)}
-            </span>
           )}
-          <span style={{ fontSize: 14, color: T.gray300 }}>›</span>
+
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+              {knownSalesPersons?.length > 0
+                ? "Or enter Sales Person ID"
+                : "Sales Person ID"}
+            </p>
+            <input
+              value={salesPersonId}
+              onChange={(e) => setSalesPersonId(e.target.value)}
+              placeholder="Paste the sales person's user ID"
+              className="w-full h-11 px-3.5 rounded-xl border border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-600 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500/50"
+            />
+            {error && (
+              <p className="text-[11px] text-red-400 mt-1.5 flex items-center gap-1">
+                <AlertTriangle size={11} /> {error}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-white/10 bg-[var(--surface)] shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors"
+          >
+            Cancel
+          </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="h-11 px-5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 shadow-md shadow-violet-600/25 disabled:opacity-60 flex items-center gap-1.5 transition-colors"
+          >
+            {saving ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Check size={15} />
+            )}
+            Assign
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function CustomerListPage() {
-  const [customers] = useState(SEED_CUSTOMERS);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [search, setSearch] = useState("");
-  const [distFilter, setDistFilter] = useState("All");
-  const [stageFilter, setStageFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
-  const [sortBy, setSortBy] = useState("name");
-  const [viewMode, setViewMode] = useState("split"); // split | list | grid
+/* ────────────────────────────────────────────────────────────────
+   ADD / EDIT CUSTOMER — PREMIUM 3-STEP WIZARD
+──────────────────────────────────────────────────────────────── */
+const emptyForm = {
+  company: "",
+  name: "",
+  phone: "",
+  email: "",
+  gst: "",
+  pan: "",
+  city: "",
+  state: STATES[0],
+  type: TYPES[0],
+  category: CATEGORIES[0],
+  status: "Active",
+  creditLimit: "",
+  outstanding: "",
+  nextFollowUpDate: "",
+};
 
-  const filtered = useMemo(() => {
-    let list = customers.filter((c) => {
-      const q = search.toLowerCase();
-      const matchSearch =
-        !search ||
-        [
-          c.name,
-          c.area,
-          c.contactPerson,
-          c.distributor,
-          c.email,
-          c.contact,
-          ...c.tags,
-        ].some((f) => (f || "").toLowerCase().includes(q));
-      const matchDist = distFilter === "All" || c.distributor === distFilter;
-      const matchStage = stageFilter === "All" || c.stage === stageFilter;
-      const matchPriority =
-        priorityFilter === "All" || c.priority === priorityFilter;
-      return matchSearch && matchDist && matchStage && matchPriority;
-    });
+const WIZARD_STEPS = [
+  { id: 1, label: "Basic Info", sub: "Who they are", icon: User },
+  { id: 2, label: "Classification", sub: "Where & what", icon: Layers },
+  { id: 3, label: "Financials", sub: "Money & compliance", icon: ShieldCheck },
+];
 
-    list.sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "stage") return a.stage.localeCompare(b.stage);
-      if (sortBy === "ytd") return b.ytd - a.ytd;
-      if (sortBy === "followup")
-        return daysFromNow(a.nextFollowUp) - daysFromNow(b.nextFollowUp);
-      if (sortBy === "potential") return b.potential - a.potential;
-      return 0;
-    });
+const REQUIRED_BY_STEP = {
+  1: ["company", "name", "phone"],
+  2: ["city", "state", "type", "category"],
+  3: [],
+};
 
-    return list;
-  }, [customers, search, distFilter, stageFilter, priorityFilter, sortBy]);
-
-  // Grouped by distributor for split view
-  const suppleCustomers = filtered.filter((c) => c.distributor === "Supple");
-  const shreeJeeCustomers = filtered.filter(
-    (c) => c.distributor === "Shree Jee Traders",
-  );
-  const otherCustomers = filtered.filter(
-    (c) => c.distributor !== "Supple" && c.distributor !== "Shree Jee Traders",
-  );
-
-  // Summary stats
-  const totalPotential = filtered.reduce((s, c) => s + c.potential, 0);
-  const totalYTD = filtered.reduce((s, c) => s + c.ytd, 0);
-  const overdueCount = filtered.filter(
-    (c) => c.nextFollowUp && daysFromNow(c.nextFollowUp) < 0,
-  ).length;
-  const dueTodayCount = filtered.filter(
-    (c) => c.nextFollowUp && daysFromNow(c.nextFollowUp) === 0,
-  ).length;
-
-  const DistributorColumn = ({ title, color, custList, icon }) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      {/* Distributor Header */}
-      <div
-        style={{
-          background: T.navy,
-          borderRadius: "12px 12px 0 0",
-          padding: "14px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: color + "30",
-              border: `1px solid ${color}60`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 16,
-              flexShrink: 0,
-            }}
-          >
-            {icon}
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.white }}>
-              {title}
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "rgba(255,255,255,0.45)",
-                marginTop: 1,
-              }}
-            >
-              {custList.length} customers
-            </div>
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color }}>
-            ₹{custList.reduce((s, c) => s + c.potential, 0)}L
-          </div>
-          <div
-            style={{
-              fontSize: 9,
-              color: "rgba(255,255,255,0.4)",
-              marginTop: 1,
-            }}
-          >
-            total potential
-          </div>
-        </div>
-      </div>
-
-      {/* Cards */}
-      <div
-        style={{
-          background: T.bg,
-          borderRadius: "0 0 12px 12px",
-          padding: 10,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          minHeight: 120,
-        }}
-      >
-        {custList.length === 0 ? (
-          <div
-            style={{
-              padding: "30px 16px",
-              textAlign: "center",
-              color: T.gray400,
-              fontSize: 12,
-            }}
-          >
-            <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
-            No customers match filters
-          </div>
-        ) : (
-          custList.map((c) => (
-            <CustomerCard
-              key={c.id}
-              customer={c}
-              onClick={setSelectedCustomer}
-            />
-          ))
-        )}
-      </div>
+// Premium floating-icon input
+const FloatField = ({
+  label,
+  k,
+  value,
+  onChange,
+  icon: Icon,
+  type = "text",
+  required,
+  error,
+  placeholder,
+  hint,
+}) => (
+  <div>
+    <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide">
+      {label}
+      {required && <span className="text-blue-400"> *</span>}
+    </label>
+    <div className="relative">
+      {Icon && (
+        <Icon
+          size={15}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+        />
+      )}
+      <input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={onChange}
+        style={type === "date" ? { colorScheme: "dark" } : undefined}
+        className={`w-full h-11 ${Icon ? "pl-9" : "pl-3.5"} pr-3.5 rounded-xl border text-sm bg-white/5 text-slate-100 placeholder:text-slate-600 transition-all
+          focus:outline-none focus:ring-4 focus:bg-white/[0.07]
+          ${error ? "border-red-500/40 focus:ring-red-500/10 focus:border-red-500/60" : "border-white/10 focus:ring-blue-500/10 focus:border-blue-500/50"}`}
+      />
     </div>
-  );
+    {hint && !error && (
+      <p className="text-[10px] text-slate-500 mt-1">{hint}</p>
+    )}
+    {error && (
+      <p className="text-[10px] text-red-400 mt-1 flex items-center gap-1">
+        <AlertTriangle size={10} /> {error}
+      </p>
+    )}
+  </div>
+);
+
+const FloatSelect = ({
+  label,
+  k,
+  value,
+  onChange,
+  icon: Icon,
+  options,
+  required,
+  error,
+}) => (
+  <div>
+    <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide">
+      {label}
+      {required && <span className="text-blue-400"> *</span>}
+    </label>
+    <div className="relative">
+      {Icon && (
+        <Icon
+          size={15}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 z-10"
+        />
+      )}
+      <select
+        value={value}
+        onChange={onChange}
+        style={{ colorScheme: "dark" }}
+        className={`w-full h-11 ${Icon ? "pl-9" : "pl-3.5"} pr-8 rounded-xl border text-sm bg-white/5 text-slate-100 appearance-none transition-all
+          focus:outline-none focus:ring-4 focus:bg-white/[0.07]
+          ${error ? "border-red-500/40 focus:ring-red-500/10" : "border-white/10 focus:ring-blue-500/10 focus:border-blue-500/50"}`}
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={14}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+      />
+    </div>
+  </div>
+);
+
+const AddCustomerModal = ({ open, onClose, onSaved }) => {
+  const initial = null;
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [direction, setDirection] = useState("forward");
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        initial
+          ? {
+              ...emptyForm,
+              ...initial,
+              nextFollowUpDate: initial.nextFollowUpDate
+                ? initial.nextFollowUpDate.slice(0, 10)
+                : "",
+            }
+          : emptyForm,
+      );
+      setStep(1);
+      setError("");
+      setFieldErrors({});
+    }
+  }, [open, initial]);
+
+  if (!open) return null;
+
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    if (fieldErrors[k]) setFieldErrors((fe) => ({ ...fe, [k]: null }));
+  };
+
+  const validateStep = (s) => {
+    const missing = {};
+    REQUIRED_BY_STEP[s].forEach((k) => {
+      if (!String(form[k] || "").trim()) missing[k] = "Required";
+    });
+    if (s === 1 && form.email && !/^\S+@\S+\.\S+$/.test(form.email))
+      missing.email = "Invalid email format";
+    if (s === 1 && form.phone && form.phone.replace(/\D/g, "").length < 10)
+      missing.phone = "Enter a valid phone number";
+    setFieldErrors(missing);
+    return Object.keys(missing).length === 0;
+  };
+
+  const goNext = () => {
+    if (!validateStep(step)) return;
+    setDirection("forward");
+    setStep((s) => Math.min(3, s + 1));
+  };
+  const goBack = () => {
+    setDirection("back");
+    setStep((s) => Math.max(1, s - 1));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateStep(step)) return;
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        creditLimit: Number(form.creditLimit) || 0,
+        outstanding: Number(form.outstanding) || 0,
+      };
+      if (initial?._id) await updateCustomer(initial._id, payload);
+      else await createCustomer(payload);
+      onSaved();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Something went wrong. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const progressPct = ((step - 1) / (WIZARD_STEPS.length - 1)) * 100;
 
   return (
-    <div
-      style={{
-        background: T.bg,
-        minHeight: "100vh",
-        fontFamily:
-          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        color: T.text,
-      }}
-    >
-      {/* Top Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        style={{
-          background: `linear-gradient(135deg, ${T.navy} 0%, #185FA5 100%)`,
-          padding: "20px 20px 16px",
-        }}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <form
+        onSubmit={handleSubmit}
+        className="relative w-full max-w-xl bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]"
       >
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 16,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: "linear-gradient(135deg, #00B8A2, #0284C7)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 20,
-                  flexShrink: 0,
-                }}
-              >
-                🏭
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-[#182036] via-[#131a2c] to-[#0F1420] px-6 pt-6 pb-8 text-white shrink-0 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
+          <div className="absolute top-8 right-16 w-16 h-16 rounded-full bg-white/5" />
+          <div className="relative flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center">
+                {form.company ? (
+                  <span className="font-bold text-sm">
+                    {initialsOf(form.company)}
+                  </span>
+                ) : (
+                  <Sparkles size={18} className="text-blue-300" />
+                )}
               </div>
               <div>
-                <h1
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 800,
-                    color: T.white,
-                    margin: 0,
-                  }}
-                >
-                  Customer Master
-                </h1>
-                <p
-                  style={{
-                    fontSize: 11,
-                    color: "rgba(255,255,255,0.5)",
-                    margin: 0,
-                    marginTop: 2,
-                  }}
-                >
-                  Supple & Shree Jee Traders — Sales Intelligence
+                <h2 className="font-bold text-lg leading-tight">
+                  {initial ? "Edit Customer" : "Add New Customer"}
+                </h2>
+                <p className="text-blue-300/80 text-xs mt-0.5">
+                  {WIZARD_STEPS[step - 1].sub}
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {["split", "grid"].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  style={{
-                    height: 32,
-                    padding: "0 12px",
-                    borderRadius: 7,
-                    border: `1px solid ${viewMode === mode ? T.teal : "rgba(255,255,255,0.2)"}`,
-                    background:
-                      viewMode === mode ? T.teal : "rgba(255,255,255,0.08)",
-                    color: viewMode === mode ? T.navy : "rgba(255,255,255,0.6)",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {mode === "split" ? "⚡ Split View" : "⊞ Grid"}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            >
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Summary stat chips */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              {
-                label: `${filtered.length} Customers`,
-                bg: "rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.8)",
-              },
-              {
-                label: `₹${totalPotential}L Potential`,
-                bg: "rgba(0,184,162,0.2)",
-                color: T.teal,
-              },
-              {
-                label: `₹${totalYTD}L YTD`,
-                bg: "rgba(139,92,246,0.2)",
-                color: "#B39DDB",
-              },
-              overdueCount > 0 && {
-                label: `⚠ ${overdueCount} Overdue`,
-                bg: "rgba(244,63,94,0.2)",
-                color: "#FCA5A5",
-              },
-              dueTodayCount > 0 && {
-                label: `📌 ${dueTodayCount} Due Today`,
-                bg: "rgba(245,158,11,0.2)",
-                color: "#FCD34D",
-              },
-            ]
-              .filter(Boolean)
-              .map((chip, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "4px 12px",
-                    borderRadius: 20,
-                    background: chip.bg,
-                    color: chip.color,
-                  }}
-                >
-                  {chip.label}
-                </span>
-              ))}
+          {/* Step indicator */}
+          <div className="relative flex items-center gap-2 mt-6">
+            {WIZARD_STEPS.map((s, i) => (
+              <div
+                key={s.id}
+                className="flex items-center flex-1 last:flex-none"
+              >
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                      step > s.id
+                        ? "bg-emerald-400 text-emerald-900"
+                        : step === s.id
+                          ? "bg-white text-blue-700 ring-4 ring-white/25"
+                          : "bg-white/15 text-white/60"
+                    }`}
+                  >
+                    {step > s.id ? <Check size={14} /> : <s.icon size={13} />}
+                  </div>
+                  <span
+                    className={`text-[9px] font-semibold uppercase tracking-wide hidden sm:block ${step === s.id ? "text-white" : "text-blue-200"}`}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {i < WIZARD_STEPS.length - 1 && (
+                  <div className="flex-1 h-[2px] mx-1.5 rounded-full bg-white/15 overflow-hidden -mt-4">
+                    <div
+                      className="h-full bg-emerald-400 transition-all duration-500 ease-out"
+                      style={{ width: step > s.id ? "100%" : "0%" }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Filters Bar */}
-      <div
-        style={{
-          background: T.white,
-          borderBottom: `1px solid ${T.gray200}`,
-          padding: "12px 20px",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-            <span
-              style={{
-                position: "absolute",
-                left: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: 14,
-                color: T.gray400,
-              }}
-            >
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search name, contact, area, tag…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: "100%",
-                height: 36,
-                paddingLeft: 32,
-                paddingRight: 12,
-                border: `1px solid ${T.gray200}`,
-                borderRadius: 8,
-                fontSize: 13,
-                color: T.text,
-                background: T.gray50,
-                outline: "none",
-              }}
-            />
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-6" key={step}>
+          <div className="animate-[fadeSlide_.25s_ease-out] space-y-4">
+            {step === 1 && (
+              <>
+                <FloatField
+                  label="Company Name"
+                  k="company"
+                  icon={Building2}
+                  required
+                  value={form.company}
+                  onChange={set("company")}
+                  error={fieldErrors.company}
+                  placeholder="e.g. Rajesh Fabrics Pvt Ltd"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="Contact Person"
+                    k="name"
+                    icon={User}
+                    required
+                    value={form.name}
+                    onChange={set("name")}
+                    error={fieldErrors.name}
+                    placeholder="e.g. Rajesh Sharma"
+                  />
+                  <FloatField
+                    label="Phone"
+                    k="phone"
+                    icon={Phone}
+                    required
+                    value={form.phone}
+                    onChange={set("phone")}
+                    error={fieldErrors.phone}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <FloatField
+                  label="Email"
+                  k="email"
+                  icon={Mail}
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  error={fieldErrors.email}
+                  placeholder="name@company.com"
+                  hint="Optional, used for quotations & invoices"
+                />
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="City"
+                    k="city"
+                    icon={MapPin}
+                    required
+                    value={form.city}
+                    onChange={set("city")}
+                    error={fieldErrors.city}
+                    placeholder="e.g. Surat"
+                  />
+                  <FloatSelect
+                    label="State"
+                    k="state"
+                    icon={MapPin}
+                    required
+                    options={STATES}
+                    value={form.state}
+                    onChange={set("state")}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatSelect
+                    label="Customer Type"
+                    k="type"
+                    icon={Factory}
+                    required
+                    options={TYPES}
+                    value={form.type}
+                    onChange={set("type")}
+                  />
+                  <FloatSelect
+                    label="Chemical Category"
+                    k="category"
+                    icon={Beaker}
+                    required
+                    options={CATEGORIES}
+                    value={form.category}
+                    onChange={set("category")}
+                  />
+                </div>
+                <FloatSelect
+                  label="Status"
+                  k="status"
+                  icon={CheckCircle2}
+                  options={STATUSES}
+                  value={form.status}
+                  onChange={set("status")}
+                />
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <div className="rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20 px-4 py-3 flex items-start gap-2.5">
+                  <ShieldCheck
+                    size={16}
+                    className="text-blue-400 shrink-0 mt-0.5"
+                  />
+                  <p className="text-xs text-blue-300 leading-relaxed">
+                    GST & PAN are optional at creation but recommended before
+                    the first invoice is raised.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="GST Number"
+                    k="gst"
+                    icon={Building2}
+                    value={form.gst}
+                    onChange={set("gst")}
+                    placeholder="27ABCDE1234F1Z5"
+                  />
+                  <FloatField
+                    label="PAN"
+                    k="pan"
+                    icon={FileText}
+                    value={form.pan}
+                    onChange={set("pan")}
+                    placeholder="ABCDE1234F"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="Credit Limit (₹)"
+                    k="creditLimit"
+                    icon={CreditCard}
+                    type="number"
+                    value={form.creditLimit}
+                    onChange={set("creditLimit")}
+                    placeholder="0"
+                  />
+                  <FloatField
+                    label="Outstanding (₹)"
+                    k="outstanding"
+                    icon={Wallet}
+                    type="number"
+                    value={form.outstanding}
+                    onChange={set("outstanding")}
+                    placeholder="0"
+                  />
+                </div>
+                <FloatField
+                  label="Next Follow-up Date"
+                  k="nextFollowUpDate"
+                  icon={CalendarClock}
+                  type="date"
+                  value={form.nextFollowUpDate}
+                  onChange={set("nextFollowUpDate")}
+                />
+              </>
+            )}
           </div>
+        </div>
 
-          {[
-            {
-              label: "Distributor",
-              value: distFilter,
-              set: setDistFilter,
-              options: DISTRIBUTORS,
-            },
-            {
-              label: "Stage",
-              value: stageFilter,
-              set: setStageFilter,
-              options: ["All", ...STAGES.map((s) => s.id)],
-            },
-            {
-              label: "Priority",
-              value: priorityFilter,
-              set: setPriorityFilter,
-              options: ["All", "High", "Medium", "Low"],
-            },
-            {
-              label: "Sort",
-              value: sortBy,
-              set: setSortBy,
-              options: [
-                ["name", "Name"],
-                ["stage", "Stage"],
-                ["ytd", "YTD"],
-                ["potential", "Potential"],
-                ["followup", "Follow-up"],
-              ],
-            },
-          ].map((filter) => (
-            <select
-              key={filter.label}
-              value={filter.value}
-              onChange={(e) => filter.set(e.target.value)}
-              style={{
-                height: 36,
-                padding: "0 10px",
-                border: `1px solid ${T.gray200}`,
-                borderRadius: 8,
-                fontSize: 12,
-                color: T.text,
-                background: T.gray50,
-                cursor: "pointer",
-                outline: "none",
-              }}
-            >
-              {filter.options.map((opt) => {
-                const val = Array.isArray(opt) ? opt[0] : opt;
-                const lbl = Array.isArray(opt)
-                  ? opt[1]
-                  : filter.label === "Stage" && opt !== "All"
-                    ? `${opt}. ${stageOf(opt).short}`
-                    : opt;
-                return (
-                  <option key={val} value={val}>
-                    {val === filter.options[0] && !Array.isArray(opt)
-                      ? `${filter.label}: ${lbl}`
-                      : lbl}
-                  </option>
-                );
-              })}
-            </select>
-          ))}
-
-          {(search ||
-            distFilter !== "All" ||
-            stageFilter !== "All" ||
-            priorityFilter !== "All") && (
+        {/* Footer */}
+        {error && (
+          <p className="px-6 text-xs text-red-400 flex items-center gap-1.5 pb-1">
+            <AlertTriangle size={12} /> {error}
+          </p>
+        )}
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-white/10 bg-[var(--surface)] shrink-0">
+          {step > 1 ? (
             <button
-              onClick={() => {
-                setSearch("");
-                setDistFilter("All");
-                setStageFilter("All");
-                setPriorityFilter("All");
-              }}
-              style={{
-                height: 36,
-                padding: "0 12px",
-                borderRadius: 8,
-                border: `1px solid ${T.gray200}`,
-                background: T.roseLight,
-                color: T.rose,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              type="button"
+              onClick={goBack}
+              className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 transition-colors"
             >
-              ✕ Clear
+              <ChevronLeft size={15} /> Back
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+          <div className="flex-1" />
+          <span className="text-[11px] text-slate-500 font-medium hidden sm:block">
+            Step {step} of {WIZARD_STEPS.length}
+          </span>
+          {step < 3 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              className="h-11 px-5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 shadow-md shadow-blue-600/25 flex items-center gap-1.5 transition-colors"
+            >
+              Continue <ChevronRight size={15} />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={saving}
+              className="h-11 px-5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 shadow-md shadow-emerald-600/25 disabled:opacity-60 flex items-center gap-1.5 transition-colors"
+            >
+              {saving ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Check size={15} />
+              )}
+              {initial ? "Save Changes" : "Create Customer"}
             </button>
           )}
         </div>
-      </div>
+      </form>
+      <style>{`
+        @keyframes popIn { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes fadeSlide { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+      `}</style>
+    </div>
+  );
+};
 
-      {/* Main Content */}
+/* ────────────────────────────────────────────────────────────────
+   EDIT CUSTOMER — PREMIUM TABBED POPUP
+   (unlike Add, editing jumps freely between sections instead of
+   stepping linearly — all fields already exist, so tabs > wizard)
+──────────────────────────────────────────────────────────────── */
+const EDIT_TABS = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "location", label: "Location & Type", icon: MapPin },
+  { id: "financials", label: "Financials", icon: ShieldCheck },
+  { id: "badges", label: "Badges", icon: Tag },
+];
+
+const ALL_BADGES = [
+  "VIP",
+  "New Customer",
+  "High Value",
+  "Low Credit",
+  "Blacklisted",
+];
+
+const EditCustomerModal = ({ open, customer, onClose, onSaved }) => {
+  const [tab, setTab] = useState("profile");
+  const [form, setForm] = useState(null);
+  const [initialSnapshot, setInitialSnapshot] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  useEffect(() => {
+    if (open && customer) {
+      const shaped = {
+        company: customer.company || "",
+        name: customer.name || "",
+        phone: customer.phone || "",
+        email: customer.email || "",
+        gst: customer.gst || "",
+        pan: customer.pan || "",
+        city: customer.city || "",
+        state: customer.state || STATES[0],
+        type: customer.type || TYPES[0],
+        category: customer.category || CATEGORIES[0],
+        status: customer.status || "Active",
+        creditLimit: customer.creditLimit ?? "",
+        outstanding: customer.outstanding ?? "",
+        nextFollowUpDate: customer.nextFollowUpDate
+          ? customer.nextFollowUpDate.slice(0, 10)
+          : "",
+        badges: customer.badges || [],
+      };
+      setForm(shaped);
+      setInitialSnapshot(JSON.stringify(shaped));
+      setTab("profile");
+      setError("");
+      setFieldErrors({});
+    }
+  }, [open, customer]);
+
+  if (!open || !form) return null;
+
+  const isDirty = JSON.stringify(form) !== initialSnapshot;
+
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    if (fieldErrors[k]) setFieldErrors((fe) => ({ ...fe, [k]: null }));
+  };
+
+  const toggleBadge = (b) =>
+    setForm((f) => ({
+      ...f,
+      badges: f.badges.includes(b)
+        ? f.badges.filter((x) => x !== b)
+        : [...f.badges, b],
+    }));
+
+  const validate = () => {
+    const missing = {};
+    ["company", "name", "phone", "city", "state", "type", "category"].forEach(
+      (k) => {
+        if (!String(form[k] || "").trim()) missing[k] = "Required";
+      },
+    );
+    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email))
+      missing.email = "Invalid email format";
+    if (form.phone && form.phone.replace(/\D/g, "").length < 10)
+      missing.phone = "Enter a valid phone number";
+    setFieldErrors(missing);
+    if (Object.keys(missing).length) {
+      // jump to the tab holding the first error
+      if (missing.company || missing.name || missing.phone || missing.email)
+        setTab("profile");
+      else if (
+        missing.city ||
+        missing.state ||
+        missing.type ||
+        missing.category
+      )
+        setTab("location");
+    }
+    return Object.keys(missing).length === 0;
+  };
+
+  const handleClose = () => {
+    if (isDirty && !window.confirm("Discard unsaved changes?")) return;
+    onClose();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        ...form,
+        creditLimit: Number(form.creditLimit) || 0,
+        outstanding: Number(form.outstanding) || 0,
+      };
+      await updateCustomer(customer._id, payload);
+      onSaved();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Something went wrong. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const ytdPct =
+    form.creditLimit > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (Number(form.outstanding) / Number(form.creditLimit)) * 100,
+          ),
+        )
+      : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 20px 40px" }}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      <form
+        onSubmit={handleSubmit}
+        className="relative w-full max-w-2xl bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]"
       >
-        {viewMode === "split" ? (
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <DistributorColumn
-              title="Supple"
-              color={T.teal}
-              icon="🟢"
-              custList={suppleCustomers}
-            />
-            <DistributorColumn
-              title="Shree Jee Traders"
-              color={T.blue}
-              icon="🔵"
-              custList={shreeJeeCustomers}
-            />
-            {otherCustomers.length > 0 && (
-              <DistributorColumn
-                title="Other / Direct"
-                color={T.amber}
-                icon="🟠"
-                custList={otherCustomers}
-              />
-            )}
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-[#182036] via-[#131a2c] to-[#0F1420] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
+          <div className="relative flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-white/10 ring-1 ring-white/15 flex items-center justify-center shrink-0">
+                <span className="font-bold text-sm">
+                  {initialsOf(form.company)}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-bold text-lg leading-tight truncate">
+                  {form.company || "Edit Customer"}
+                </h2>
+                <p className="text-blue-300/80 text-xs mt-0.5 flex items-center gap-1.5">
+                  <span className="font-mono">{customer.customerId}</span>
+                  <span>·</span>
+                  <span>{form.name}</span>
+                  {isDirty && (
+                    <span className="ml-1 inline-flex items-center gap-1 text-amber-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />{" "}
+                      Unsaved
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+            >
+              <X size={16} />
+            </button>
           </div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-              gap: 12,
-            }}
-          >
-            {filtered.map((c) => (
-              <CustomerCard
-                key={c.id}
-                customer={c}
-                onClick={setSelectedCustomer}
-              />
-            ))}
-            {filtered.length === 0 && (
-              <div
-                style={{
-                  gridColumn: "1/-1",
-                  textAlign: "center",
-                  padding: "60px 20px",
-                  color: T.gray400,
-                }}
+
+          {/* Quick glance stats */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2">
+              <p className="text-[9px] text-blue-300/70 uppercase font-semibold">
+                Credit Limit
+              </p>
+              <p className="text-sm font-bold font-mono">
+                {inr(Number(form.creditLimit) || 0)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2">
+              <p className="text-[9px] text-blue-300/70 uppercase font-semibold">
+                Outstanding
+              </p>
+              <p
+                className={`text-sm font-bold font-mono ${ytdPct >= 90 ? "text-red-300" : "text-white"}`}
               >
-                <div style={{ fontSize: 48, marginBottom: 10 }}>📭</div>
-                <div
-                  style={{ fontSize: 15, fontWeight: 600, color: T.gray700 }}
-                >
-                  No customers found
+                {inr(Number(form.outstanding) || 0)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-white/5 ring-1 ring-white/10 px-3 py-2">
+              <p className="text-[9px] text-blue-300/70 uppercase font-semibold">
+                Status
+              </p>
+              <p className="text-sm font-bold">{form.status}</p>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 mt-4 -mb-5 overflow-x-auto">
+            {EDIT_TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  tab === t.id
+                    ? "bg-[var(--surface)] text-blue-400"
+                    : "bg-white/5 text-blue-200/70 hover:bg-white/10"
+                }`}
+              >
+                <t.icon size={13} />
+                {t.label}
+                {t.id === "badges" && form.badges.length > 0 && (
+                  <span
+                    className={`ml-0.5 w-4 h-4 rounded-full text-[9px] flex items-center justify-center ${tab === t.id ? "bg-blue-500/20 text-blue-400" : "bg-white/15 text-white"}`}
+                  >
+                    {form.badges.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 bg-[var(--surface)]">
+          <div key={tab} className="animate-[fadeSlide_.2s_ease-out] space-y-4">
+            {tab === "profile" && (
+              <>
+                <FloatField
+                  label="Company Name"
+                  k="company"
+                  icon={Building2}
+                  required
+                  value={form.company}
+                  onChange={set("company")}
+                  error={fieldErrors.company}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="Contact Person"
+                    k="name"
+                    icon={User}
+                    required
+                    value={form.name}
+                    onChange={set("name")}
+                    error={fieldErrors.name}
+                  />
+                  <FloatField
+                    label="Phone"
+                    k="phone"
+                    icon={Phone}
+                    required
+                    value={form.phone}
+                    onChange={set("phone")}
+                    error={fieldErrors.phone}
+                  />
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Try adjusting your search or filters
+                <FloatField
+                  label="Email"
+                  k="email"
+                  icon={Mail}
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  error={fieldErrors.email}
+                  hint="Used for quotations & invoices"
+                />
+              </>
+            )}
+
+            {tab === "location" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="City"
+                    k="city"
+                    icon={MapPin}
+                    required
+                    value={form.city}
+                    onChange={set("city")}
+                    error={fieldErrors.city}
+                  />
+                  <FloatSelect
+                    label="State"
+                    k="state"
+                    icon={MapPin}
+                    required
+                    options={STATES}
+                    value={form.state}
+                    onChange={set("state")}
+                  />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatSelect
+                    label="Customer Type"
+                    k="type"
+                    icon={Factory}
+                    required
+                    options={TYPES}
+                    value={form.type}
+                    onChange={set("type")}
+                  />
+                  <FloatSelect
+                    label="Chemical Category"
+                    k="category"
+                    icon={Beaker}
+                    required
+                    options={CATEGORIES}
+                    value={form.category}
+                    onChange={set("category")}
+                  />
+                </div>
+                <FloatSelect
+                  label="Status"
+                  k="status"
+                  icon={CheckCircle2}
+                  options={STATUSES}
+                  value={form.status}
+                  onChange={set("status")}
+                />
+              </>
+            )}
+
+            {tab === "financials" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="GST Number"
+                    k="gst"
+                    icon={Building2}
+                    value={form.gst}
+                    onChange={set("gst")}
+                    placeholder="27ABCDE1234F1Z5"
+                  />
+                  <FloatField
+                    label="PAN"
+                    k="pan"
+                    icon={FileText}
+                    value={form.pan}
+                    onChange={set("pan")}
+                    placeholder="ABCDE1234F"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FloatField
+                    label="Credit Limit (₹)"
+                    k="creditLimit"
+                    icon={CreditCard}
+                    type="number"
+                    value={form.creditLimit}
+                    onChange={set("creditLimit")}
+                  />
+                  <FloatField
+                    label="Outstanding (₹)"
+                    k="outstanding"
+                    icon={Wallet}
+                    type="number"
+                    value={form.outstanding}
+                    onChange={set("outstanding")}
+                  />
+                </div>
+                {Number(form.creditLimit) > 0 && (
+                  <div>
+                    <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                      <span>Credit utilisation</span>
+                      <span
+                        className={`font-bold ${ytdPct >= 90 ? "text-red-400" : ytdPct >= 60 ? "text-orange-400" : "text-emerald-400"}`}
+                      >
+                        {ytdPct}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${ytdPct >= 90 ? "bg-red-500" : ytdPct >= 60 ? "bg-orange-400" : "bg-emerald-500"}`}
+                        style={{ width: `${ytdPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <FloatField
+                  label="Next Follow-up Date"
+                  k="nextFollowUpDate"
+                  icon={CalendarClock}
+                  type="date"
+                  value={form.nextFollowUpDate}
+                  onChange={set("nextFollowUpDate")}
+                />
+              </>
+            )}
+
+            {tab === "badges" && (
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 mb-3">
+                  Tap to toggle a badge on this customer
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_BADGES.map((b) => {
+                    const active = form.badges.includes(b);
+                    return (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => toggleBadge(b)}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border transition-all ${
+                          active
+                            ? `${BADGE_STYLES[b]} border-transparent shadow-sm scale-100`
+                            : "bg-white/5 text-slate-500 border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        {b === "VIP" && (
+                          <Star
+                            size={11}
+                            className={active ? "fill-current" : ""}
+                          />
+                        )}
+                        {active && <Check size={11} />}
+                        {b}
+                      </button>
+                    );
+                  })}
+                </div>
+                {form.badges.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-4">
+                    No badges applied yet.
+                  </p>
+                )}
               </div>
             )}
           </div>
-        )}
-
-        {/* Stage Summary Legend */}
-        <div
-          style={{
-            marginTop: 24,
-            background: T.white,
-            borderRadius: 12,
-            border: `1px solid ${T.gray200}`,
-            padding: "16px 18px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: T.gray400,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              marginBottom: 12,
-            }}
-          >
-            Pipeline Stage Distribution
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {STAGES.map((s) => {
-              const count = filtered.filter((c) => c.stage === s.id).length;
-              return (
-                <div
-                  key={s.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "5px 10px",
-                    borderRadius: 20,
-                    background: s.bg,
-                    cursor: "pointer",
-                  }}
-                  onClick={() =>
-                    setStageFilter(stageFilter === s.id ? "All" : s.id)
-                  }
-                >
-                  <span
-                    style={{ fontSize: 10, fontWeight: 900, color: s.color }}
-                  >
-                    {s.id}
-                  </span>
-                  <span
-                    style={{ fontSize: 10, fontWeight: 600, color: s.color }}
-                  >
-                    {s.short}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 800,
-                      color: s.color,
-                      background: "rgba(255,255,255,0.5)",
-                      borderRadius: 10,
-                      padding: "0 5px",
-                    }}
-                  >
-                    {count}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
         </div>
+
+        {/* Footer */}
+        {error && (
+          <p className="px-6 text-xs text-red-400 flex items-center gap-1.5 pb-1 pt-2">
+            <AlertTriangle size={12} /> {error}
+          </p>
+        )}
+        <div className="flex items-center gap-2 px-6 py-4 border-t border-white/10 bg-[var(--surface)] shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/10 flex items-center gap-1.5 transition-colors"
+          >
+            Cancel
+          </button>
+          {isDirty && (
+            <button
+              type="button"
+              onClick={() => setForm(JSON.parse(initialSnapshot))}
+              className="h-11 px-3 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-300 flex items-center gap-1.5 transition-colors"
+            >
+              <RotateCcw size={13} /> Reset
+            </button>
+          )}
+          <div className="flex-1" />
+          <button
+            type="submit"
+            disabled={saving || !isDirty}
+            className="h-11 px-5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 shadow-md shadow-emerald-600/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
+          >
+            {saving ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Save size={15} />
+            )}
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────
+   HEADER + BULK BAR
+──────────────────────────────────────────────────────────────── */
+const Header = ({
+  onRefresh,
+  refreshing,
+  onAdd,
+  onImportClick,
+  importing,
+  importProgress,
+  onExport,
+  exporting,
+}) => (
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 className="text-2xl font-bold text-slate-100 tracking-tight">
+        Customer Management
+      </h1>
+      <p className="text-sm text-slate-500 mt-1">
+        Manage all chemical industry customers efficiently.
+      </p>
+    </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        onClick={onImportClick}
+        disabled={importing}
+        className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-slate-300 hover:bg-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {importing ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            {importProgress?.total
+              ? `Importing ${importProgress.done}/${importProgress.total}`
+              : "Reading file…"}
+          </>
+        ) : (
+          <>
+            <Upload size={14} /> Import
+          </>
+        )}
+      </button>
+      <button
+        onClick={onExport}
+        disabled={exporting}
+        className="h-9 px-3 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-slate-300 hover:bg-white/10 flex items-center gap-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {exporting ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Download size={14} />
+        )}
+        Export
+      </button>
+      <button
+        onClick={onRefresh}
+        className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 flex items-center justify-center transition-colors"
+      >
+        <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+      </button>
+      <button
+        onClick={onAdd}
+        className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-md shadow-blue-600/25 flex items-center gap-1.5 transition-colors"
+      >
+        <Plus size={15} /> Add Customer
+      </button>
+    </div>
+  </div>
+);
+
+const BulkBar = ({ count, onClear, onBulkDelete, onBulkAssign }) => {
+  if (!count) return null;
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-blue-600 ring-1 ring-white/10 text-white px-4 py-2.5 shadow-lg shadow-blue-600/20">
+      <span className="text-sm font-medium">{count} selected</span>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={onBulkAssign}
+          className="h-8 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <Users size={12} /> Assign Sales Person
+        </button>
+        <button
+          onClick={onBulkDelete}
+          className="h-8 px-3 rounded-lg bg-red-500/90 hover:bg-red-500 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <Trash2 size={12} /> Delete
+        </button>
+        <button
+          onClick={onClear}
+          className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+        >
+          <X size={13} />
+        </button>
       </div>
+    </div>
+  );
+};
 
-      {/* Customer Detail Modal */}
-      {selectedCustomer && (
-        <CustomerDetail
-          customer={selectedCustomer}
-          onClose={() => setSelectedCustomer(null)}
-          onEdit={(c) => {
-            alert(`Edit: ${c.name} (connect to your edit modal here)`);
-          }}
-        />
-      )}
+/* ────────────────────────────────────────────────────────────────
+   MAIN PAGE
+──────────────────────────────────────────────────────────────── */
+export default function CustomerListPage() {
+  const [filters, setFilters] = useState({
+    search: "",
+    type: "All",
+    status: "All",
+    category: "All",
+    state: "All",
+    followUpStatus: "All",
+  });
+  const [expanded, setExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState("table");
+  const [selected, setSelected] = useState([]);
+  const [sortKey, setSortKey] = useState("company");
+  const [sortDir, setSortDir] = useState("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(8);
 
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [viewCustomerId, setViewCustomerId] = useState(null);
+  const [notesCustomerId, setNotesCustomerId] = useState(null);
+  const [followUpCustomer, setFollowUpCustomer] = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null); // { customerIds, title, subtitle }
+  const [knownSalesPersons, setKnownSalesPersons] = useState([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
+  const [exporting, setExporting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const debounceRef = useRef(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const loadCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchCustomers({
+        search: filters.search || undefined,
+        type: filters.type,
+        status: filters.status,
+        category: filters.category,
+        state: filters.state,
+        followUpStatus: filters.followUpStatus,
+        sortBy: sortKey,
+        sortDir,
+        page,
+        limit: pageSize,
+      });
+      setRows(res.customers || []);
+      setTotal(res.total || 0);
+      setTotalPages(res.totalPages || 1);
+      // There's no dedicated "list sales persons" endpoint, so we
+      // build a quick-pick list from whoever shows up on loaded
+      // customers this session (dedup by _id, requires the backend
+      // to populate salesPerson as { _id, name } rather than a bare
+      // ObjectId string — falls back gracefully to manual ID entry
+      // in the assign modal if it never gets populated).
+      setKnownSalesPersons((prev) => {
+        const map = new Map(prev.map((p) => [p._id, p]));
+        (res.customers || []).forEach((c) => {
+          if (c.salesPerson && c.salesPerson._id) {
+            map.set(c.salesPerson._id, {
+              _id: c.salesPerson._id,
+              name: c.salesPerson.name || "Unnamed",
+            });
+          }
+        });
+        return Array.from(map.values());
+      });
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to load customers",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, sortKey, sortDir, page, pageSize]);
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const res = await fetchCustomerStats();
+      setStats(res.stats);
+    } catch {
+      // stats are non-critical, fail silently
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  // debounced fetch whenever filters/sort/page change
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(loadCustomers, 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [loadCustomers]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const resetFilters = () =>
+    setFilters({
+      search: "",
+      type: "All",
+      status: "All",
+      category: "All",
+      state: "All",
+      followUpStatus: "All",
+    });
+
+  const refreshAll = () => {
+    loadCustomers();
+    loadStats();
+  };
+
+  const handleDelete = async (customer) => {
+    if (!window.confirm(`Delete ${customer.company}? This cannot be undone.`))
+      return;
+    try {
+      await deleteCustomer(customer._id);
+      showToast("Customer deleted");
+      refreshAll();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Delete failed", "error");
+    }
+  };
+
+  const handleStatusChange = async (customer, newStatus) => {
+    try {
+      // Partial payload — assumes the update route merges fields via
+      // findByIdAndUpdate rather than requiring the full customer body,
+      // same assumption already made for follow-up date scheduling.
+      await updateCustomer(customer._id, { status: newStatus });
+      showToast(`${customer.company} marked ${newStatus}`);
+      refreshAll();
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Could not update status",
+        "error",
+      );
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Delete ${selected.length} selected customer(s)?`))
+      return;
+    try {
+      await bulkDeleteCustomers(selected);
+      showToast(`${selected.length} customer(s) deleted`);
+      setSelected([]);
+      refreshAll();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Bulk delete failed", "error");
+    }
+  };
+
+  const openSingleAssign = (customer) => {
+    setAssignTarget({
+      customerIds: [customer._id],
+      title: customer.company,
+      subtitle: `${customer.customerId} · ${customer.name}`,
+    });
+  };
+
+  const openBulkAssign = () => {
+    if (!selected.length) return;
+    setAssignTarget({
+      customerIds: selected,
+      title: `${selected.length} customer${selected.length > 1 ? "s" : ""} selected`,
+    });
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      // Pulls every row matching the current filters, not just the
+      // page on screen. Assumes the backend returns up to `limit`
+      // rows rather than silently capping it lower — raise the cap
+      // there too if your API enforces a smaller max page size.
+      const res = await fetchCustomers({
+        search: filters.search || undefined,
+        type: filters.type,
+        status: filters.status,
+        category: filters.category,
+        state: filters.state,
+        followUpStatus: filters.followUpStatus,
+        sortBy: sortKey,
+        sortDir,
+        page: 1,
+        limit: 100000,
+      });
+      const data = res.customers || [];
+      if (!data.length) {
+        showToast("No customers to export", "error");
+        return;
+      }
+      const csv = buildCSV(data);
+      downloadCSV(
+        `customers_${new Date().toISOString().slice(0, 10)}.csv`,
+        csv,
+      );
+      showToast(`Exported ${data.length} customer(s)`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Export failed", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    setImporting(true);
+    setImportProgress({ done: 0, total: 0 });
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+      if (rows.length < 2) {
+        showToast("No data rows found in that file", "error");
+        return;
+      }
+
+      const header = rows[0].map((h) => h.trim().toLowerCase());
+      const dataRows = rows.slice(1);
+
+      const colIndex = {};
+      header.forEach((h, i) => {
+        const match = IMPORT_EXPORT_COLUMNS.find(
+          (c) => c.label.toLowerCase() === h,
+        );
+        if (match) colIndex[match.key] = i;
+      });
+
+      if (colIndex.company === undefined || colIndex.name === undefined) {
+        showToast(
+          "Couldn't find Company/Contact Person columns — use the headers from an exported CSV",
+          "error",
+        );
+        return;
+      }
+
+      setImportProgress({ done: 0, total: dataRows.length });
+      let success = 0;
+      let skipped = 0;
+      const failed = [];
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const r = dataRows[i];
+        const get = (key) =>
+          colIndex[key] !== undefined ? (r[colIndex[key]] || "").trim() : "";
+
+        const company = get("company");
+        const name = get("name");
+        const phone = get("phone");
+        const city = get("city");
+
+        // company / contact / phone / city are the same fields the
+        // Add Customer wizard requires — anything missing them gets
+        // skipped rather than guessed at.
+        if (!company || !name || !phone || !city) {
+          skipped++;
+          setImportProgress({ done: i + 1, total: dataRows.length });
+          continue;
+        }
+
+        const payload = {
+          company,
+          name,
+          phone,
+          email: get("email"),
+          gst: get("gst"),
+          pan: get("pan"),
+          city,
+          state: STATES.includes(get("state")) ? get("state") : STATES[0],
+          type: TYPES.includes(get("type")) ? get("type") : TYPES[0],
+          category: CATEGORIES.includes(get("category"))
+            ? get("category")
+            : CATEGORIES[0],
+          status: STATUSES.includes(get("status")) ? get("status") : "Active",
+          creditLimit: Number(get("creditLimit")) || 0,
+          outstanding: Number(get("outstanding")) || 0,
+          nextFollowUpDate: get("nextFollowUpDate") || "",
+        };
+
+        try {
+          // Sequential on purpose — createCustomer is the only write
+          // endpoint available for this, so this stays gentle on the
+          // API instead of firing dozens of requests at once. Every
+          // row becomes a NEW customer; this doesn't try to match an
+          // existing one by Customer ID.
+          await createCustomer(payload);
+          success++;
+        } catch (err) {
+          failed.push(company);
+        }
+        setImportProgress({ done: i + 1, total: dataRows.length });
+      }
+
+      refreshAll();
+      const hasIssues = skipped > 0 || failed.length > 0;
+      showToast(
+        hasIssues
+          ? `Imported ${success}, skipped ${skipped}, failed ${failed.length}`
+          : `Imported ${success} customer(s)`,
+        hasIssues ? "error" : "success",
+      );
+    } catch (err) {
+      showToast("Could not read that file", "error");
+    } finally {
+      setImporting(false);
+      setImportProgress({ done: 0, total: 0 });
+    }
+  };
+
+  return (
+    <div
+      className="min-h-screen font-sans"
+      style={{
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
+        background:
+          "radial-gradient(ellipse 70% 45% at 50% -10%, rgba(76,124,255,0.12), transparent 60%), var(--bg)",
+      }}
+    >
       <style>{`
-        * { box-sizing: border-box; }
-        select, input { font-family: inherit; }
-        input:focus { border-color: #00B8A2 !important; box-shadow: 0 0 0 3px rgba(0,184,162,0.15) !important; }
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: #F0F4F8; }
-        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-        @media (max-width: 767px) {
-          .dist-split { flex-direction: column !important; }
+        :root {
+          --bg: #0A0D12;
+          --surface: #12161D;
+          --surface-2: #171C26;
+          --brass: #CC9A4E;
+          --brass-light: #E8C077;
         }
       `}</style>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <Header
+          onRefresh={refreshAll}
+          refreshing={loading}
+          onAdd={() => setAddOpen(true)}
+          onImportClick={handleImportClick}
+          importing={importing}
+          importProgress={importProgress}
+          onExport={handleExport}
+          exporting={exporting}
+        />
+        <StatsRow stats={stats} loading={statsLoading} />
+        <FilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          expanded={expanded}
+          setExpanded={setExpanded}
+          onReset={resetFilters}
+          resultCount={total}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
+        <BulkBar
+          count={selected.length}
+          onClear={() => setSelected([])}
+          onBulkDelete={handleBulkDelete}
+          onBulkAssign={openBulkAssign}
+        />
+        {viewMode === "table" ? (
+          <CustomerTable
+            rows={rows}
+            loading={loading}
+            selected={selected}
+            setSelected={setSelected}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+            onView={(c) => setViewCustomerId(c._id)}
+            onEdit={(c) => setEditingCustomer(c)}
+            onDelete={handleDelete}
+            onQuickFollowUp={(c) => setFollowUpCustomer(c)}
+            onNotes={(c) => setNotesCustomerId(c._id)}
+            onStatusChange={handleStatusChange}
+            onAssignSalesPerson={openSingleAssign}
+            onAddFirst={() => setAddOpen(true)}
+          />
+        ) : (
+          <CustomerCardGrid
+            rows={rows}
+            loading={loading}
+            selected={selected}
+            setSelected={setSelected}
+            onView={(c) => setViewCustomerId(c._id)}
+            onEdit={(c) => setEditingCustomer(c)}
+            onDelete={handleDelete}
+            onQuickFollowUp={(c) => setFollowUpCustomer(c)}
+            onNotes={(c) => setNotesCustomerId(c._id)}
+            onStatusChange={handleStatusChange}
+            onAssignSalesPerson={openSingleAssign}
+            onAddFirst={() => setAddOpen(true)}
+          />
+        )}
+        {!loading && total > 0 && (
+          <Pagination
+            page={page}
+            setPage={setPage}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+          />
+        )}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        onChange={handleImportFile}
+        className="hidden"
+      />
+
+      <QuickViewDrawer
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+        onFollowUpAdded={refreshAll}
+      />
+
+      <CustomerNotesModal
+        customerId={notesCustomerId}
+        onClose={() => setNotesCustomerId(null)}
+        onNoteAdded={() => showToast("Note saved")}
+      />
+
+      <FollowUpModal
+        customer={followUpCustomer}
+        open={!!followUpCustomer}
+        onClose={() => setFollowUpCustomer(null)}
+        onSaved={() => {
+          setFollowUpCustomer(null);
+          showToast("Follow-up logged");
+          refreshAll();
+        }}
+      />
+
+      <AssignSalesPersonModal
+        open={!!assignTarget}
+        customerIds={assignTarget?.customerIds}
+        title={assignTarget?.title}
+        subtitle={assignTarget?.subtitle}
+        knownSalesPersons={knownSalesPersons}
+        onClose={() => setAssignTarget(null)}
+        onSaved={() => {
+          showToast("Sales person assigned");
+          setSelected([]);
+          setAssignTarget(null);
+          refreshAll();
+        }}
+      />
+
+      <AddCustomerModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={() => {
+          setAddOpen(false);
+          showToast("Customer created");
+          refreshAll();
+        }}
+      />
+
+      <EditCustomerModal
+        open={!!editingCustomer}
+        customer={editingCustomer}
+        onClose={() => setEditingCustomer(null)}
+        onSaved={() => {
+          setEditingCustomer(null);
+          showToast("Customer updated");
+          refreshAll();
+        }}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

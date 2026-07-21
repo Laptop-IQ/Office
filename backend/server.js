@@ -14,6 +14,7 @@ import stockRoute from "./routes/stockRoute.js";
 import noteRoutes from "./routes/noteRoutes.js";
 import commandRoutes from "./routes/commandRoutes.js";
 import mindmapRoutes from "./routes/mindmapRoutes.js";
+import customerListRoutes from "./routes/customerListRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -88,6 +89,7 @@ app.use("/api/stock", stockRoute);
 app.use("/api/notes", noteRoutes);
 app.use("/api/commands", commandRoutes);
 app.use("/api/mindmap", mindmapRoutes);
+app.use("/api/customerlist", customerListRoutes);
 
 // Health check
 app.get("/", (req, res) => {
