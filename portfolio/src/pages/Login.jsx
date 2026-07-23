@@ -8,7 +8,8 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  // FIX: false → true — default checked rehega, localStorage use hoga, browser reopen = logged in
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -169,7 +170,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Remember me — now actually wired up */}
+            {/* Remember me */}
             <div className="flex items-center gap-2">
               <input
                 id="remember"

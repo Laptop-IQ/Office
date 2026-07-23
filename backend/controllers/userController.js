@@ -1,8 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
 import User from "../models/userModel.js";
 
+// ────────────────────────────────────────────
+// EMAIL TRANSPORTER
+// ────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT),
@@ -10,6 +15,9 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
 
+// ────────────────────────────────────────────
+// HELPERS
+// ────────────────────────────────────────────
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -31,11 +39,9 @@ const sendOTPEmail = async (email, otp, subject = "Your OTP Code") => {
   });
 };
 
-// ← FIXED: rememberMe parameter added
-const signToken = (userId, rememberMe = false) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: rememberMe ? "30d" : process.env.JWT_EXPIRES_IN || "7d",
-  });
+// FIX: Always 30d token — browser reopen par logout nahi hoga
+const signToken = (userId) =>
+  jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "30d" });
 
 const safeUser = (user) => ({
   id: user._id,
@@ -50,12 +56,14 @@ const safeUser = (user) => ({
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
     if (!name || !email || !password)
       return res
         .status(400)
         .json({ success: false, message: "All fields required" });
 
     const existing = await User.findOne({ email });
+
     if (existing && existing.isVerified)
       return res
         .status(409)
@@ -94,6 +102,7 @@ export const register = async (req, res) => {
 export const verifySignupOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
+
     const user = await User.findOne({ email });
     if (!user)
       return res
@@ -111,6 +120,7 @@ export const verifySignupOTP = async (req, res) => {
     user.otpExpiry = undefined;
     await user.save();
 
+    // FIX: signToken ab 30d deta hai
     const token = signToken(user._id);
     res.json({
       success: true,
@@ -129,6 +139,7 @@ export const verifySignupOTP = async (req, res) => {
 export const resendSignupOTP = async (req, res) => {
   try {
     const { email } = req.body;
+
     const user = await User.findOne({ email });
     if (!user)
       return res
@@ -156,8 +167,13 @@ export const resendSignupOTP = async (req, res) => {
 // ────────────────────────────────────────────
 export const login = async (req, res) => {
   try {
-    // ← FIXED: remember destructure kiya
-    const { email, password, remember } = req.body;
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and password required" });
+
     const user = await User.findOne({ email }).select("+password");
     if (!user)
       return res
@@ -174,8 +190,8 @@ export const login = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Invalid credentials" });
 
-    // ← FIXED: remember pass kiya signToken mein
-    const token = signToken(user._id, remember);
+    // FIX: signToken ab correctly 30d token deta hai
+    const token = signToken(user._id);
     res.json({
       success: true,
       message: "Login successful",
@@ -197,6 +213,7 @@ export const getMe = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+
     res.json({ success: true, user: safeUser(user) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -209,7 +226,10 @@ export const getMe = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
     const user = await User.findOne({ email });
+
+    // Security: email exist kare ya nahi, same response do (enumeration attack se bachne ke liye)
     if (!user)
       return res.json({
         success: true,
@@ -234,6 +254,12 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword)
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields required" });
+
     const user = await User.findOne({ email });
     if (!user)
       return res
@@ -243,6 +269,14 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     if (new Date() > user.resetOtpExpiry)
       return res.status(400).json({ success: false, message: "OTP expired" });
+
+    if (newPassword.length < 8)
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must be at least 8 characters",
+        });
 
     user.password = await bcrypt.hash(newPassword, 12);
     user.resetOtp = undefined;
@@ -261,6 +295,7 @@ export const resetPassword = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { name, email } = req.body;
+
     const user = await User.findById(req.user.id);
     if (!user)
       return res
@@ -295,6 +330,7 @@ export const updateProfile = async (req, res) => {
 export const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+
     const user = await User.findById(req.user.id).select("+password");
     if (!user)
       return res

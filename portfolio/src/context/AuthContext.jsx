@@ -16,10 +16,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.getItem("token") || sessionStorage.getItem("token"),
   );
 
-  // Set axios default header
-  if (token) {
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  }
+  // FIX: axios header useEffect mein set karo — render mein nahi
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
 
   useEffect(() => {
     if (token) {
@@ -36,8 +40,14 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.user);
       }
     } catch (error) {
-      console.error("Fetch user error:", error);
-      logout();
+      // FIX: Sirf 401/403 par logout karo
+      // Network error ya server down hone par token mat hatao
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        logout();
+      } else {
+        console.error("Fetch user error:", error);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +73,9 @@ export const AuthProvider = ({ children }) => {
         otp,
       });
       if (response.data.success) {
-        // After signup verify, always remember (they just created account)
+        // Signup ke baad hamesha localStorage — naya account yaad rakhna chahiye
         localStorage.setItem("token", response.data.token);
+        sessionStorage.removeItem("token");
         setToken(response.data.token);
         setUser(response.data.user);
         toast.success("Email verified successfully!");
@@ -91,14 +102,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // remember = true  → localStorage  (survives refresh + browser close)
-  // remember = false → sessionStorage (clears when tab/browser is closed)
-  const login = async (email, password, remember = false) => {
+  // FIX: remember default = true
+  // remember = true  → localStorage  (browser reopen karo, login rahega — 30d)
+  // remember = false → sessionStorage (tab/browser band karo, logout ho jayega)
+  const login = async (email, password, remember = true) => {
     try {
       const response = await axios.post(`${API_URL}/user/login`, {
         email,
         password,
-        remember,
       });
       if (response.data.success) {
         const { token: newToken, user: newUser } = response.data;
@@ -111,7 +122,6 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem("token");
         }
 
-        axios.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
         setToken(newToken);
         setUser(newUser);
         return { success: true };
@@ -219,7 +229,8 @@ export const AuthProvider = ({ children }) => {
   const removeProfilePhoto = async () => {
     try {
       const response = await axios.delete(`${API_URL}/user/profile/photo`);
-      if (response.data.message) {
+      // FIX: response.data.message → response.data.success
+      if (response.data.success) {
         setUser((prev) => ({ ...prev, profilePic: "" }));
         toast.success("Profile photo removed");
         return { success: true };
