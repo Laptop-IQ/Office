@@ -41,6 +41,285 @@ const stageColor = (stage) => {
   );
 };
 
+const STAGE_LETTERS = PROJECT_STAGE_OPTIONS.map((s) => s[0]);
+
+// ─── Stage Ladder — signature pipeline-position indicator ─────────────────────
+// The 8 lettered stages are a real, ordered sales pipeline (Promotion -> ...
+// -> Regularized), so a filled-segment ladder encodes true progress at a
+// glance instead of just naming the current stage.
+const StageLadder = ({ stage, size = "md" }) => {
+  const letter = stage ? stage.trim()[0]?.toUpperCase() : null;
+  const idx = letter ? STAGE_LETTERS.indexOf(letter) : -1;
+  const sc = stageColor(stage);
+  const segSize = size === "sm" ? 6 : 8;
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        minWidth: 0,
+      }}
+      title={stage || "No stage set"}
+    >
+      <div
+        style={{ display: "flex", gap: size === "sm" ? 2 : 2.5, flexShrink: 0 }}
+      >
+        {STAGE_LETTERS.map((l, i) => (
+          <div
+            key={l}
+            className="dsr-ladder-seg"
+            style={{
+              width: segSize,
+              height: segSize,
+              borderRadius: 2,
+              background: i <= idx ? sc.border : "#E2E6EC",
+            }}
+          />
+        ))}
+      </div>
+      <span
+        style={{
+          fontSize: size === "sm" ? 9 : 10,
+          fontWeight: 800,
+          color: sc.text,
+          flexShrink: 0,
+        }}
+        className="dsr-mono"
+      >
+        {letter ? `${letter}/${STAGE_LETTERS.length}` : "—"}
+      </span>
+    </div>
+  );
+};
+
+// ─── Icon system — replaces emoji with a consistent line-icon set ─────────────
+const Icon = ({ name, size = 16, strokeWidth = 1.8, style, className }) => {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    style: { display: "block", flexShrink: 0, ...style },
+    className,
+  };
+  switch (name) {
+    case "records":
+      return (
+        <svg {...common}>
+          <rect x="5" y="4" width="14" height="17" rx="2" />
+          <rect x="9" y="2.2" width="6" height="3.4" rx="1" />
+          <line x1="8" y1="11.5" x2="16" y2="11.5" />
+          <line x1="8" y1="15.5" x2="13.5" y2="15.5" />
+        </svg>
+      );
+    case "addRecord":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      );
+    case "store":
+      return (
+        <svg {...common}>
+          <path d="M4 10.5 12 4l8 6.5" />
+          <path d="M5.5 10.5v9h13v-9" />
+          <path d="M9.5 19.5v-5.5h5v5.5" />
+        </svg>
+      );
+    case "trending":
+      return (
+        <svg {...common}>
+          <polyline points="4,16 9.5,10.5 13.5,14.5 20,8" />
+          <polyline points="14.5,8 20,8 20,13.5" />
+        </svg>
+      );
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M4 11.5 12 4.5l8 7" />
+          <path d="M6 10v9.5h12V10" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common}>
+          <circle cx="11" cy="11" r="6.5" />
+          <line x1="15.8" y1="15.8" x2="20.5" y2="20.5" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg {...common}>
+          <line x1="5" y1="7" x2="19" y2="7" />
+          <path d="M9.5 7V4.8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
+          <path d="M7.5 7l1 12.3a1 1 0 0 0 1 .9h5a1 1 0 0 0 1-.9L16.5 7" />
+        </svg>
+      );
+    case "edit":
+      return (
+        <svg {...common}>
+          <path d="M14 5.5 18.5 10 8 20.5 3.5 21.5 4.5 17Z" />
+          <line x1="12.3" y1="7.2" x2="16.8" y2="11.7" />
+        </svg>
+      );
+    case "check":
+      return (
+        <svg {...common}>
+          <polyline points="4,12.5 9,17.5 20,6" />
+        </svg>
+      );
+    case "close":
+      return (
+        <svg {...common}>
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      );
+    case "wallet":
+      return (
+        <svg {...common}>
+          <rect x="3" y="6.5" width="18" height="12.5" rx="2" />
+          <path d="M3 10.5h18" />
+          <circle
+            cx="16.5"
+            cy="14.5"
+            r="1.1"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5" width="16" height="15.5" rx="2" />
+          <line x1="4" y1="9.5" x2="20" y2="9.5" />
+          <line x1="8" y1="3" x2="8" y2="6.5" />
+          <line x1="16" y1="3" x2="16" y2="6.5" />
+        </svg>
+      );
+    case "clock":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8.5" />
+          <polyline points="12,7.5 12,12.3 15.3,14.3" />
+        </svg>
+      );
+    case "download":
+      return (
+        <svg {...common}>
+          <path d="M12 4v11.5" />
+          <polyline points="7,11.5 12,16.5 17,11.5" />
+          <line x1="5" y1="20" x2="19" y2="20" />
+        </svg>
+      );
+    case "chevronDown":
+      return (
+        <svg {...common}>
+          <polyline points="6,9 12,15.5 18,9" />
+        </svg>
+      );
+    case "chevronUp":
+      return (
+        <svg {...common}>
+          <polyline points="6,15.5 12,9 18,15.5" />
+        </svg>
+      );
+    case "alert":
+      return (
+        <svg {...common}>
+          <path d="M12 3 22 20H2Z" />
+          <line x1="12" y1="10" x2="12" y2="15" />
+          <circle cx="12" cy="17.7" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "sparkle":
+      return (
+        <svg {...common} stroke="none" fill="currentColor">
+          <path d="M12 2 13.8 9.2 21 11 13.8 12.8 12 20 10.2 12.8 3 11 10.2 9.2Z" />
+        </svg>
+      );
+    case "pin":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="10" r="4.2" />
+          <path d="M8.3 13 12 21l3.7-8" />
+        </svg>
+      );
+    case "inbox":
+      return (
+        <svg {...common}>
+          <path d="M4 12.5h4.2l1.8 2.7h4l1.8-2.7H20" />
+          <path d="M5 6.5h14L20.3 12.5v5.5a1 1 0 0 1-1 1H4.7a1 1 0 0 1-1-1v-5.5Z" />
+        </svg>
+      );
+    case "sheet":
+      return (
+        <svg {...common}>
+          <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+          <line x1="9" y1="13.5" x2="15" y2="19" />
+          <line x1="15" y1="13.5" x2="9" y2="19" />
+        </svg>
+      );
+    case "back":
+      return (
+        <svg {...common}>
+          <line x1="19" y1="12" x2="5.5" y2="12" />
+          <polyline points="11,6.5 5.5,12 11,17.5" />
+        </svg>
+      );
+    case "upload":
+      return (
+        <svg {...common}>
+          <path d="M12 16.5V5" />
+          <polyline points="7.5,9.5 12,5 16.5,9.5" />
+          <path d="M5 16.5v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" />
+        </svg>
+      );
+    case "arrowUp":
+      return (
+        <svg {...common}>
+          <line x1="12" y1="19" x2="12" y2="6" />
+          <polyline points="6.5,11.5 12,6 17.5,11.5" />
+        </svg>
+      );
+    case "refresh":
+      return (
+        <svg {...common}>
+          <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3" />
+          <polyline points="18,3.5 18,7 14.5,7" />
+          <polyline points="6,20.5 6,17 9.5,17" />
+        </svg>
+      );
+    case "users":
+      return (
+        <svg {...common}>
+          <circle cx="9.5" cy="8.5" r="3" />
+          <path d="M3.5 19v-1.5a4 4 0 014-4h4a4 4 0 014 4V19" />
+          <circle cx="17" cy="7.5" r="2.4" />
+          <path d="M20.5 19v-1.5a3.6 3.6 0 00-2.4-3.4" />
+        </svg>
+      );
+    case "lightbulb":
+      return (
+        <svg {...common}>
+          <path d="M9 18h6" />
+          <path d="M10 21h4" />
+          <path d="M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.2 1 2.1h5c0-.9.4-1.7 1-2.1A6 6 0 0012 3z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
 const EMPTY_RECORD = {
   date: "",
   area: "",
@@ -137,6 +416,63 @@ const injectGlobalStyles = () => {
   style.textContent = `
     *, *::before, *::after { box-sizing: border-box; }
 
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+    .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea {
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .dsr-mono {
+      font-family: 'IBM Plex Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+      font-feature-settings: "tnum" 1, "zero" 1;
+      letter-spacing: -0.01em;
+    }
+    .dsr-layout ::selection { background: rgba(0,184,162,0.22); color: #0B1F35; }
+    .dsr-layout button:focus-visible,
+    .dsr-layout a:focus-visible,
+    .dsr-layout input:focus-visible,
+    .dsr-layout select:focus-visible,
+    .dsr-layout [tabindex]:focus-visible {
+      outline: 2px solid #00B8A2;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dsr-layout *, .dsr-layout *::before, .dsr-layout *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+    @keyframes dsr-modal-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .dsr-modal-box { animation: dsr-modal-in 0.25s cubic-bezier(0.16,1,0.3,1) both; }
+    .dsr-ladder-seg { transition: background-color 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease; }
+
+    @keyframes dsr-spin { to { transform: rotate(360deg); } }
+    .dsr-spinner {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid #E2E6EC;
+      border-top-color: #00B8A2;
+      animation: dsr-spin 0.7s linear infinite;
+      margin: 0 auto 14px;
+    }
+    .dsr-empty-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F0FDFA, #EEF6FF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 14px;
+    }
+
     .dsr-input:focus {
       outline: none;
       border-color: #00B8A2 !important;
@@ -152,14 +488,28 @@ const injectGlobalStyles = () => {
       box-shadow: 0 0 0 3px rgba(217,119,6,0.22) !important;
     }
 
-    .dsr-btn-primary:hover:not(:disabled) { background: #009e8c !important; transform: translateY(-1px); }
-    .dsr-btn-primary:active:not(:disabled) { transform: translateY(0); }
-    .dsr-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .dsr-btn-primary {
+      background: linear-gradient(135deg, #00CDB4, #00A28F) !important;
+      border: none !important;
+      box-shadow: 0 1px 2px rgba(11,31,53,0.10), 0 8px 20px -6px rgba(0,184,162,0.55);
+      transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease, filter 0.18s ease;
+    }
+    .dsr-btn-primary:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1.5px); box-shadow: 0 2px 4px rgba(11,31,53,0.12), 0 12px 24px -6px rgba(0,184,162,0.6); }
+    .dsr-btn-primary:active:not(:disabled) { transform: translateY(0); filter: brightness(0.98); }
+    .dsr-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
     .dsr-btn-danger:hover { background: #FEE2E2 !important; color: #BE123C !important; }
     .dsr-btn-edit:hover { background: #EEF6FF !important; color: #1D4ED8 !important; }
-    .dsr-btn-export:hover { background: #065F46 !important; }
-    .dsr-record-card { transition: box-shadow 0.2s ease, transform 0.2s ease; }
-    .dsr-record-card:hover { box-shadow: 0 6px 24px rgba(11,46,78,0.12) !important; transform: translateY(-2px); }
+    .dsr-btn-export {
+      background: linear-gradient(135deg, #0D9B72, #047857) !important;
+      box-shadow: 0 1px 2px rgba(11,31,53,0.10), 0 8px 18px -6px rgba(4,120,87,0.5);
+      transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease, filter 0.18s ease;
+    }
+    .dsr-btn-export:hover { filter: brightness(1.06); transform: translateY(-1.5px); }
+    .dsr-record-card {
+      transition: box-shadow 0.25s cubic-bezier(0.16,1,0.3,1), transform 0.25s cubic-bezier(0.16,1,0.3,1), border-color 0.25s ease;
+      box-shadow: 0 1px 2px rgba(11,31,53,0.04), 0 1px 1px rgba(11,31,53,0.03);
+    }
+    .dsr-record-card:hover { box-shadow: 0 4px 8px rgba(11,31,53,0.05), 0 16px 32px -12px rgba(11,31,53,0.18) !important; transform: translateY(-2px); border-color: #DCE2EA !important; }
     .dsr-customer-row { transition: background 0.12s; }
     .dsr-customer-row:hover { background: #F0FDFA !important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity: 1 !important; }
@@ -217,7 +567,7 @@ const injectGlobalStyles = () => {
     /* Expanded card */
     .dsr-card-expanded {
       border: 1.5px solid #00B8A2 !important;
-      box-shadow: 0 8px 32px rgba(0,184,162,0.12) !important;
+      box-shadow: 0 4px 8px rgba(11,31,53,0.05), 0 16px 40px -10px rgba(0,184,162,0.28) !important;
     }
     .dsr-expand-btn {
       height: 28px;
@@ -324,9 +674,9 @@ const injectGlobalStyles = () => {
     .ei-row-new td:first-child { border-left: 3px solid #10B981; }
     .ei-row-dup td:first-child { border-left: 3px solid #F59E0B; }
     .ei-check:checked { accent-color: #00B8A2; }
-    .ei-btn-primary { background: #00B8A2; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.15s, transform 0.1s; }
-    .ei-btn-primary:hover:not(:disabled) { background: #009e8c; transform: translateY(-1px); }
-    .ei-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .ei-btn-primary { background: linear-gradient(135deg, #00CDB4, #00A28F); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 1px 2px rgba(11,31,53,0.10), 0 8px 20px -6px rgba(0,184,162,0.5); transition: filter 0.18s cubic-bezier(0.16,1,0.3,1), transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease; }
+    .ei-btn-primary:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1.5px); }
+    .ei-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
     .ei-btn-secondary { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; border-radius: 8px; cursor: pointer; font-weight: 500; transition: background 0.15s; }
     .ei-btn-secondary:hover { background: #E5E7EB; }
     .ei-dropzone { border: 2px dashed #D1D5DB; border-radius: 12px; background: #FAFAFA; transition: border-color 0.2s, background 0.2s; cursor: pointer; }
@@ -341,15 +691,20 @@ const injectGlobalStyles = () => {
     @media (max-width: 640px) { .ei-desktop-only { display: none !important; } }
 
     @media (min-width: 768px) {
-      .dsr-layout { display: grid !important; grid-template-columns: 220px 1fr !important; min-height: 100vh !important; }
+      .dsr-layout { display: grid !important; grid-template-columns: 240px 1fr !important; min-height: 100vh !important; }
       .dsr-sidebar { display: flex !important; }
       .dsr-mobile-tabbar { display: none !important; }
-      .dsr-main { padding: 28px 32px !important; max-width: 800px !important; }
-      .dsr-header { padding: 20px 24px !important; margin-bottom: 20px !important; }
+      .dsr-main { padding: 32px 40px 64px !important; max-width: 1180px !important; }
+      .dsr-header { padding: 26px 30px !important; margin-bottom: 24px !important; }
       .dsr-metrics-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
       .dsr-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
       .dsr-record-detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
       .dsr-cust-banner-grid { grid-template-columns: repeat(3, 1fr) !important; }
+      .dsr-card-list { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; align-items: start; gap: 14px !important; }
+      .dsr-toolbar-row { flex-wrap: nowrap !important; }
+    }
+    @media (min-width: 1300px) {
+      .dsr-main { max-width: 1320px !important; }
     }
     @media (max-width: 767px) {
       .dsr-sidebar { display: none !important; }
@@ -591,13 +946,13 @@ const ExcelImporter = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(11,46,78,0.55)",
+        background: "rgba(8,25,44,0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 300,
         padding: 16,
-        backdropFilter: "blur(2px)",
+        backdropFilter: "blur(3px)",
       }}
     >
       {eiToast.msg && (
@@ -607,10 +962,16 @@ const ExcelImporter = ({
             background: eiToast.type === "error" ? "#BE123C" : "#047857",
           }}
         >
-          {eiToast.type === "error" ? "✕" : "✓"} {eiToast.msg}
+          <Icon
+            name={eiToast.type === "error" ? "close" : "check"}
+            size={14}
+            strokeWidth={2.3}
+          />
+          {eiToast.msg}
         </div>
       )}
       <div
+        className="dsr-modal-box"
         style={{
           background: "#fff",
           borderRadius: 16,
@@ -619,7 +980,8 @@ const ExcelImporter = ({
           maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.22)",
+          boxShadow:
+            "0 8px 16px rgba(11,31,53,0.14), 0 32px 64px -16px rgba(11,31,53,0.4)",
           overflow: "hidden",
         }}
       >
@@ -646,7 +1008,12 @@ const ExcelImporter = ({
               flexShrink: 0,
             }}
           >
-            📥
+            <Icon
+              name="upload"
+              size={19}
+              strokeWidth={2}
+              style={{ color: "#fff" }}
+            />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
@@ -678,7 +1045,7 @@ const ExcelImporter = ({
               justifyContent: "center",
             }}
           >
-            ✕
+            <Icon name="close" size={15} strokeWidth={2.2} />
           </button>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
@@ -694,7 +1061,25 @@ const ExcelImporter = ({
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #F0FDFA, #EEF6FF)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <Icon
+                  name="sheet"
+                  size={28}
+                  strokeWidth={1.6}
+                  style={{ color: "#00B8A2" }}
+                />
+              </div>
               <div
                 style={{
                   fontSize: 15,
@@ -710,7 +1095,9 @@ const ExcelImporter = ({
               </div>
               <div
                 style={{
-                  display: "inline-block",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                   padding: "8px 20px",
                   background: "#00B8A2",
                   color: "#fff",
@@ -720,7 +1107,8 @@ const ExcelImporter = ({
                   cursor: "pointer",
                 }}
               >
-                📂 File Browse karo
+                <Icon name="upload" size={13} strokeWidth={2.1} /> File Browse
+                karo
               </div>
               <input
                 ref={fileInputRef}
@@ -750,9 +1138,12 @@ const ExcelImporter = ({
                     borderRadius: 20,
                     fontSize: 12,
                     fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                   }}
                 >
-                  ✦ {newCount} Naye
+                  <Icon name="sparkle" size={11} /> {newCount} Naye
                 </div>
                 {dupCount > 0 && (
                   <div
@@ -763,9 +1154,13 @@ const ExcelImporter = ({
                       borderRadius: 20,
                       fontSize: 12,
                       fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
                     }}
                   >
-                    ⚠ {dupCount} Exist
+                    <Icon name="alert" size={12} strokeWidth={2} /> {dupCount}{" "}
+                    Exist
                   </div>
                 )}
                 <div
@@ -791,9 +1186,13 @@ const ExcelImporter = ({
                       fontWeight: 700,
                       color: "#92400E",
                       marginBottom: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
                     }}
                   >
-                    ⚠ Duplicates ke liye:
+                    <Icon name="alert" size={12} strokeWidth={2} /> Duplicates
+                    ke liye:
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {["skip", "overwrite"].map((val) => (
@@ -837,23 +1236,41 @@ const ExcelImporter = ({
                 <button
                   className="ei-btn-secondary"
                   onClick={selectAllNew}
-                  style={{ fontSize: 11, padding: "4px 10px" }}
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
                 >
-                  ✓ Sirf naye
+                  <Icon name="check" size={11} strokeWidth={2.3} /> Sirf naye
                 </button>
                 <button
                   className="ei-btn-secondary"
                   onClick={selectAll}
-                  style={{ fontSize: 11, padding: "4px 10px" }}
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
                 >
-                  ✓ Sab select
+                  <Icon name="check" size={11} strokeWidth={2.3} /> Sab select
                 </button>
                 <button
                   className="ei-btn-secondary"
                   onClick={deselectAll}
-                  style={{ fontSize: 11, padding: "4px 10px" }}
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
                 >
-                  ✕ Deselect all
+                  <Icon name="close" size={11} strokeWidth={2.3} /> Deselect all
                 </button>
               </div>
               <div
@@ -910,8 +1327,18 @@ const ExcelImporter = ({
                           <td>
                             <span
                               className={`ei-badge ${r._isDup ? "ei-badge-dup" : "ei-badge-new"}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 3,
+                              }}
                             >
-                              {r._isDup ? "⚠ Dup" : "✦ New"}
+                              {r._isDup ? (
+                                <Icon name="alert" size={9} strokeWidth={2.2} />
+                              ) : (
+                                <Icon name="sparkle" size={9} />
+                              )}
+                              {r._isDup ? "Dup" : "New"}
                             </span>
                           </td>
                         </tr>
@@ -929,9 +1356,16 @@ const ExcelImporter = ({
                     setDone(false);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
-                  style={{ fontSize: 12, padding: "5px 14px" }}
+                  style={{
+                    fontSize: 12,
+                    padding: "5px 14px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
                 >
-                  🔄 Alag file upload karo
+                  <Icon name="refresh" size={12} strokeWidth={2} /> Alag file
+                  upload karo
                 </button>
               </div>
             </>
@@ -952,9 +1386,18 @@ const ExcelImporter = ({
             <button
               className="ei-btn-primary"
               onClick={onClose}
-              style={{ flex: 1, height: 42, fontSize: 14 }}
+              style={{
+                flex: 1,
+                height: 42,
+                fontSize: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
             >
-              ✓ Done — Close karo
+              <Icon name="check" size={14} strokeWidth={2.3} /> Done — Close
+              karo
             </button>
           ) : (
             <>
@@ -971,13 +1414,35 @@ const ExcelImporter = ({
                 disabled={
                   importing || selectedRows.length === 0 || rows.length === 0
                 }
-                style={{ flex: 2, height: 42, fontSize: 14 }}
+                style={{
+                  flex: 2,
+                  height: 42,
+                  fontSize: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
               >
+                {importing ? (
+                  <span
+                    className="dsr-spinner"
+                    style={{
+                      width: 14,
+                      height: 14,
+                      border: "2px solid rgba(255,255,255,0.35)",
+                      borderTopColor: "#fff",
+                      margin: 0,
+                    }}
+                  />
+                ) : (
+                  <Icon name="upload" size={14} strokeWidth={2.1} />
+                )}
                 {importing
-                  ? `⏳ Import ho raha hai…`
+                  ? "Import ho raha hai…"
                   : rows.length === 0
-                    ? "📂 Pehle file upload karo"
-                    : `📥 ${selectedRows.length} Customers Import karo`}
+                    ? "Pehle file upload karo"
+                    : `${selectedRows.length} Customers Import karo`}
               </button>
             </>
           )}
@@ -989,8 +1454,8 @@ const ExcelImporter = ({
 
 // ─── Export Dropdown Component ────────────────────────────────────────────────
 const EXPORT_OPTIONS = [
-  { id: "all", label: "All records", icon: "📊", weeks: null },
-  { id: "custom", label: "Custom range", icon: "🗓", weeks: null },
+  { id: "all", label: "All records", icon: "records", weeks: null },
+  { id: "custom", label: "Custom range", icon: "calendar", weeks: null },
 ];
 
 const ExportDropdown = ({ records, onExport }) => {
@@ -1046,7 +1511,13 @@ const ExportDropdown = ({ records, onExport }) => {
           transition: "background 0.15s",
         }}
       >
-        ⬇ Export {open ? "▲" : "▼"}
+        <Icon name="download" size={14} strokeWidth={2.1} />
+        Export
+        <Icon
+          name={open ? "chevronUp" : "chevronDown"}
+          size={13}
+          strokeWidth={2.1}
+        />
       </button>
       {open && (
         <div className="dsr-export-menu">
@@ -1071,7 +1542,7 @@ const ExportDropdown = ({ records, onExport }) => {
                 handleExport(opt.id);
               }}
             >
-              <span>{opt.icon}</span>
+              <Icon name={opt.icon} size={13} strokeWidth={2} />
               <span>{opt.label}</span>
               {opt.weeks && (
                 <span
@@ -1166,7 +1637,7 @@ const CustomerLastRecord = ({ record }) => {
   return (
     <div className="dsr-cust-banner">
       <div className="dsr-cust-banner-title">
-        <span>📌</span>
+        <Icon name="pin" size={11} strokeWidth={2} />
         <span>{record.customer} — last visit</span>
         <span
           style={{
@@ -1248,12 +1719,17 @@ const LastHint = ({ value, onUse }) => {
       onClick={() => onUse(value)}
       title={`Click to reuse: ${value}`}
     >
-      <span style={{ fontSize: 10, flexShrink: 0 }}>🕐</span>
+      <Icon name="clock" size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
       <span className="hint-text">
         <span style={{ fontWeight: 600, marginRight: 3 }}>Last:</span>
         {value}
       </span>
-      <span className="hint-use">↑ reuse</span>
+      <span
+        className="hint-use"
+        style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+      >
+        <Icon name="arrowUp" size={10} strokeWidth={2.4} /> reuse
+      </span>
     </div>
   );
 };
@@ -1262,31 +1738,60 @@ const MetricCard = ({ label, value, sub, accent }) => (
   <div
     style={{
       background: "#fff",
-      borderRadius: 10,
-      padding: "14px 16px",
-      border: "1px solid #E5E7EB",
-      borderTop: `3px solid ${accent || "#00B8A2"}`,
+      borderRadius: 14,
+      padding: "15px 16px 14px",
+      border: "1px solid #EDEFF3",
+      boxShadow:
+        "0 1px 2px rgba(11,31,53,0.03), 0 10px 24px -12px rgba(11,31,53,0.14)",
+      position: "relative",
+      overflow: "hidden",
     }}
   >
     <div
+      aria-hidden="true"
       style={{
-        fontSize: 10,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 3,
+        background: `linear-gradient(90deg, ${accent || "#00B8A2"}, ${accent || "#00B8A2"}55)`,
+      }}
+    />
+    <div
+      style={{
+        fontSize: 9.5,
         color: "#8A9BB0",
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        marginBottom: 6,
+        letterSpacing: "0.07em",
+        marginBottom: 7,
       }}
     >
       {label}
     </div>
     <div
-      style={{ fontSize: 24, fontWeight: 700, color: "#0B2E4E", lineHeight: 1 }}
+      className="dsr-mono"
+      style={{
+        fontSize: 23,
+        fontWeight: 700,
+        color: "#0B1F35",
+        lineHeight: 1,
+      }}
     >
       {value}
     </div>
     {sub && (
-      <div style={{ fontSize: 11, color: "#8A9BB0", marginTop: 4 }}>{sub}</div>
+      <div
+        style={{
+          fontSize: 10.5,
+          color: "#9AA7B8",
+          marginTop: 5,
+          fontWeight: 500,
+        }}
+      >
+        {sub}
+      </div>
     )}
   </div>
 );
@@ -1312,12 +1817,15 @@ const FieldLabel = ({ children, required, keyBadge }) => (
           fontWeight: 700,
           color: "#D97706",
           background: "#FEF3C7",
-          padding: "1px 6px",
+          padding: "1px 6px 1px 5px",
           borderRadius: 4,
           letterSpacing: "0.03em",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
         }}
       >
-        ★ KEY
+        <Icon name="sparkle" size={9} /> KEY
       </span>
     )}
   </label>
@@ -1395,20 +1903,26 @@ const Toast = ({ msg, type }) => {
         left: "50%",
         transform: "translateX(-50%)",
         color: "#fff",
-        padding: "10px 20px",
-        borderRadius: 10,
+        padding: "11px 20px",
+        borderRadius: 12,
         fontSize: 13,
-        fontWeight: 500,
+        fontWeight: 600,
         zIndex: 1000,
         whiteSpace: "nowrap",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+        boxShadow:
+          "0 4px 8px rgba(11,31,53,0.12), 0 16px 32px -8px rgba(11,31,53,0.3)",
         background: type === "error" ? "#BE123C" : "#047857",
         display: "flex",
         alignItems: "center",
         gap: 8,
       }}
     >
-      {type === "error" ? "✕" : "✓"} {msg}
+      <Icon
+        name={type === "error" ? "close" : "check"}
+        size={15}
+        strokeWidth={2.3}
+      />
+      {msg}
     </div>
   );
 };
@@ -1593,6 +2107,9 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 {record.pct}%
               </span>
             </div>
+            <div style={{ marginBottom: 6 }}>
+              <StageLadder stage={record.stage} size="sm" />
+            </div>
             <div
               style={{
                 height: 5,
@@ -1627,9 +2144,12 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 cursor: "pointer",
                 whiteSpace: "nowrap",
                 transition: "background 0.15s",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              ✏️ Edit
+              <Icon name="edit" size={12} strokeWidth={2} /> Edit
             </button>
             <button
               className="dsr-btn-danger"
@@ -1646,9 +2166,12 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 whiteSpace: "nowrap",
                 flexShrink: 0,
                 transition: "background 0.15s",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
               }}
             >
-              🗑 Delete
+              <Icon name="trash" size={12} strokeWidth={2} /> Delete
             </button>
           </div>
         </div>
@@ -1671,9 +2194,13 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
               textTransform: "uppercase",
               letterSpacing: "0.06em",
               marginBottom: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
             }}
           >
-            💰 Financial Details (₹ Lakhs)
+            <Icon name="wallet" size={12} strokeWidth={2} /> Financial Details
+            (₹ Lakhs)
           </div>
           <div
             className="dsr-record-detail-grid"
@@ -1717,7 +2244,10 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 >
                   {key}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: clr }}>
+                <div
+                  className="dsr-mono"
+                  style={{ fontSize: 15.5, fontWeight: 700, color: clr }}
+                >
                   ₹{val}L
                 </div>
               </div>
@@ -1748,8 +2278,9 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 Total Potential
               </div>
               <div
+                className="dsr-mono"
                 style={{
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: 700,
                   color: "#047857",
                   marginTop: 2,
@@ -1781,8 +2312,9 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 Total Existing
               </div>
               <div
+                className="dsr-mono"
                 style={{
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: 700,
                   color: "#1D4ED8",
                   marginTop: 2,
@@ -1813,8 +2345,9 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 YTD vs ABP
               </div>
               <div
+                className="dsr-mono"
                 style={{
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: 700,
                   color: color,
                   marginTop: 2,
@@ -1946,13 +2479,16 @@ const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => {
               textTransform: "uppercase",
               letterSpacing: "0.06em",
               marginBottom: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
             }}
           >
-            👥 Customer-wise visits this month
+            <Icon name="users" size={12} strokeWidth={2} /> Customer-wise visits
+            this month
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {month.customerRows.map((c) => {
-              const sc = stageColor(c.latest.stage);
               return (
                 <div
                   key={c.name}
@@ -1985,20 +2521,9 @@ const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => {
                       {c.latest.area} · {c.latest.distributor}
                     </div>
                   </div>
-                  <span
-                    style={{
-                      fontSize: 9,
-                      padding: "2px 7px",
-                      borderRadius: 4,
-                      fontWeight: 600,
-                      background: sc.bg,
-                      color: sc.text,
-                      flexShrink: 0,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {c.latest.stage ? c.latest.stage.split(".")[0] : "—"}
-                  </span>
+                  <div style={{ flexShrink: 0 }}>
+                    <StageLadder stage={c.latest.stage} size="sm" />
+                  </div>
                   <span
                     style={{
                       fontSize: 10,
@@ -2025,17 +2550,17 @@ const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: "records", icon: "📋", label: "Records" },
-  { id: "add", icon: "➕", label: "Add Record" },
-  { id: "customers", icon: "🏪", label: "Customers" },
-  { id: "analysis", icon: "📈", label: "Analysis" },
+  { id: "records", icon: "records", label: "Records" },
+  { id: "add", icon: "addRecord", label: "Add Record" },
+  { id: "customers", icon: "store", label: "Customers" },
+  { id: "analysis", icon: "trending", label: "Analysis" },
 ];
 
 const Sidebar = ({ active, onChange, recordCount }) => (
   <div
     className="dsr-sidebar"
     style={{
-      background: "#0B2E4E",
+      background: "linear-gradient(180deg, #08192C 0%, #0B2440 100%)",
       flexDirection: "column",
       padding: "0",
       position: "sticky",
@@ -2046,22 +2571,54 @@ const Sidebar = ({ active, onChange, recordCount }) => (
   >
     <div
       style={{
-        padding: "24px 20px 20px",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        padding: "22px 20px 20px",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 9,
+            background: "linear-gradient(135deg, #00CDB4, #00A28F)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 15,
+            fontWeight: 800,
+            color: "#08192C",
+            flexShrink: 0,
+            boxShadow: "0 4px 12px -2px rgba(0,184,162,0.55)",
+          }}
+        >
+          D
+        </div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 800,
+              color: "#fff",
+              letterSpacing: "-0.01em",
+            }}
+          >
             DSR
           </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
+          <div
+            style={{
+              fontSize: 9.5,
+              color: "rgba(255,255,255,0.4)",
+              fontWeight: 500,
+              letterSpacing: "0.02em",
+            }}
+          >
             Sales Management
           </div>
         </div>
       </div>
     </div>
-    <nav style={{ padding: "12px 10px", flex: 1 }}>
+    <nav style={{ padding: "14px 10px", flex: 1 }}>
       {TABS.map((t) => (
         <button
           key={t.id}
@@ -2073,29 +2630,32 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             gap: 10,
             width: "100%",
             padding: "10px 12px",
-            borderRadius: 8,
+            borderRadius: 9,
             border: "none",
+            borderLeft:
+              active === t.id ? "3px solid #00B8A2" : "3px solid transparent",
             cursor: "pointer",
-            marginBottom: 2,
+            marginBottom: 3,
             fontSize: 13,
-            fontWeight: active === t.id ? 600 : 400,
-            color: active === t.id ? "#00B8A2" : "rgba(255,255,255,0.6)",
+            fontWeight: active === t.id ? 700 : 500,
+            color: active === t.id ? "#5EEAD4" : "rgba(255,255,255,0.55)",
             background:
-              active === t.id ? "rgba(0,184,162,0.18)" : "transparent",
+              active === t.id ? "rgba(0,184,162,0.14)" : "transparent",
             textAlign: "left",
-            transition: "background 0.15s, color 0.15s",
+            transition:
+              "background 0.2s cubic-bezier(0.16,1,0.3,1), color 0.2s ease, border-color 0.2s ease",
           }}
         >
-          <span style={{ fontSize: 16 }}>{t.icon}</span>
+          <Icon name={t.icon} size={17} strokeWidth={1.9} />
           <span>{t.label}</span>
           {t.id === "records" && recordCount > 0 && (
             <span
               style={{
                 marginLeft: "auto",
-                background: "#00B8A2",
-                color: "#fff",
+                background: "linear-gradient(135deg, #00CDB4, #00A28F)",
+                color: "#08192C",
                 fontSize: 10,
-                fontWeight: 700,
+                fontWeight: 800,
                 padding: "1px 7px",
                 borderRadius: 10,
                 lineHeight: "16px",
@@ -2113,7 +2673,13 @@ const Sidebar = ({ active, onChange, recordCount }) => (
         borderTop: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+      <div
+        style={{
+          fontSize: 10,
+          color: "rgba(255,255,255,0.32)",
+          fontWeight: 500,
+        }}
+      >
         {new Date().toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -2134,7 +2700,8 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
       right: 0,
       zIndex: 50,
       background: "#fff",
-      borderTop: "1px solid #E5E7EB",
+      borderTop: "1px solid #EDEFF3",
+      boxShadow: "0 -4px 16px rgba(11,31,53,0.06)",
       padding: "6px 0 calc(6px + env(safe-area-inset-bottom))",
       justifyContent: "space-around",
     }}
@@ -2154,7 +2721,7 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
         color: "#9CA3AF",
       }}
     >
-      <span style={{ fontSize: 20 }}>←</span>
+      <Icon name="back" size={19} />
       <span style={{ fontSize: 9 }}>Back</span>
     </button>
     {TABS.map((t) => (
@@ -2175,7 +2742,11 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
           position: "relative",
         }}
       >
-        <span style={{ fontSize: 20 }}>{t.icon}</span>
+        <Icon
+          name={t.icon}
+          size={19}
+          strokeWidth={active === t.id ? 2.1 : 1.8}
+        />
         <span style={{ fontSize: 9, fontWeight: active === t.id ? 700 : 400 }}>
           {t.label}
         </span>
@@ -2217,7 +2788,7 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
         color: active === "records" ? "#00B8A2" : "#9CA3AF",
       }}
     >
-      <span style={{ fontSize: 20 }}>🏠</span>
+      <Icon name="home" size={19} />
       <span style={{ fontSize: 9 }}>Home</span>
     </button>
   </div>
@@ -2227,10 +2798,12 @@ const SectionCard = ({ title, children, style }) => (
   <div
     style={{
       background: "#fff",
-      border: "1px solid #E5E7EB",
-      borderRadius: 12,
-      padding: "16px",
+      border: "1px solid #EDEFF3",
+      borderRadius: 14,
+      padding: "17px",
       marginBottom: 14,
+      boxShadow:
+        "0 1px 2px rgba(11,31,53,0.03), 0 8px 20px -12px rgba(11,31,53,0.10)",
       ...style,
     }}
   >
@@ -2242,7 +2815,7 @@ const SectionCard = ({ title, children, style }) => (
           color: "#8A9BB0",
           marginBottom: 14,
           textTransform: "uppercase",
-          letterSpacing: "0.06em",
+          letterSpacing: "0.07em",
         }}
       >
         {title}
@@ -2279,13 +2852,13 @@ const CustomerModal = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(11,46,78,0.5)",
+        background: "rgba(8,25,44,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 200,
         padding: 16,
-        backdropFilter: "blur(2px)",
+        backdropFilter: "blur(3px)",
       }}
     >
       <div
@@ -2298,7 +2871,8 @@ const CustomerModal = ({
           maxWidth: 460,
           maxHeight: "90vh",
           overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+          boxShadow:
+            "0 8px 16px rgba(11,31,53,0.12), 0 32px 64px -16px rgba(11,31,53,0.35)",
         }}
       >
         <div
@@ -2310,8 +2884,18 @@ const CustomerModal = ({
           }}
         >
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
-              {isEdit ? `✏️ Edit: ${editName}` : "New customer"}
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              {isEdit && <Icon name="edit" size={14} strokeWidth={2.1} />}
+              {isEdit ? `Edit: ${editName}` : "New customer"}
             </div>
             <div
               style={{
@@ -2341,7 +2925,7 @@ const CustomerModal = ({
               justifyContent: "center",
             }}
           >
-            ✕
+            <Icon name="close" size={14} strokeWidth={2.2} />
           </button>
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -2410,9 +2994,12 @@ const CustomerModal = ({
             marginTop: 4,
             textTransform: "uppercase",
             letterSpacing: "0.06em",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          💰 Numbers (₹ Lakhs)
+          <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹ Lakhs)
         </div>
         <div
           className="dsr-grid2"
@@ -2489,7 +3076,7 @@ const CustomerModal = ({
                 flexShrink: 0,
               }}
             >
-              🗑 Delete
+              <Icon name="trash" size={13} strokeWidth={2} /> Delete
             </button>
           )}
           <button
@@ -2523,13 +3110,27 @@ const CustomerModal = ({
               fontWeight: 600,
               cursor: "pointer",
               transition: "background 0.15s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
             }}
           >
-            {saving
-              ? "⏳ Saving…"
-              : isEdit
-                ? "✓ Update customer"
-                : "✓ Save customer"}
+            {saving ? (
+              <span
+                className="dsr-spinner"
+                style={{
+                  width: 14,
+                  height: 14,
+                  border: "2px solid rgba(255,255,255,0.35)",
+                  borderTopColor: "#fff",
+                  margin: 0,
+                }}
+              />
+            ) : (
+              <Icon name="check" size={14} strokeWidth={2.3} />
+            )}
+            {saving ? "Saving…" : isEdit ? "Update customer" : "Save customer"}
           </button>
         </div>
       </div>
@@ -2590,13 +3191,13 @@ const RecordEditModal = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(11,46,78,0.5)",
+        background: "rgba(8,25,44,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 200,
         padding: 16,
-        backdropFilter: "blur(2px)",
+        backdropFilter: "blur(3px)",
       }}
     >
       <div
@@ -2609,7 +3210,8 @@ const RecordEditModal = ({
           maxWidth: 480,
           maxHeight: "90vh",
           overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+          boxShadow:
+            "0 8px 16px rgba(11,31,53,0.12), 0 32px 64px -16px rgba(11,31,53,0.35)",
         }}
       >
         <div
@@ -2617,8 +3219,17 @@ const RecordEditModal = ({
           style={{ background: "linear-gradient(135deg, #1D4ED8, #2563EB)" }}
         >
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
-              ✏️ Edit record
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              <Icon name="edit" size={14} strokeWidth={2.1} /> Edit record
             </div>
             <div
               style={{
@@ -2646,7 +3257,7 @@ const RecordEditModal = ({
               justifyContent: "center",
             }}
           >
-            ✕
+            <Icon name="close" size={14} strokeWidth={2.2} />
           </button>
         </div>
 
@@ -2762,9 +3373,12 @@ const RecordEditModal = ({
             marginTop: 4,
             textTransform: "uppercase",
             letterSpacing: "0.06em",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          💰 Numbers (₹ Lakhs)
+          <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹ Lakhs)
         </div>
         <div
           className="dsr-grid2"
@@ -2856,9 +3470,27 @@ const RecordEditModal = ({
               fontWeight: 600,
               cursor: "pointer",
               transition: "background 0.15s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
             }}
           >
-            {saving ? "⏳ Saving…" : "✓ Update record"}
+            {saving ? (
+              <span
+                className="dsr-spinner"
+                style={{
+                  width: 14,
+                  height: 14,
+                  border: "2px solid rgba(255,255,255,0.35)",
+                  borderTopColor: "#fff",
+                  margin: 0,
+                }}
+              />
+            ) : (
+              <Icon name="check" size={14} strokeWidth={2.3} />
+            )}
+            {saving ? "Saving…" : "Update record"}
           </button>
         </div>
       </div>
@@ -3484,9 +4116,9 @@ const DailySalesReport = () => {
     <div
       className="dsr-layout"
       style={{
-        background: "#F4F6F9",
+        background: "linear-gradient(180deg, #F8F9FB 0%, #F1F3F7 100%)",
         fontFamily:
-          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          "'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         color: "#111827",
       }}
     >
@@ -3510,22 +4142,54 @@ const DailySalesReport = () => {
         <div
           className="dsr-header"
           style={{
-            background: "linear-gradient(135deg, #0B2E4E 0%, #185FA5 100%)",
-            borderRadius: 14,
-            padding: "16px",
-            marginBottom: 16,
+            background:
+              "linear-gradient(155deg, #08192C 0%, #0F3A63 55%, #106B8C 100%)",
+            borderRadius: 16,
+            padding: "18px 20px",
+            marginBottom: 18,
             display: "flex",
             alignItems: "center",
             gap: 12,
+            boxShadow:
+              "0 1px 2px rgba(11,31,53,0.2), 0 16px 32px -14px rgba(11,31,53,0.5)",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: -70,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(0,184,162,0.35), transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+            <div
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: "#5EEAD4",
+                textTransform: "uppercase",
+                letterSpacing: "0.14em",
+                marginBottom: 3,
+              }}
+            >
+              Field Sales · DSR
+            </div>
             <h1
               style={{
-                fontSize: 15,
-                fontWeight: 700,
+                fontSize: 17,
+                fontWeight: 800,
                 color: "#fff",
                 margin: 0,
+                letterSpacing: "-0.01em",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -3536,9 +4200,10 @@ const DailySalesReport = () => {
             <p
               style={{
                 fontSize: 11,
-                color: "rgba(255,255,255,0.55)",
-                marginTop: 2,
+                color: "rgba(255,255,255,0.6)",
+                marginTop: 3,
                 marginBottom: 0,
+                fontWeight: 500,
               }}
             >
               Customer data management
@@ -3548,24 +4213,26 @@ const DailySalesReport = () => {
             className="dsr-topbar-btn"
             onClick={() => setActiveTab("records")}
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.18)",
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.16)",
               background:
                 activeTab === "records"
-                  ? "rgba(0,184,162,0.30)"
+                  ? "rgba(0,184,162,0.32)"
                   : "rgba(255,255,255,0.08)",
-              color: activeTab === "records" ? "#00B8A2" : "#fff",
+              color: activeTab === "records" ? "#5EEAD4" : "#fff",
               fontSize: 18,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              position: "relative",
+              backdropFilter: "blur(4px)",
             }}
           >
-            🏠
+            <Icon name="home" size={17} strokeWidth={2} />
           </button>
         </div>
 
@@ -3637,7 +4304,7 @@ const DailySalesReport = () => {
                 className={`dsr-filter-chip${activeFilter === "custom" ? " active" : ""}`}
                 onClick={() => setActiveFilter("custom")}
               >
-                🗓 Custom
+                <Icon name="calendar" size={12} strokeWidth={2} /> Custom
               </button>
             </div>
 
@@ -3701,11 +4368,11 @@ const DailySalesReport = () => {
                     left: 11,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    fontSize: 14,
                     color: "#9CA3AF",
+                    display: "flex",
                   }}
                 >
-                  🔍
+                  <Icon name="search" size={15} strokeWidth={2} />
                 </span>
                 <input
                   type="text"
@@ -3752,9 +4419,13 @@ const DailySalesReport = () => {
                       borderRadius: 20,
                       padding: "2px 8px",
                       cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
                     }}
                   >
-                    ✕ Clear filter
+                    <Icon name="close" size={10} strokeWidth={2.3} /> Clear
+                    filter
                   </button>
                 )}
               </div>
@@ -3764,33 +4435,48 @@ const DailySalesReport = () => {
               <div
                 style={{
                   textAlign: "center",
-                  padding: "48px 16px",
+                  padding: "56px 16px",
                   color: "#8A9BB0",
                 }}
               >
-                <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
-                <div style={{ fontSize: 13 }}>Loading records…</div>
+                <div className="dsr-spinner" />
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  Loading records…
+                </div>
               </div>
             ) : filteredRecords.length === 0 ? (
               <div
                 style={{
                   textAlign: "center",
-                  padding: "48px 16px",
+                  padding: "56px 16px",
                   color: "#8A9BB0",
                 }}
               >
-                <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+                <div className="dsr-empty-icon">
+                  <Icon
+                    name="inbox"
+                    size={26}
+                    strokeWidth={1.6}
+                    style={{ color: "#00B8A2" }}
+                  />
+                </div>
                 <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 700,
+                    color: "#374151",
+                    letterSpacing: "-0.01em",
+                  }}
                 >
                   No records found
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 12, marginTop: 4, color: "#9AA7B8" }}>
                   Try a different filter or search
                 </div>
               </div>
             ) : (
               <div
+                className="dsr-card-list"
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 {filteredRecords.map((r) => (
@@ -3810,7 +4496,14 @@ const DailySalesReport = () => {
         {activeTab === "add" && (
           <>
             <CustomerLastRecord record={selectedCustomerLastRecord} />
-            <SectionCard title="📅 Visit details">
+            <SectionCard
+              title={
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <Icon name="calendar" size={12} strokeWidth={2} /> Visit
+                  details
+                </span>
+              }
+            >
               <div
                 className="dsr-grid2"
                 style={{
@@ -3844,7 +4537,7 @@ const DailySalesReport = () => {
                         gap: 4,
                       }}
                     >
-                      <span>📅</span>
+                      <Icon name="calendar" size={11} strokeWidth={2} />
                       <span>Date manually select karo</span>
                     </div>
                   )}
@@ -3960,7 +4653,14 @@ const DailySalesReport = () => {
                 )}
               </div>
             </SectionCard>
-            <SectionCard title="💰 Numbers (₹ Lakhs)">
+            <SectionCard
+              title={
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹
+                  Lakhs)
+                </span>
+              }
+            >
               <div
                 className="dsr-grid2"
                 style={{
@@ -4040,10 +4740,20 @@ const DailySalesReport = () => {
                   marginTop: 4,
                   lineHeight: 1.5,
                   borderLeft: "3px solid #3B82F6",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 7,
                 }}
               >
-                💡 Saved customer select karoge toh fields auto-fill ho
-                jaayenge.
+                <Icon
+                  name="lightbulb"
+                  size={13}
+                  strokeWidth={2}
+                  style={{ marginTop: 1, color: "#3B82F6" }}
+                />
+                <span>
+                  Saved customer select karoge toh fields auto-fill ho jaayenge.
+                </span>
               </div>
             </SectionCard>
             <button
@@ -4052,13 +4762,14 @@ const DailySalesReport = () => {
               disabled={loading}
               style={{
                 width: "100%",
-                height: 44,
+                height: 46,
                 background: "#00B8A2",
                 color: "#fff",
                 border: "none",
-                borderRadius: 10,
+                borderRadius: 12,
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
+                letterSpacing: "0.01em",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -4067,7 +4778,21 @@ const DailySalesReport = () => {
                 marginBottom: 12,
               }}
             >
-              {loading ? "⏳ Saving…" : "✚ Save record"}
+              {loading ? (
+                <span
+                  className="dsr-spinner"
+                  style={{
+                    width: 15,
+                    height: 15,
+                    border: "2px solid rgba(255,255,255,0.35)",
+                    borderTopColor: "#fff",
+                    margin: 0,
+                  }}
+                />
+              ) : (
+                <Icon name="addRecord" size={16} strokeWidth={2.1} />
+              )}
+              {loading ? "Saving…" : "Save record"}
             </button>
           </>
         )}
@@ -4085,8 +4810,18 @@ const DailySalesReport = () => {
                 flexWrap: "wrap",
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2E4E" }}>
-                🏪 Customer Master{" "}
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#0B2E4E",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                }}
+              >
+                <Icon name="store" size={15} strokeWidth={2} />
+                Customer Master{" "}
                 <span
                   style={{
                     fontSize: 11,
@@ -4117,7 +4852,8 @@ const DailySalesReport = () => {
                     gap: 5,
                   }}
                 >
-                  📥 Excel Import
+                  <Icon name="upload" size={13} strokeWidth={2.1} /> Excel
+                  Import
                 </button>
                 <button
                   onClick={openAddCustomer}
@@ -4136,7 +4872,7 @@ const DailySalesReport = () => {
                     gap: 4,
                   }}
                 >
-                  ＋ Add
+                  <Icon name="addRecord" size={13} strokeWidth={2} /> Add
                 </button>
               </div>
             </div>
@@ -4144,24 +4880,35 @@ const DailySalesReport = () => {
               <div
                 style={{
                   textAlign: "center",
-                  padding: "32px 16px",
+                  padding: "40px 16px",
                   color: "#8A9BB0",
                 }}
               >
-                <div style={{ fontSize: 36, marginBottom: 8 }}>🏪</div>
+                <div className="dsr-empty-icon">
+                  <Icon
+                    name="store"
+                    size={26}
+                    strokeWidth={1.6}
+                    style={{ color: "#00B8A2" }}
+                  />
+                </div>
                 <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 700,
+                    color: "#374151",
+                    letterSpacing: "-0.01em",
+                  }}
                 >
                   No customers yet
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 12, marginTop: 4, color: "#9AA7B8" }}>
                   Excel Import ya manual Add karo
                 </div>
               </div>
             ) : (
               customerList.map((name) => {
                 const c = customers[name];
-                const sc = stageColor(c.stage);
                 const lastR = customerLastRecord[name];
                 return (
                   <div
@@ -4217,19 +4964,9 @@ const DailySalesReport = () => {
                         )}
                       </div>
                     </div>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: "3px 9px",
-                        borderRadius: 4,
-                        fontWeight: 600,
-                        background: sc.bg,
-                        color: sc.text,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {c.stage ? c.stage.split(".")[0] : "—"}
-                    </span>
+                    <div style={{ flexShrink: 0 }}>
+                      <StageLadder stage={c.stage} size="sm" />
+                    </div>
                     <div className="dsr-row-actions">
                       <button
                         className="dsr-btn-edit"
@@ -4248,7 +4985,7 @@ const DailySalesReport = () => {
                           justifyContent: "center",
                         }}
                       >
-                        ✏️
+                        <Icon name="edit" size={13} strokeWidth={2} />
                       </button>
                       <button
                         className="dsr-btn-danger"
@@ -4267,7 +5004,7 @@ const DailySalesReport = () => {
                           justifyContent: "center",
                         }}
                       >
-                        🗑
+                        <Icon name="trash" size={13} strokeWidth={2} />
                       </button>
                     </div>
                   </div>
@@ -4290,8 +5027,18 @@ const DailySalesReport = () => {
                 flexWrap: "wrap",
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2E4E" }}>
-                📈 Monthly Visit Analysis
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#0B2E4E",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                }}
+              >
+                <Icon name="trending" size={15} strokeWidth={2} /> Monthly Visit
+                Analysis
               </div>
               <div style={{ fontSize: 11, color: "#8A9BB0" }}>
                 {monthlyAnalysis.length} month
@@ -4303,22 +5050,35 @@ const DailySalesReport = () => {
               <div
                 style={{
                   textAlign: "center",
-                  padding: "48px 16px",
+                  padding: "56px 16px",
                   color: "#8A9BB0",
                 }}
               >
-                <div style={{ fontSize: 40, marginBottom: 8 }}>📈</div>
+                <div className="dsr-empty-icon">
+                  <Icon
+                    name="trending"
+                    size={26}
+                    strokeWidth={1.6}
+                    style={{ color: "#00B8A2" }}
+                  />
+                </div>
                 <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 700,
+                    color: "#374151",
+                    letterSpacing: "-0.01em",
+                  }}
                 >
                   Koi data nahi hai
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 12, marginTop: 4, color: "#9AA7B8" }}>
                   Records add karo, monthly analysis yahan dikhega
                 </div>
               </div>
             ) : (
               <div
+                className="dsr-card-list"
                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
               >
                 {monthlyAnalysis.map((m, idx) => {
