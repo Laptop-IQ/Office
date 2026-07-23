@@ -206,10 +206,6 @@ export default function Notepad() {
     setError(null);
     try {
       const data = await notesApi.getAll(params);
-      // Ignore this response if a newer loadNotes() call has been made
-      // since this one started — prevents an older/slower request from
-      // overwriting fresher state (the classic React double-effect /
-      // StrictMode race).
       if (requestId !== loadRequestId.current) return;
       setNotes(data);
       setActiveId((prev) =>
@@ -223,10 +219,6 @@ export default function Notepad() {
     }
   }, []);
 
-  // Single effect drives every (re)load: initial mount, filter/tag changes,
-  // and debounced search-as-you-type. Using one effect with all three as
-  // dependencies avoids any cross-effect ordering issues or duplicate
-  // calls on mount.
   useEffect(() => {
     const isMountRun = searchDebounce.current === "__never_run__";
     window.clearTimeout(searchDebounce.current);
@@ -238,7 +230,7 @@ export default function Notepad() {
       });
     };
     if (isMountRun || query === "") {
-      fire(); // no need to debounce the initial load or a cleared search box
+      fire();
     } else {
       searchDebounce.current = window.setTimeout(fire, 350);
     }
@@ -324,10 +316,31 @@ export default function Notepad() {
     );
   };
 
+  // ── FIX: persistNote used to replace the entire note with the server
+  // response. This caused a race condition: if the user started typing
+  // a title while a background content-save (700 ms debounce) was still
+  // in-flight, the server response would arrive with the OLD title and
+  // silently wipe out whatever the user had just typed — the "auto-delete"
+  // effect.
+  //
+  // The fix: start from the full server response (so we pick up any
+  // server-computed fields such as updatedAt), then restore the current
+  // LOCAL value for every field that was NOT part of this specific patch.
+  // That way a content-save never touches the title, and a title-save
+  // never touches the content.
   const persistNote = async (id, patch) => {
     try {
       const updated = await notesApi.update(id, patch);
-      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+      setNotes((prev) =>
+        prev.map((n) => {
+          if (n.id !== id) return n;
+          const merged = { ...updated };
+          Object.keys(n).forEach((k) => {
+            if (!(k in patch)) merged[k] = n[k];
+          });
+          return merged;
+        })
+      );
     } catch (err) {
       showToast(err.message || "Save failed", "error");
     }
@@ -414,9 +427,6 @@ export default function Notepad() {
     updateNoteLocal(id, { content: editorRef.current.innerHTML });
   }, []);
 
-  // Tracks whether there's an edit waiting to be written to the server,
-  // so we can force it through on refresh, tab switch, or note switch
-  // instead of losing it if the 700ms debounce never gets to fire.
   const unsavedRef = useRef(false);
 
   const flushPending = useCallback(() => {
@@ -445,16 +455,10 @@ export default function Notepad() {
     }, 700);
   }, [syncContent]);
 
-  // Flush on refresh / tab close / tab switch so nothing is lost
-  // even if it hasn't hit the 700ms debounce yet.
   useEffect(() => {
     const onBeforeUnload = () => {
       const id = activeIdRef.current;
       if (id && editorRef.current && unsavedRef.current) {
-        // Best-effort synchronous-ish save: sendBeacon doesn't support
-        // custom headers/auth, so we fall back to a fire-and-forget
-        // fetch with keepalive, which Chrome/Firefox will let finish
-        // even as the page unloads.
         const token = (() => {
           try {
             return localStorage.getItem("token");
@@ -466,7 +470,7 @@ export default function Notepad() {
           (typeof import.meta !== "undefined" &&
             import.meta.env?.VITE_API_URL) ||
           "";
-        if (!base) return; // no env configured — nothing safe to do here
+        if (!base) return;
         fetch(`${base}/notes/${id}`, {
           method: "PUT",
           headers: {
@@ -487,8 +491,6 @@ export default function Notepad() {
     };
   }, [flushPending]);
 
-  // Flush whenever the active note changes (switching notes shouldn't
-  // lose unsaved edits in the one we're leaving).
   useEffect(() => {
     return () => {
       flushPending();
@@ -675,7 +677,6 @@ export default function Notepad() {
         scrollbar: "#E3E1DA",
         cardShadow: "0 10px 22px rgba(28,32,38,0.10)",
       };
-  // fix accidental alpha-suffixed textMuted above
   t.textMuted = dark ? "#9498A1" : "#75798A";
 
   const headingFont =
