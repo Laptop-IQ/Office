@@ -13,7 +13,7 @@ const getOrCreateWorkspace = async (userId) => {
 };
 
 // ── GET /api/stock ───────────────────────────
-// Pura state ek baar me return karta hai (stocks + changeLog + lastUpdated + companyName)
+// Pura state ek baar me return karta hai (stocks + changeLog + lastUpdated + companyName + dispatches)
 // Frontend ka loadData() isi shape ko expect karta hai.
 export const getStockData = async (req, res) => {
   try {
@@ -23,23 +23,29 @@ export const getStockData = async (req, res) => {
       changeLog: ws.changeLog,
       lastUpdated: ws.lastUpdated,
       companyName: ws.companyName,
+      dispatches: ws.dispatches, // NEW
       updatedAt: ws.updatedAt,
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to load stock data", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to load stock data", error: err.message });
   }
 };
 
 // ── PUT /api/stock ───────────────────────────
 // Pura state overwrite karta hai — saveData() jo localStorage me karta tha,
 // wahi kaam yeh route karega, bas server pe.
-// Body: { stocks, changeLog, lastUpdated, companyName }
+// Body: { stocks, changeLog, lastUpdated, companyName, dispatches }
 export const saveStockData = async (req, res) => {
   try {
-    const { stocks, changeLog, lastUpdated, companyName } = req.body;
+    const { stocks, changeLog, lastUpdated, companyName, dispatches } =
+      req.body;
 
     if (!stocks || typeof stocks !== "object") {
-      return res.status(400).json({ message: "`stocks` is required and must be an object" });
+      return res
+        .status(400)
+        .json({ message: "`stocks` is required and must be an object" });
     }
 
     const ws = await getOrCreateWorkspace(req.user._id);
@@ -51,8 +57,11 @@ export const saveStockData = async (req, res) => {
       shadecard: stocks.shadecard || [],
     };
     if (Array.isArray(changeLog)) ws.changeLog = changeLog.slice(0, 200);
-    if (lastUpdated && typeof lastUpdated === "object") ws.lastUpdated = lastUpdated;
+    if (lastUpdated && typeof lastUpdated === "object")
+      ws.lastUpdated = lastUpdated;
     if (typeof companyName === "string") ws.companyName = companyName;
+    // NEW — pehle silently drop ho raha tha kyunki schema me field hi nahi thi
+    if (Array.isArray(dispatches)) ws.dispatches = dispatches;
 
     await ws.save();
 
@@ -61,7 +70,9 @@ export const saveStockData = async (req, res) => {
       updatedAt: ws.updatedAt,
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to save stock data", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to save stock data", error: err.message });
   }
 };
 
@@ -72,6 +83,8 @@ export const clearStockData = async (req, res) => {
     await StockWorkspace.findOneAndDelete({ owner: req.user._id });
     res.status(200).json({ message: "Cleared" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to clear stock data", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to clear stock data", error: err.message });
   }
 };

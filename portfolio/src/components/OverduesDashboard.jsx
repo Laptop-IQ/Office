@@ -1,17 +1,107 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 
-// ── Live Due Days Calculator ───────────────────────────────────────────────
-const calcDueDays = (dated) => {
-  if (!dated) return 0;
-  const invoiceDate = new Date(dated);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  invoiceDate.setHours(0, 0, 0, 0);
-  return Math.floor((today - invoiceDate) / (1000 * 60 * 60 * 24));
+// ── Design tokens ──────────────────────────────────────────────────────────
+const T = {
+  pageBg: "#06090F",
+  card: "#0B1120",
+  elevated: "#101828",
+  border: "#1A2640",
+  borderHi: "#2A3C60",
+  gold: "#D4A017",
+  goldDim: "#8A6A08",
+  goldGlow: "rgba(212,160,23,0.18)",
+  text1: "#E8EDF8",
+  text2: "#8895AE",
+  text3: "#475569",
+  critical: "#F43F5E",
+  urgent: "#F97316",
+  warning: "#EAB308",
+  info: "#3B82F6",
+  safe: "#10B981",
+  dangerBg: "rgba(244,63,94,0.08)",
+  urgentBg: "rgba(249,115,22,0.08)",
+  warnBg: "rgba(234,179,8,0.08)",
+  infoBg: "rgba(59,130,246,0.08)",
+  safeBg: "rgba(16,185,129,0.08)",
 };
 
-// ── SheetJS XLSX parser ───────────────────────────────────────────────────
+// ── Shared styles ──────────────────────────────────────────────────────────
+const card = {
+  background: T.card,
+  border: `1px solid ${T.border}`,
+  borderRadius: 12,
+};
+
+const inputStyle = {
+  background: T.elevated,
+  border: `1px solid ${T.border}`,
+  color: T.text1,
+  borderRadius: 8,
+  padding: "8px 14px",
+  fontSize: 13,
+  outline: "none",
+  width: "100%",
+};
+
+// ── Date utils ─────────────────────────────────────────────────────────────
+const toISODate = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(value.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof value === "number" && isFinite(value)) {
+    const ms = Date.UTC(1899, 11, 30) + Math.round(value) * 86400000;
+    const d = new Date(ms);
+    return isNaN(d.getTime())
+      ? null
+      : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  }
+  const str = String(value).trim();
+  if (!str) return null;
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const [, y, mo, d] = m;
+    if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31)
+      return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) {
+    const [, d, mo, y] = m;
+    if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31)
+      return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  const generic = new Date(str);
+  if (!isNaN(generic.getTime())) {
+    const y = generic.getFullYear();
+    const mo = String(generic.getMonth() + 1).padStart(2, "0");
+    const d = String(generic.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${d}`;
+  }
+  return null;
+};
+
+const calcDueDays = (dated) => {
+  const iso = toISODate(dated);
+  if (!iso) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  const inv = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((today - inv) / 86400000);
+};
+
+const refreshDueDays = (rows) =>
+  rows.map((r) => ({
+    ...r,
+    "Due Days": r["Dated"] ? calcDueDays(r["Dated"]) : null,
+  }));
+
+// ── XLSX parser ────────────────────────────────────────────────────────────
 const parseXLSX = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -22,10 +112,7 @@ const parseXLSX = (file) =>
           cellDates: true,
         });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json(ws, {
-          raw: false,
-          dateNF: "yyyy-mm-dd",
-        });
+        const raw = XLSX.utils.sheet_to_json(ws, { raw: true });
         const cleaned = raw.map((r, i) => {
           const obj = {};
           for (const k of Object.keys(r))
@@ -36,7 +123,16 @@ const parseXLSX = (file) =>
           obj["Pending Amt."] = Number(
             String(obj["Pending Amt."] ?? 0).replace(/,/g, ""),
           );
-          obj["Due Days"] = calcDueDays(obj["Dated"]);
+          const isoDated = toISODate(obj["Dated"]);
+          obj["Due Days"] = isoDated ? calcDueDays(isoDated) : null;
+          obj["Dated"] =
+            isoDated || (typeof obj["Dated"] === "string" ? obj["Dated"] : "");
+          if ("Due Date" in obj) {
+            const isoDue = toISODate(obj["Due Date"]);
+            obj["Due Date"] =
+              isoDue ||
+              (typeof obj["Due Date"] === "string" ? obj["Due Date"] : "");
+          }
           obj._id = i;
           return obj;
         });
@@ -49,622 +145,105 @@ const parseXLSX = (file) =>
     reader.readAsArrayBuffer(file);
   });
 
-// ── Embedded data ─────────────────────────────────────────────────────────
-const RAW_DATA = [
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "BANKE BIHARI PROCESS",
-    Dated: "2025-12-12",
-    Type: "OpBl",
-    "Ref. No.": "D/4463/2025-26",
-    "Ref. Amt.": 32580,
-    "Pending Amt.": 32580,
-    Due: "Y",
-    "Due Date": "2026-01-11",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "BANKE BIHARI PROCESS",
-    Dated: "2025-12-19",
-    Type: "OpBl",
-    "Ref. No.": "D/4589/2025-26",
-    "Ref. Amt.": 11092,
-    "Pending Amt.": 11092,
-    Due: "Y",
-    "Due Date": "2026-01-18",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "COLOUR TOUCH-KOSI",
-    Dated: "2026-03-10",
-    Type: "OpBl",
-    "Ref. No.": "D/6069/2025-26",
-    "Ref. Amt.": 30652,
-    "Pending Amt.": 30652,
-    Due: "Y",
-    "Due Date": "2026-04-09",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "COLOUR TOUCH-KOSI",
-    Dated: "2026-04-13",
-    Type: "SupO",
-    "Ref. No.": "D/185/2026-27",
-    "Ref. Amt.": 24582,
-    "Pending Amt.": 24582,
-    Due: "Y",
-    "Due Date": "2026-05-13",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "COLOUR TOUCH-KOSI",
-    Dated: "2026-04-13",
-    Type: "SupO",
-    "Ref. No.": "D/192/2026-27",
-    "Ref. Amt.": 604,
-    "Pending Amt.": 604,
-    Due: "Y",
-    "Due Date": "2026-05-13",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "COLOUR TOUCH-KOSI",
-    Dated: "2026-05-05",
-    Type: "SupO",
-    "Ref. No.": "D/511/2026-27",
-    "Ref. Amt.": 10325,
-    "Pending Amt.": 10325,
-    Due: "Y",
-    "Due Date": "2026-06-04",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "COTTON CARE",
-    Dated: "2025-04-16",
-    Type: "OpBl",
-    "Ref. No.": "D/320/2025-26",
-    "Ref. Amt.": 38500,
-    "Pending Amt.": 38500,
-    Due: "Y",
-    "Due Date": "2025-05-01",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "JMD WASHING",
-    Dated: "2025-10-04",
-    Type: "OpBl",
-    "Ref. No.": "D/3312/2025-26",
-    "Ref. Amt.": 23300,
-    "Pending Amt.": 23300,
-    Due: "Y",
-    "Due Date": "2025-11-03",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "JMD WASHING",
-    Dated: "2025-10-16",
-    Type: "OpBl",
-    "Ref. No.": "D/3530/2025-26",
-    "Ref. Amt.": 62540,
-    "Pending Amt.": 62540,
-    Due: "Y",
-    "Due Date": "2025-11-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "JMD WASHING",
-    Dated: "2025-10-16",
-    Type: "OpBl",
-    "Ref. No.": "D/3531/2025-26",
-    "Ref. Amt.": 14160,
-    "Pending Amt.": 14160,
-    Due: "Y",
-    "Due Date": "2025-11-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "KAPIL WASHING",
-    Dated: "2026-02-27",
-    Type: "OpBl",
-    "Ref. No.": "D/5904/2025-26",
-    "Ref. Amt.": 64567,
-    "Pending Amt.": 64567,
-    Due: "Y",
-    "Due Date": "2026-04-28",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "KAPIL WASHING",
-    Dated: "2026-03-21",
-    Type: "OpBl",
-    "Ref. No.": "D/6332/2025-26",
-    "Ref. Amt.": 23453,
-    "Pending Amt.": 23453,
-    Due: "Y",
-    "Due Date": "2026-05-20",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "KAPIL WASHING",
-    Dated: "2026-03-26",
-    Type: "OpBl",
-    "Ref. No.": "D/6440/2025-26",
-    "Ref. Amt.": 31270,
-    "Pending Amt.": 31270,
-    Due: "Y",
-    "Due Date": "2026-05-25",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "KRISHNA CREATIONS",
-    Dated: "2026-01-17",
-    Type: "OpBl",
-    "Ref. No.": "D/5121/2025-26",
-    "Ref. Amt.": 5546,
-    "Pending Amt.": 5546,
-    Due: "Y",
-    "Due Date": "2026-04-17",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "MAA VAISHNO TEXTILE",
-    Dated: "2025-05-28",
-    Type: "OpBl",
-    "Ref. No.": "F/887/2025-26",
-    "Ref. Amt.": 20060,
-    "Pending Amt.": 20060,
-    Due: "Y",
-    "Due Date": "2025-06-12",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "NEELKANTH ENTERPRISES",
-    Dated: "2026-02-06",
-    Type: "OpBl",
-    "Ref. No.": "D/5478/2025-26",
-    "Ref. Amt.": 7965,
-    "Pending Amt.": 7965,
-    Due: "Y",
-    "Due Date": "2026-02-07",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "NEELKANTH ENTERPRISES",
-    Dated: "2026-02-09",
-    Type: "OpBl",
-    "Ref. No.": "D/5538/2025-26",
-    "Ref. Amt.": 15104,
-    "Pending Amt.": 15104,
-    Due: "Y",
-    "Due Date": "2026-02-10",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "NEELKANTH ENTERPRISES",
-    Dated: "2026-02-11",
-    Type: "OpBl",
-    "Ref. No.": "D/5600/2025-26",
-    "Ref. Amt.": 9499,
-    "Pending Amt.": 9499,
-    Due: "Y",
-    "Due Date": "2026-02-12",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "NEELKANTH ENTERPRISES",
-    Dated: "2026-03-30",
-    Type: "OpBl",
-    "Ref. No.": "D/6506/2025-26",
-    "Ref. Amt.": 11682,
-    "Pending Amt.": 11682,
-    Due: "Y",
-    "Due Date": "2026-03-31",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "OM ENTERPRISES-LONI",
-    Dated: "2026-05-27",
-    Type: "SupO",
-    "Ref. No.": "D/822/2026-27",
-    "Ref. Amt.": 113422,
-    "Pending Amt.": 113422,
-    Due: "Y",
-    "Due Date": "2026-05-28",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "PERFECT SPECIALITY CHEMICALS PVT LTD",
-    Dated: "2026-03-02",
-    Type: "OpBl",
-    "Ref. No.": "D/5955/2025-26",
-    "Ref. Amt.": 22514,
-    "Pending Amt.": 22514,
-    Due: "Y",
-    "Due Date": "2026-03-12",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "PREETI WASHING -KOTWAN",
-    Dated: "2025-12-13",
-    Type: "OpBl",
-    "Ref. No.": "D/4473/2025-26",
-    "Ref. Amt.": 34220,
-    "Pending Amt.": 34220,
-    Due: "Y",
-    "Due Date": "2025-12-28",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "PREETI WASHING -KOTWAN",
-    Dated: "2025-12-13",
-    Type: "OpBl",
-    "Ref. No.": "D/4474/2025-26",
-    "Ref. Amt.": 5664,
-    "Pending Amt.": 5664,
-    Due: "Y",
-    "Due Date": "2025-12-28",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "PREETI WASHING",
-    Dated: "2025-03-28",
-    Type: "OpBl",
-    "Ref. No.": "F/5236/2024-25",
-    "Ref. Amt.": 171100,
-    "Pending Amt.": 167864,
-    Due: "Y",
-    "Due Date": "2025-03-28",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-03-24",
-    Type: "OpBl",
-    "Ref. No.": "D/6380/2025-26",
-    "Ref. Amt.": 51920,
-    "Pending Amt.": 41920,
-    Due: "Y",
-    "Due Date": "2026-05-23",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-04-03",
-    Type: "SupO",
-    "Ref. No.": "D/40/2026-27",
-    "Ref. Amt.": 83804,
-    "Pending Amt.": 83804,
-    Due: "Y",
-    "Due Date": "2026-06-02",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-04-18",
-    Type: "SupO",
-    "Ref. No.": "D/293/2026-27",
-    "Ref. Amt.": 46008,
-    "Pending Amt.": 46008,
-    Due: "N",
-    "Due Date": "2026-06-17",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-05-07",
-    Type: "SupO",
-    "Ref. No.": "D/549/2026-27",
-    "Ref. Amt.": 78482,
-    "Pending Amt.": 78482,
-    Due: "N",
-    "Due Date": "2026-07-06",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-05-22",
-    Type: "SupO",
-    "Ref. No.": "D/764/2026-27",
-    "Ref. Amt.": 48675,
-    "Pending Amt.": 48675,
-    Due: "N",
-    "Due Date": "2026-07-21",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-05-30",
-    Type: "SupO",
-    "Ref. No.": "D/882/2026-27",
-    "Ref. Amt.": 47601,
-    "Pending Amt.": 47601,
-    Due: "N",
-    "Due Date": "2026-07-29",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-05-30",
-    Type: "SupO",
-    "Ref. No.": "D/910/2026-27",
-    "Ref. Amt.": 3115,
-    "Pending Amt.": 3115,
-    Due: "N",
-    "Due Date": "2026-07-29",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-06-03",
-    Type: "SupO",
-    "Ref. No.": "D/973/2026-27",
-    "Ref. Amt.": 18821,
-    "Pending Amt.": 18821,
-    Due: "N",
-    "Due Date": "2026-08-02",
-  },
-  {
-    Salesman: "SUDHIR SF DYES",
-    Account: "RIGHT WASH GARMENT PROCESSING COMPANY PR",
-    Dated: "2026-06-11",
-    Type: "SupO",
-    "Ref. No.": "D/1096/2026-27",
-    "Ref. Amt.": 32143,
-    "Pending Amt.": 32143,
-    Due: "N",
-    "Due Date": "2026-08-10",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SAINATH INDUSTRIES",
-    Dated: "2026-04-14",
-    Type: "SupO",
-    "Ref. No.": "D/205/2026-27",
-    "Ref. Amt.": 103681,
-    "Pending Amt.": 103681,
-    Due: "Y",
-    "Due Date": "2026-05-14",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2025-12-31",
-    Type: "OpBl",
-    "Ref. No.": "F/4099/2025-26",
-    "Ref. Amt.": 21275,
-    "Pending Amt.": 21275,
-    Due: "Y",
-    "Due Date": "2026-03-01",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-01-10",
-    Type: "OpBl",
-    "Ref. No.": "F/4296/2025-26",
-    "Ref. Amt.": 74340,
-    "Pending Amt.": 74340,
-    Due: "Y",
-    "Due Date": "2026-03-11",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-01-10",
-    Type: "OpBl",
-    "Ref. No.": "F/4297/2025-26",
-    "Ref. Amt.": 79060,
-    "Pending Amt.": 79060,
-    Due: "Y",
-    "Due Date": "2026-03-11",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-01-12",
-    Type: "OpBl",
-    "Ref. No.": "D/5034/2025-26",
-    "Ref. Amt.": 12194,
-    "Pending Amt.": 12194,
-    Due: "Y",
-    "Due Date": "2026-03-13",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-02-14",
-    Type: "OpBl",
-    "Ref. No.": "D/5659/2025-26",
-    "Ref. Amt.": 71536,
-    "Pending Amt.": 71536,
-    Due: "Y",
-    "Due Date": "2026-04-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-02-14",
-    Type: "OpBl",
-    "Ref. No.": "F/4932/2025-26",
-    "Ref. Amt.": 61950,
-    "Pending Amt.": 61950,
-    Due: "Y",
-    "Due Date": "2026-04-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-02-14",
-    Type: "OpBl",
-    "Ref. No.": "F/4933/2025-26",
-    "Ref. Amt.": 41831,
-    "Pending Amt.": 41831,
-    Due: "Y",
-    "Due Date": "2026-04-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SATYA DYING",
-    Dated: "2026-02-18",
-    Type: "OpBl",
-    "Ref. No.": "D/5723/2025-26",
-    "Ref. Amt.": 4012,
-    "Pending Amt.": 4012,
-    Due: "Y",
-    "Due Date": "2026-04-19",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHREEJEE TRADERS",
-    Dated: "2026-06-09",
-    Type: "SupO",
-    "Ref. No.": "D/1079/2026-27",
-    "Ref. Amt.": 16992,
-    "Pending Amt.": 16992,
-    Due: "N",
-    "Due Date": "2026-07-09",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHREEJEE TRADERS",
-    Dated: "2026-06-11",
-    Type: "SupO",
-    "Ref. No.": "D/1107/2026-27",
-    "Ref. Amt.": 16992,
-    "Pending Amt.": 16992,
-    Due: "N",
-    "Due Date": "2026-07-11",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2025-12-12",
-    Type: "OpBl",
-    "Ref. No.": "D/4464/2025-26",
-    "Ref. Amt.": 104985,
-    "Pending Amt.": 93144,
-    Due: "Y",
-    "Due Date": "2026-01-11",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2025-12-16",
-    Type: "OpBl",
-    "Ref. No.": "F/3838/2025-26",
-    "Ref. Amt.": 10679,
-    "Pending Amt.": 10679,
-    Due: "Y",
-    "Due Date": "2026-01-15",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2025-12-23",
-    Type: "OpBl",
-    "Ref. No.": "F/3948/2025-26",
-    "Ref. Amt.": 19293,
-    "Pending Amt.": 19293,
-    Due: "Y",
-    "Due Date": "2026-01-22",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2026-01-27",
-    Type: "OpBl",
-    "Ref. No.": "D/5279/2025-26",
-    "Ref. Amt.": 33099,
-    "Pending Amt.": 33099,
-    Due: "Y",
-    "Due Date": "2026-02-26",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2026-02-16",
-    Type: "OpBl",
-    "Ref. No.": "D/5680/2025-26",
-    "Ref. Amt.": 53100,
-    "Pending Amt.": 53100,
-    Due: "Y",
-    "Due Date": "2026-03-18",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2026-04-10",
-    Type: "SupO",
-    "Ref. No.": "D/156/2026-27",
-    "Ref. Amt.": 31860,
-    "Pending Amt.": 31860,
-    Due: "Y",
-    "Due Date": "2026-05-10",
-  },
-  {
-    Salesman: "SUDHIR <SF>",
-    Account: "SHRI RAM UNIT",
-    Dated: "2026-06-04",
-    Type: "SupO",
-    "Ref. No.": "D/985/2026-27",
-    "Ref. Amt.": 34182,
-    "Pending Amt.": 34182,
-    Due: "N",
-    "Due Date": "2026-07-04",
-  },
-];
+const applyAdjustments = (rows, deletedRefsSet, pendingOverrides) =>
+  rows
+    .filter((r) => !deletedRefsSet.has(r["Ref. No."]))
+    .map((r) =>
+      pendingOverrides[r["Ref. No."]] !== undefined
+        ? { ...r, "Pending Amt.": pendingOverrides[r["Ref. No."]] }
+        : r,
+    );
 
-// ── localStorage persistence ──────────────────────────────────────────────
-const LS_KEY = "sf_overdues_deleted_ids";
-
-const getSavedDeletedIds = () => {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
+const exportToXLSX = (rows, baseName) => {
+  const cols = [
+    "Salesman",
+    "Account",
+    "Dated",
+    "Type",
+    "Ref. No.",
+    "Ref. Amt.",
+    "Pending Amt.",
+    "Due",
+    "Due Date",
+    "Due Days",
+  ];
+  const plain = rows.map((r) => {
+    const o = {};
+    cols.forEach((c) => {
+      if (r[c] !== undefined) o[c] = r[c];
+    });
+    return o;
+  });
+  const ws = XLSX.utils.json_to_sheet(plain, { header: cols });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+  const stamp = new Date().toISOString().slice(0, 10);
+  const clean = (baseName || "SF_Overdues").replace(/\.xlsx?$/i, "");
+  XLSX.writeFile(wb, `${clean}_saved_${stamp}.xlsx`);
 };
 
-const saveDeletedIds = (ids) => {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify([...ids]));
-  } catch {}
-};
-
-const INITIAL_DATA = RAW_DATA.map((r, i) => ({
-  ...r,
-  "Due Days": calcDueDays(r["Dated"]),
-  _id: i,
-})).filter((r) => !getSavedDeletedIds().has(r._id));
-
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN");
 
+// SIGNATURE: urgency-scaled glow — the more overdue, the brighter the badge aura
 const getDueBadge = (days) => {
+  if (days === null || days === undefined || isNaN(days))
+    return {
+      label: "—",
+      style: {
+        background: "rgba(255,255,255,0.04)",
+        color: T.text3,
+        border: `1px solid ${T.border}`,
+      },
+    };
   if (days > 180)
     return {
       label: `${days}d`,
-      bg: "bg-red-100 text-red-800 border border-red-300",
+      style: {
+        background: T.dangerBg,
+        color: T.critical,
+        border: `1px solid rgba(244,63,94,0.35)`,
+        boxShadow:
+          "0 0 12px rgba(244,63,94,0.40), 0 0 4px rgba(244,63,94,0.30)",
+      },
     };
   if (days > 90)
     return {
       label: `${days}d`,
-      bg: "bg-orange-100 text-orange-800 border border-orange-300",
+      style: {
+        background: T.urgentBg,
+        color: T.urgent,
+        border: `1px solid rgba(249,115,22,0.35)`,
+        boxShadow:
+          "0 0 10px rgba(249,115,22,0.30), 0 0 3px rgba(249,115,22,0.25)",
+      },
     };
   if (days > 30)
     return {
       label: `${days}d`,
-      bg: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+      style: {
+        background: T.warnBg,
+        color: T.warning,
+        border: `1px solid rgba(234,179,8,0.35)`,
+        boxShadow: "0 0 8px rgba(234,179,8,0.20)",
+      },
     };
   if (days > 0)
     return {
       label: `${days}d`,
-      bg: "bg-blue-100 text-blue-800 border border-blue-300",
+      style: {
+        background: T.infoBg,
+        color: T.info,
+        border: `1px solid rgba(59,130,246,0.30)`,
+      },
     };
   return {
     label: `${Math.abs(days)}d ahead`,
-    bg: "bg-green-100 text-green-800 border border-green-300",
+    style: {
+      background: T.safeBg,
+      color: T.safe,
+      border: `1px solid rgba(16,185,129,0.30)`,
+    },
   };
 };
 
@@ -681,7 +260,6 @@ const getPdfTitle = (search, filteredData) => {
   return `Supple Rubber Overdues Report - ${q.toUpperCase()}`;
 };
 
-// ── Account Summary Builder ───────────────────────────────────────────────
 const buildAccountSummary = (data) => {
   const map = {};
   data.forEach((r) => {
@@ -706,7 +284,7 @@ const buildAccountSummary = (data) => {
   return Object.values(map).sort((a, b) => b.total - a.total);
 };
 
-// ── PDF Generator ─────────────────────────────────────────────────────────
+// ── PDF (kept print-white for readability) ──────────────────────────────────
 const generatePDF = (data, title) => {
   const total = data.reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
   const overdue = data.filter((r) => r["Due Days"] > 0);
@@ -720,7 +298,6 @@ const generatePDF = (data, title) => {
   const maxAcct = (
     data.find((r) => r["Due Days"] === maxDays)?.["Account"] ?? ""
   ).slice(0, 22);
-
   const getBadgeClass = (days) => {
     if (days > 180) return "badge badge-red";
     if (days > 90) return "badge badge-orange";
@@ -728,106 +305,125 @@ const generatePDF = (data, title) => {
     if (days > 0) return "badge badge-blue";
     return "badge badge-green";
   };
-
   const rows = data
     .map((r) => {
       const d = getDueBadge(r["Due Days"]);
       const bc = getBadgeClass(r["Due Days"]);
-      return `<tr>
-      <td>${r["Account"]}</td>
-      <td style="white-space:nowrap">${r["Dated"]}</td>
-      <td style="font-family:monospace;font-size:10px">${r["Ref. No."]}</td>
-      <td style="text-align:right;font-weight:600">₹${Number(r["Pending Amt."]).toLocaleString("en-IN")}</td>
-      <td style="text-align:center"><span class="${bc}">${d.label}</span></td>
-    </tr>`;
+      return `<tr><td>${r["Account"]}</td><td style="white-space:nowrap">${r["Dated"]}</td><td style="font-family:monospace;font-size:10px">${r["Ref. No."]}</td><td style="text-align:right;font-weight:600">₹${Number(r["Pending Amt."]).toLocaleString("en-IN")}</td><td style="text-align:center"><span class="${bc}">${d.label}</span></td></tr>`;
     })
     .join("");
-
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-body{font-family:Arial,sans-serif;color:#1e293b;background:#fff;padding:20px}
-.hdr{background:#1e3a5f!important;color:#fff!important;padding:16px 20px;border-radius:8px;margin-bottom:16px;border:2px solid #1e3a5f}
-.hdr h1{font-size:18px;font-weight:700;color:#fff!important}
-.hdr .sub{font-size:11px;color:#cbd5e1!important;margin-top:3px}
-.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.stat{flex:1;min-width:120px;background:#f8fafc!important;border-radius:6px;padding:10px 12px;border:1.5px solid #94a3b8!important;border-left:4px solid #2563eb!important}
-.stat.red{border-left:4px solid #dc2626!important}
-.stat.orange{border-left:4px solid #ea580c!important}
-.stat.purple{border-left:4px solid #7c3aed!important}
-.stat .val{font-size:16px;font-weight:700;color:#1e3a5f}
-.stat .lbl{font-size:9px;color:#64748b;margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.stat .sub2{font-size:9px;color:#64748b;margin-top:2px}
-table{width:100%;border-collapse:collapse;border:2px solid #334155!important}
-thead tr{background:#1e3a5f!important}
-thead th{padding:7px 8px;font-size:10px;font-weight:700;color:#fff!important;text-align:left;border-right:1px solid #475569!important;border-bottom:2px solid #475569!important}
-thead th:last-child{border-right:none!important}
-tbody tr{border-bottom:1px solid #94a3b8!important}
-tbody tr:nth-child(even){background:#f1f5f9!important}
-tbody td{border:1px solid #94a3b8!important;padding:5px 8px;font-size:10.5px;color:#1e293b}
-.total-row td{font-weight:700;background:#dbeafe!important;font-size:11px;padding:7px 8px;border:1.5px solid #2563eb!important;color:#1e3a5f!important}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:700;border:1px solid transparent}
-.badge-red{background:#fee2e2!important;color:#991b1b!important;border-color:#fca5a5!important}
-.badge-orange{background:#ffedd5!important;color:#9a3412!important;border-color:#fdba74!important}
-.badge-yellow{background:#fef9c3!important;color:#854d0e!important;border-color:#fde047!important}
-.badge-blue{background:#dbeafe!important;color:#1e40af!important;border-color:#93c5fd!important}
-.badge-green{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important}
-.footer{margin-top:14px;font-size:9px;color:#64748b;text-align:center;border-top:1px solid #cbd5e1;padding-top:8px}
-@media print{body{padding:10px}table{page-break-inside:auto}tr{page-break-inside:avoid;page-break-after:auto}thead{display:table-header-group}}
-</style></head><body>
-<div class="hdr">
-  <h1>${title}</h1>
-  <div class="sub">Generated: ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
-</div>
-<div class="stats">
-  <div class="stat"><div class="val">${fmt(total)}</div><div class="lbl">Total Pending</div><div class="sub2">${data.length} entries</div></div>
-  <div class="stat red"><div class="val">${overdue.length}</div><div class="lbl">Overdue Entries</div><div class="sub2">${fmt(overdueTotal)}</div></div>
-  <div class="stat orange"><div class="val">${fmt(overdueTotal)}</div><div class="lbl">Overdue Amount</div><div class="sub2">${overdue.length} entries</div></div>
-  <div class="stat purple"><div class="val">${maxDays}d</div><div class="lbl">Max Due Days</div><div class="sub2">${maxAcct}</div></div>
-</div>
-<table>
-  <thead><tr>
-    <th>Account</th><th>Date</th><th>Ref. No.</th>
-    <th style="text-align:right">Pending Amt.</th>
-    <th style="text-align:center">Due Days</th>
-  </tr></thead>
-  <tbody>
-    ${rows}
-    <tr class="total-row">
-      <td colspan="3" style="text-align:right;padding-right:12px">TOTAL (${data.length} records)</td>
-      <td style="text-align:right;font-size:12px">₹${total.toLocaleString("en-IN")}</td>
-      <td></td>
-    </tr>
-  </tbody>
-</table>
-<div class="footer">Supple Rubber &nbsp;•&nbsp; Confidential &nbsp;•&nbsp; ${new Date().toLocaleString("en-IN")}</div>
-</body></html>`;
-
+<style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:Arial,sans-serif;color:#1e293b;background:#fff;padding:20px}.hdr{background:#1e3a5f!important;color:#fff!important;padding:16px 20px;border-radius:8px;margin-bottom:16px}.hdr h1{font-size:18px;font-weight:700;color:#fff!important}.hdr .sub{font-size:11px;color:#cbd5e1!important;margin-top:3px}.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.stat{flex:1;min-width:120px;background:#f8fafc!important;border-radius:6px;padding:10px 12px;border:1.5px solid #94a3b8!important;border-left:4px solid #2563eb!important}.stat.red{border-left:4px solid #dc2626!important}.stat.orange{border-left:4px solid #ea580c!important}.stat.purple{border-left:4px solid #7c3aed!important}.stat .val{font-size:16px;font-weight:700;color:#1e3a5f}.stat .lbl{font-size:9px;color:#64748b;margin-top:3px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}.stat .sub2{font-size:9px;color:#64748b;margin-top:2px}table{width:100%;border-collapse:collapse;border:2px solid #334155!important}thead tr{background:#1e3a5f!important}thead th{padding:7px 8px;font-size:10px;font-weight:700;color:#fff!important;text-align:left;border-right:1px solid #475569!important;border-bottom:2px solid #475569!important}thead th:last-child{border-right:none!important}tbody tr{border-bottom:1px solid #94a3b8!important}tbody tr:nth-child(even){background:#f1f5f9!important}tbody td{border:1px solid #94a3b8!important;padding:5px 8px;font-size:10.5px;color:#1e293b}.total-row td{font-weight:700;background:#dbeafe!important;font-size:11px;padding:7px 8px;border:1.5px solid #2563eb!important;color:#1e3a5f!important}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:700;border:1px solid transparent}.badge-red{background:#fee2e2!important;color:#991b1b!important;border-color:#fca5a5!important}.badge-orange{background:#ffedd5!important;color:#9a3412!important;border-color:#fdba74!important}.badge-yellow{background:#fef9c3!important;color:#854d0e!important;border-color:#fde047!important}.badge-blue{background:#dbeafe!important;color:#1e40af!important;border-color:#93c5fd!important}.badge-green{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important}.footer{margin-top:14px;font-size:9px;color:#64748b;text-align:center;border-top:1px solid #cbd5e1;padding-top:8px}@media print{body{padding:10px}table{page-break-inside:auto}tr{page-break-inside:avoid}thead{display:table-header-group}}</style></head><body>
+<div class="hdr"><h1>${title}</h1><div class="sub">Generated: ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div></div>
+<div class="stats"><div class="stat"><div class="val">${fmt(total)}</div><div class="lbl">Total Pending</div><div class="sub2">${data.length} entries</div></div><div class="stat red"><div class="val">${overdue.length}</div><div class="lbl">Overdue Entries</div><div class="sub2">${fmt(overdueTotal)}</div></div><div class="stat orange"><div class="val">${fmt(overdueTotal)}</div><div class="lbl">Overdue Amount</div><div class="sub2">${overdue.length} entries</div></div><div class="stat purple"><div class="val">${maxDays}d</div><div class="lbl">Max Due Days</div><div class="sub2">${maxAcct}</div></div></div>
+<table><thead><tr><th>Account</th><th>Date</th><th>Ref. No.</th><th style="text-align:right">Pending Amt.</th><th style="text-align:center">Due Days</th></tr></thead><tbody>${rows}<tr class="total-row"><td colspan="3" style="text-align:right;padding-right:12px">TOTAL (${data.length} records)</td><td style="text-align:right;font-size:12px">₹${total.toLocaleString("en-IN")}</td><td></td></tr></tbody></table>
+<div class="footer">Supple Rubber &nbsp;•&nbsp; Confidential &nbsp;•&nbsp; ${new Date().toLocaleString("en-IN")}</div></body></html>`;
   const w = window.open("", "_blank");
   w.document.write(html);
   w.document.close();
   setTimeout(() => w.print(), 500);
 };
 
-// ── Delete Confirmation Modal ─────────────────────────────────────────────
+// ── Storage ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = "sf-overdues-v1";
+const lsGet = (k) => {
+  try {
+    const v = localStorage.getItem(k);
+    return v ? JSON.parse(v) : null;
+  } catch {
+    return null;
+  }
+};
+const lsSet = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+    return true;
+  } catch {
+    return false;
+  }
+};
+const lsDel = (k) => {
+  try {
+    localStorage.removeItem(k);
+  } catch {}
+};
+
+// ── Confirm Modal ──────────────────────────────────────────────────────────
 const ConfirmModal = ({ message, onConfirm, onCancel }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-    <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-slate-200">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-2xl">🗑️</span>
-        <h3 className="font-bold text-slate-800 text-base">Confirm Delete</h3>
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(0,0,0,0.7)",
+      backdropFilter: "blur(4px)",
+    }}
+  >
+    <div
+      style={{
+        ...card,
+        padding: 28,
+        maxWidth: 380,
+        width: "100%",
+        margin: "0 16px",
+        boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 22, lineHeight: 1 }}>🗑️</span>
+        <p style={{ color: T.text1, fontWeight: 700, fontSize: 15 }}>
+          Confirm Delete
+        </p>
       </div>
-      <p className="text-sm text-slate-600 mb-6 leading-relaxed">{message}</p>
-      <div className="flex gap-3 justify-end">
+      <p
+        style={{
+          color: T.text2,
+          fontSize: 13,
+          lineHeight: 1.6,
+          marginBottom: 24,
+        }}
+      >
+        {message}
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition"
+          style={{
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: `1px solid ${T.border}`,
+            background: "transparent",
+            color: T.text2,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition"
+          style={{
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: "rgba(244,63,94,0.15)",
+            color: T.critical,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            boxShadow: "inset 0 0 0 1px rgba(244,63,94,0.4)",
+          }}
         >
           Delete
         </button>
@@ -836,100 +432,375 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => (
   </div>
 );
 
+// ── Payment Modal ──────────────────────────────────────────────────────────
+const PaymentModal = ({ row, onConfirm, onCancel }) => {
+  const [amount, setAmount] = useState("");
+  const pending = row["Pending Amt."] || 0;
+  const entered = Number(amount) || 0;
+  const remaining = Math.max(0, pending - entered);
+  const overpaid = entered > pending;
+  const clearsFully = entered > 0 && remaining === 0;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.7)",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <div
+        style={{
+          ...card,
+          padding: 28,
+          maxWidth: 380,
+          width: "100%",
+          margin: "0 16px",
+          boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ fontSize: 22 }}>💰</span>
+          <p style={{ color: T.text1, fontWeight: 700, fontSize: 15 }}>
+            Record Payment
+          </p>
+        </div>
+        <p
+          style={{
+            color: T.text1,
+            fontWeight: 600,
+            fontSize: 13,
+            marginTop: 12,
+          }}
+        >
+          {row["Account"]}
+        </p>
+        <p
+          style={{
+            color: T.text3,
+            fontSize: 11,
+            fontFamily: "monospace",
+            marginBottom: 16,
+          }}
+        >
+          {row["Ref. No."]}
+        </p>
+
+        <div
+          style={{
+            background: T.elevated,
+            borderRadius: 8,
+            padding: "10px 14px",
+            marginBottom: 16,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            border: `1px solid ${T.border}`,
+          }}
+        >
+          <span style={{ color: T.text2, fontSize: 12 }}>
+            Currently Pending
+          </span>
+          <span
+            style={{
+              color: T.gold,
+              fontWeight: 700,
+              fontVariantNumeric: "tabular-nums",
+              fontSize: 15,
+            }}
+          >
+            {fmt(pending)}
+          </span>
+        </div>
+
+        <p
+          style={{
+            color: T.text2,
+            fontSize: 11,
+            fontWeight: 600,
+            marginBottom: 6,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
+          Amount Received
+        </p>
+        <div style={{ position: "relative" }}>
+          <span
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: T.text3,
+              fontSize: 13,
+            }}
+          >
+            ₹
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            autoFocus
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0"
+            style={{
+              ...inputStyle,
+              paddingLeft: 28,
+              boxShadow: `0 0 0 1px ${T.border}`,
+            }}
+            onFocus={(e) => {
+              e.target.style.boxShadow = `0 0 0 2px ${T.gold}40`;
+              e.target.style.borderColor = T.gold;
+            }}
+            onBlur={(e) => {
+              e.target.style.boxShadow = `0 0 0 1px ${T.border}`;
+              e.target.style.borderColor = T.border;
+            }}
+          />
+        </div>
+
+        {entered > 0 && (
+          <p
+            style={{
+              fontSize: 12,
+              marginTop: 8,
+              color: overpaid ? T.warning : clearsFully ? T.safe : T.text2,
+            }}
+          >
+            {overpaid
+              ? `That's ${fmt(entered - pending)} over — entry will be cleared.`
+              : clearsFully
+                ? "Full payment — entry will be removed from overdue list."
+                : `Remaining: ${fmt(remaining)}`}
+          </p>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "flex-end",
+            marginTop: 20,
+          }}
+        >
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 8,
+              border: `1px solid ${T.border}`,
+              background: "transparent",
+              color: T.text2,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => entered > 0 && onConfirm(entered)}
+            disabled={entered <= 0}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 8,
+              border: "none",
+              background: entered > 0 ? "rgba(16,185,129,0.15)" : T.elevated,
+              color: entered > 0 ? T.safe : T.text3,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: entered > 0 ? "pointer" : "not-allowed",
+              boxShadow:
+                entered > 0 ? "inset 0 0 0 1px rgba(16,185,129,0.4)" : "none",
+            }}
+          >
+            Confirm Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
-  const [data, setData] = useState(INITIAL_DATA);
+  const [_boot] = useState(() => lsGet(STORAGE_KEY));
+  const [data, setData] = useState(() =>
+    Array.isArray(_boot?.data) && _boot.data.length > 0
+      ? refreshDueDays(_boot.data)
+      : [],
+  );
+  const [deletedRefs, setDeletedRefs] = useState(
+    () => new Set(_boot?.deletedRefs || []),
+  );
+  const [overrides, setOverrides] = useState(() => _boot?.overrides || {});
+  const [fileName, setFileName] = useState(() => _boot?.fileName || "");
   const [search, setSearch] = useState("");
   const [filterDue, setFilterDue] = useState("all");
   const [sortCol, setSortCol] = useState("Due Days");
   const [sortDir, setSortDir] = useState("desc");
-  const [fileName, setFileName] = useState(
-    "S_F_OVERDUES__VERY_DELAYED_15_06_26.xlsx",
-  );
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [parseErr, setParseErr] = useState("");
   const [activeTab, setActiveTab] = useState("detail");
   const [summarySort, setSummarySort] = useState("total");
   const [expandedAccount, setExpandedAccount] = useState(null);
-  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [paymentRow, setPaymentRow] = useState(null);
+  const [storageSaving, setStorageSaving] = useState(false);
+  const [storageSavedAt, setStorageSavedAt] = useState(() =>
+    _boot?.savedAt ? new Date(_boot.savedAt) : null,
+  );
+  const [storageError, setStorageError] = useState("");
+  const saveTimerRef = useRef(null);
+  const storageReadyRef = useRef(false);
   const fileRef = useRef();
 
-  // ── Sync deleted IDs to localStorage whenever data changes ───────────────
   useEffect(() => {
-    const allIds = new Set(RAW_DATA.map((_, i) => i));
-    const remaining = new Set(data.map((r) => r._id));
-    const deleted = new Set([...allIds].filter((id) => !remaining.has(id)));
-    saveDeletedIds(deleted);
-  }, [data]);
-
-  // ── File Upload ──────────────────────────────────────────────────────────
-  const handleFile = useCallback(async (file) => {
-    if (!file) return;
-    setUploading(true);
-    setParseErr("");
-    try {
-      const parsed = await parseXLSX(file);
-      if (!parsed.length) throw new Error("No data rows found.");
-      setData(parsed);
-      setFileName(file.name);
-    } catch (e) {
-      setParseErr("Parse failed: " + (e.message || "Unknown error"));
-    }
-    setUploading(false);
+    storageReadyRef.current = true;
   }, []);
+
+  useEffect(() => {
+    if (!storageReadyRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setStorageSaving(true);
+      setStorageError("");
+      const now = new Date().toISOString();
+      const ok = lsSet(STORAGE_KEY, {
+        data,
+        deletedRefs: [...deletedRefs],
+        overrides,
+        fileName,
+        savedAt: now,
+      });
+      if (ok) setStorageSavedAt(new Date(now));
+      else
+        setStorageError(
+          "Auto-save failed — storage full? Use 💾 Excel to back up.",
+        );
+      setStorageSaving(false);
+    }, 1500);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [data, deletedRefs, overrides, fileName]);
+
+  const handleFile = useCallback(
+    async (file) => {
+      if (!file) return;
+      setUploading(true);
+      setParseErr("");
+      try {
+        const parsed = await parseXLSX(file);
+        if (!parsed.length) throw new Error("No data rows found.");
+        setData(applyAdjustments(parsed, deletedRefs, overrides));
+        setFileName(file.name);
+      } catch (e) {
+        setParseErr("Parse failed: " + (e.message || "Unknown error"));
+      }
+      setUploading(false);
+    },
+    [deletedRefs, overrides],
+  );
 
   const onDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     handleFile(e.dataTransfer.files[0]);
   };
+  const handleSaveToFile = () => exportToXLSX(data, fileName);
+  const handleClearStorage = () => {
+    if (
+      !window.confirm(
+        "Clear all saved data?\n\nDownload an Excel backup first if needed.",
+      )
+    )
+      return;
+    lsDel(STORAGE_KEY);
+    setData([]);
+    setDeletedRefs(new Set());
+    setOverrides({});
+    setFileName("");
+    setStorageSavedAt(null);
+    setStorageError("");
+  };
 
-  // ── Delete Handlers ──────────────────────────────────────────────────────
   const confirmDeleteRow = (row) => {
     setConfirmModal({
-      message: `Delete entry "${row["Ref. No."]}" for ${row["Account"]}? This cannot be undone.`,
+      message: `Delete "${row["Ref. No."]}" for ${row["Account"]}?`,
       onConfirm: () => {
-        setData((prev) => prev.filter((r) => r._id !== row._id));
+        const ref = row["Ref. No."];
+        const nextOverrides = { ...overrides };
+        delete nextOverrides[ref];
+        setData(data.filter((r) => r._id !== row._id));
+        setDeletedRefs(new Set(deletedRefs).add(ref));
+        setOverrides(nextOverrides);
         setConfirmModal(null);
       },
     });
   };
 
   const confirmDeleteAccount = (acctName) => {
-    const count = data.filter((r) => r["Account"] === acctName).length;
-    const total = data
-      .filter((r) => r["Account"] === acctName)
-      .reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
+    const acctRows = data.filter((r) => r["Account"] === acctName);
+    const total = acctRows.reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
     setConfirmModal({
-      message: `Delete all ${count} entries for "${acctName}" totalling ${fmt(total)}? This cannot be undone.`,
+      message: `Delete all ${acctRows.length} entries for "${acctName}" totalling ${fmt(total)}?`,
       onConfirm: () => {
-        setData((prev) => prev.filter((r) => r["Account"] !== acctName));
+        const nextDeleted = new Set(deletedRefs);
+        const nextOverrides = { ...overrides };
+        acctRows.forEach((r) => {
+          nextDeleted.add(r["Ref. No."]);
+          delete nextOverrides[r["Ref. No."]];
+        });
+        setData(data.filter((r) => r["Account"] !== acctName));
+        setDeletedRefs(nextDeleted);
+        setOverrides(nextOverrides);
         if (expandedAccount === acctName) setExpandedAccount(null);
         setConfirmModal(null);
       },
     });
   };
 
-  // ── Reset all deleted rows ────────────────────────────────────────────────
-  const resetAllData = () => {
-    setConfirmModal({
-      message: `Restore all deleted entries and reset to original data? Current deletions will be undone.`,
-      onConfirm: () => {
-        saveDeletedIds(new Set());
-        setData(
-          RAW_DATA.map((r, i) => ({
-            ...r,
-            "Due Days": calcDueDays(r["Dated"]),
-            _id: i,
-          })),
+  const handleRecordPayment = (amountReceived) => {
+    const row = paymentRow;
+    if (!row) return;
+    const ref = row["Ref. No."];
+    const newPending = Math.max(0, (row["Pending Amt."] || 0) - amountReceived);
+    const clearedFully = newPending <= 0;
+    const next = clearedFully
+      ? data.filter((r) => r._id !== row._id)
+      : data.map((r) =>
+          r._id === row._id ? { ...r, "Pending Amt.": newPending } : r,
         );
-        setConfirmModal(null);
-      },
-    });
+    const nextDeleted = new Set(deletedRefs);
+    const nextOverrides = { ...overrides };
+    if (clearedFully) {
+      nextDeleted.add(ref);
+      delete nextOverrides[ref];
+    } else {
+      nextOverrides[ref] = newPending;
+    }
+    setData(next);
+    setDeletedRefs(nextDeleted);
+    setOverrides(nextOverrides);
+    setPaymentRow(null);
   };
 
-  // ── Filtered + Sorted Rows ───────────────────────────────────────────────
   const filtered = data
     .filter((r) => {
       const q = search.toLowerCase();
@@ -955,7 +826,6 @@ export default function App() {
       return sortDir === "asc" ? (av > bv ? 1 : -1) : av < bv ? 1 : -1;
     });
 
-  // ── Derived Stats ────────────────────────────────────────────────────────
   const total = filtered.reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
   const overdueRows = filtered.filter((r) => r["Due Days"] > 0);
   const overdueTotal = overdueRows.reduce(
@@ -970,7 +840,6 @@ export default function App() {
     filtered.find((r) => r["Due Days"] === maxDueDays)?.["Account"] ?? "";
   const pdfTitle = getPdfTitle(search, filtered);
 
-  // ── Account Summary ──────────────────────────────────────────────────────
   const accountSummary = buildAccountSummary(data).sort((a, b) => {
     if (summarySort === "entries") return b.entries - a.entries;
     if (summarySort === "maxDays") return b.maxDays - a.maxDays;
@@ -987,22 +856,76 @@ export default function App() {
     }
   };
 
-  const ThIcon = ({ col }) =>
-    sortCol !== col ? (
-      <span className="text-slate-400 ml-1 text-xs">↕</span>
-    ) : (
-      <span className="text-blue-300 ml-1 text-xs">
-        {sortDir === "asc" ? "↑" : "↓"}
-      </span>
-    );
+  // KPI card accent colors
+  const kpiCards = [
+    {
+      lbl: "Total Pending",
+      val: fmt(total),
+      sub: `${filtered.length} entries`,
+      color: T.gold,
+      icon: "₹",
+    },
+    {
+      lbl: "Overdue Amount",
+      val: fmt(overdueTotal),
+      sub: `${overdueRows.length} bills`,
+      color: T.critical,
+      icon: "!",
+    },
+    {
+      lbl: "Critical 90d+",
+      val: criticalRows.length,
+      sub: fmt(criticalRows.reduce((s, r) => s + (r["Pending Amt."] || 0), 0)),
+      color: T.urgent,
+      icon: "▲",
+    },
+    {
+      lbl: "Max Due Days",
+      val: `${maxDueDays}d`,
+      sub:
+        maxDueAcct.length > 18
+          ? maxDueAcct.slice(0, 18) + "…"
+          : maxDueAcct || "—",
+      color: "#A78BFA",
+      icon: "◷",
+    },
+  ];
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const badgePill = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "3px 10px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+  };
+  const actionBtn = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontSize: 14,
+    lineHeight: 1,
+  };
+
   return (
     <div
-      className="min-h-screen bg-slate-50 text-black"
-      style={{ fontFamily: "Arial, sans-serif" }}
+      style={{
+        minHeight: "100vh",
+        background: T.pageBg,
+        fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+        color: T.text1,
+        backgroundImage:
+          "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+        backgroundSize: "28px 28px",
+      }}
     >
-      {/* Confirm Modal */}
       {confirmModal && (
         <ConfirmModal
           message={confirmModal.message}
@@ -1010,46 +933,144 @@ export default function App() {
           onCancel={() => setConfirmModal(null)}
         />
       )}
+      {paymentRow && (
+        <PaymentModal
+          row={paymentRow}
+          onConfirm={handleRecordPayment}
+          onCancel={() => setPaymentRow(null)}
+        />
+      )}
 
-      {/* ── Header ── */}
-      <div className="bg-gradient-to-r from-slate-800 to-blue-800 px-4 py-5 sm:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* ── HEADER ── */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          background: "rgba(6,9,15,0.92)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderBottom: `1px solid ${T.border}`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "14px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
           <div>
-            <h1 className="text-white text-xl sm:text-2xl font-bold tracking-tight">
-              📊 SF Overdues Dashboard
+            <h1
+              style={{
+                fontSize: 20,
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📊</span>
+              <span style={{ color: T.gold }}>SF</span>
+              <span style={{ color: T.text1 }}>&nbsp;Overdues</span>
             </h1>
-            <p className="text-blue-200 text-xs mt-1">
-              {fileName} &nbsp;•&nbsp; {data.length} records &nbsp;•&nbsp;{" "}
-              {new Date().toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
+            <p
+              style={{
+                color: T.text3,
+                fontSize: 11,
+                marginTop: 3,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ color: T.text2 }}>
+                {fileName || "No file loaded"}
+              </span>
+              <span>·</span>
+              <span>{data.length} records</span>
+              <span>·</span>
+              <span>
+                {new Date().toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              <span style={{ marginLeft: 4 }}>
+                {storageSaving ? (
+                  <span style={{ color: T.info }}>🔄 Saving…</span>
+                ) : storageError ? (
+                  <span style={{ color: T.warning }}>⚠ {storageError}</span>
+                ) : storageSavedAt ? (
+                  <span style={{ color: T.safe }}>
+                    ✓ Saved{" "}
+                    {storageSavedAt.toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                ) : data.length === 0 ? (
+                  <span style={{ color: T.text3 }}>
+                    Upload an Excel file to begin
+                  </span>
+                ) : null}
+              </span>
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex gap-2">
-              <button
-                onClick={resetAllData}
-                className="flex items-center gap-1 bg-white/10 text-white border border-white/30 font-semibold px-3 py-2 rounded-lg hover:bg-white/20 transition text-sm"
-                title="Restore all deleted entries"
-              >
-                ↺ Reset
-              </button>
-              <button
-                onClick={() => generatePDF(filtered, pdfTitle)}
-                className="flex items-center gap-2 bg-white text-blue-800 font-semibold px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition text-sm"
-              >
-                ⬇ Download PDF
-              </button>
-            </div>
-            <p className="text-blue-300 text-xs italic">📄 {pdfTitle}.pdf</p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={handleSaveToFile}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                border: `1px solid ${T.border}`,
+                background: "transparent",
+                color: T.text2,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              💾 <span>Excel</span>
+            </button>
+            <button
+              onClick={() => generatePDF(filtered, pdfTitle)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: T.gold,
+                color: "#000",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: `0 0 16px ${T.goldGlow}`,
+              }}
+            >
+              ⬇ <span>PDF</span>
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-5">
-        {/* ── Upload Zone ── */}
+      <div
+        style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 24px 48px" }}
+      >
+        {/* ── UPLOAD ZONE ── */}
         <div
           onDrop={onDrop}
           onDragOver={(e) => {
@@ -1058,121 +1079,218 @@ export default function App() {
           }}
           onDragLeave={() => setDragOver(false)}
           onClick={() => fileRef.current.click()}
-          className={`border-2 border-dashed rounded-xl p-4 flex items-center justify-center gap-3 cursor-pointer transition-all
-            ${dragOver ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-white hover:border-blue-400 hover:bg-blue-50"}`}
+          style={{
+            border: `2px dashed ${dragOver ? T.gold : T.border}`,
+            borderRadius: 12,
+            padding: "20px 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            cursor: "pointer",
+            background: dragOver ? `rgba(212,160,23,0.05)` : T.card,
+            transition: "all 0.2s",
+            marginBottom: 20,
+          }}
         >
           <input
             ref={fileRef}
             type="file"
             accept=".xlsx,.xls"
-            className="hidden"
+            style={{ display: "none" }}
             onChange={(e) => handleFile(e.target.files[0])}
           />
-          <span className="text-2xl">{uploading ? "⏳" : "📂"}</span>
-          <div>
-            <p className="text-sm font-semibold text-slate-700">
-              {uploading ? "Processing…" : "Upload new Excel file"}
+          <span style={{ fontSize: 26, lineHeight: 1 }}>
+            {uploading ? "⏳" : "📂"}
+          </span>
+          <div style={{ flex: 1 }}>
+            <p style={{ color: T.text1, fontWeight: 600, fontSize: 14 }}>
+              {uploading ? "Processing…" : "Upload Excel File"}
             </p>
-            <p className="text-xs text-slate-400">
-              Click or drag & drop .xlsx — Due Days auto-calculated from invoice
-              date
+            <p style={{ color: T.text3, fontSize: 12, marginTop: 2 }}>
+              Click or drag & drop — data saves automatically to this browser
             </p>
           </div>
+          {data.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClearStorage();
+              }}
+              style={{
+                fontSize: 11,
+                color: T.critical,
+                background: "transparent",
+                border: `1px solid rgba(244,63,94,0.25)`,
+                borderRadius: 6,
+                padding: "5px 10px",
+                cursor: "pointer",
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              Clear data
+            </button>
+          )}
         </div>
 
         {parseErr && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">
+          <div
+            style={{
+              background: "rgba(244,63,94,0.08)",
+              border: `1px solid rgba(244,63,94,0.25)`,
+              color: T.critical,
+              fontSize: 13,
+              borderRadius: 8,
+              padding: "10px 14px",
+              marginBottom: 16,
+            }}
+          >
             {parseErr}
           </div>
         )}
 
-        {/* ── Summary Cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            {
-              lbl: "Total Pending",
-              val: fmt(total),
-              sub: `${filtered.length} entries shown`,
-              border: "border-blue-600",
-              txt: "text-slate-800",
-            },
-            {
-              lbl: "Overdue Amt.",
-              val: fmt(overdueTotal),
-              sub: `${overdueRows.length} entries`,
-              border: "border-red-500",
-              txt: "text-red-700",
-            },
-            {
-              lbl: "Critical (90d+)",
-              val: criticalRows.length,
-              sub: fmt(
-                criticalRows.reduce((s, r) => s + (r["Pending Amt."] || 0), 0),
-              ),
-              border: "border-orange-500",
-              txt: "text-orange-700",
-            },
-            {
-              lbl: "Max Due Days",
-              val: `${maxDueDays}d`,
-              sub:
-                maxDueAcct.length > 20
-                  ? maxDueAcct.slice(0, 20) + "…"
-                  : maxDueAcct || "—",
-              border: "border-purple-500",
-              txt: "text-purple-700",
-            },
-          ].map(({ lbl, val, sub, border, txt }) => (
+        {/* ── KPI CARDS ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4,1fr)",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {kpiCards.map(({ lbl, val, sub, color, icon }) => (
             <div
               key={lbl}
-              className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${border}`}
+              style={{
+                ...card,
+                padding: "18px 20px",
+                borderTop: `2px solid ${color}`,
+                position: "relative",
+                overflow: "hidden",
+              }}
             >
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+              <div
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 14,
+                  fontSize: 18,
+                  opacity: 0.08,
+                  fontWeight: 900,
+                  color,
+                }}
+              >
+                {icon}
+              </div>
+              <p
+                style={{
+                  color: T.text3,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
                 {lbl}
               </p>
-              <p className={`text-lg sm:text-xl font-bold mt-1 ${txt}`}>
+              <p
+                style={{
+                  color,
+                  fontSize: 22,
+                  fontWeight: 800,
+                  marginTop: 6,
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 {val}
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+              <p style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
+                {sub}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* ── Tabs ── */}
-        <div className="flex gap-1 bg-slate-200 p-1 rounded-xl w-fit">
+        {/* ── TABS ── */}
+        <div
+          style={{
+            display: "flex",
+            gap: 0,
+            borderBottom: `1px solid ${T.border}`,
+            marginBottom: 20,
+          }}
+        >
           {[
-            ["detail", "📋 Detail View"],
-            ["summary", "📊 Account Summary"],
+            ["detail", "📋  Detail View"],
+            ["summary", "📊  Account Summary"],
           ].map(([tab, label]) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all
-                ${activeTab === tab ? "bg-white text-blue-800 shadow" : "text-slate-600 hover:text-slate-800"}`}
+              style={{
+                padding: "10px 20px",
+                border: "none",
+                borderBottom:
+                  activeTab === tab
+                    ? `2px solid ${T.gold}`
+                    : "2px solid transparent",
+                background: "transparent",
+                color: activeTab === tab ? T.gold : T.text3,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                marginBottom: -1,
+                transition: "all 0.15s",
+              }}
             >
               {label}
             </button>
           ))}
         </div>
 
-        {/* ══════════════════════════════════════════
-            TAB 1 — DETAIL VIEW
-        ══════════════════════════════════════════ */}
+        {/* ══ TAB 1: DETAIL VIEW ══ */}
         {activeTab === "detail" && (
           <>
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="🔍  Search account, ref no., salesman…"
-                className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white shadow-sm"
-              />
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: T.text3,
+                    fontSize: 14,
+                  }}
+                >
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search account, ref no., salesman…"
+                  style={{ ...inputStyle, paddingLeft: 36 }}
+                />
+              </div>
               <select
                 value={filterDue}
                 onChange={(e) => setFilterDue(e.target.value)}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                style={{
+                  ...inputStyle,
+                  width: "auto",
+                  minWidth: 150,
+                  cursor: "pointer",
+                }}
               >
                 <option value="all">All Entries</option>
                 <option value="overdue">Overdue Only</option>
@@ -1182,11 +1300,20 @@ export default function App() {
             </div>
 
             {/* Desktop Table */}
-            <div className="hidden sm:block bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+            <div
+              className="hidden sm:block"
+              style={{ ...card, overflow: "hidden" }}
+            >
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 13,
+                  }}
+                >
                   <thead>
-                    <tr className="bg-slate-800 text-white text-xs uppercase tracking-wide">
+                    <tr style={{ background: T.elevated }}>
                       {[
                         ["Account", "Account"],
                         ["Dated", "Dated"],
@@ -1197,16 +1324,55 @@ export default function App() {
                         <th
                           key={col}
                           onClick={() => thSort(col)}
-                          className={`px-4 py-3 text-left cursor-pointer select-none hover:bg-slate-700 transition
-                            ${col === "Pending Amt." ? "text-right" : ""}
-                            ${col === "Due Days" ? "text-center" : ""}`}
+                          style={{
+                            padding: "11px 16px",
+                            textAlign:
+                              col === "Pending Amt."
+                                ? "right"
+                                : col === "Due Days"
+                                  ? "center"
+                                  : "left",
+                            color: T.text3,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            borderBottom: `1px solid ${T.border}`,
+                            cursor: "pointer",
+                            userSelect: "none",
+                            whiteSpace: "nowrap",
+                          }}
                         >
                           {label}
-                          <ThIcon col={col} />
+                          <span
+                            style={{
+                              marginLeft: 4,
+                              opacity: sortCol === col ? 1 : 0.3,
+                              color: sortCol === col ? T.gold : T.text3,
+                            }}
+                          >
+                            {sortCol === col
+                              ? sortDir === "asc"
+                                ? "↑"
+                                : "↓"
+                              : "↕"}
+                          </span>
                         </th>
                       ))}
-                      {/* Delete column header */}
-                      <th className="px-4 py-3 text-center w-16">Del</th>
+                      <th
+                        style={{
+                          padding: "11px 16px",
+                          color: T.text3,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          borderBottom: `1px solid ${T.border}`,
+                          textAlign: "center",
+                        }}
+                      >
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1215,146 +1381,251 @@ export default function App() {
                       return (
                         <tr
                           key={r._id}
-                          className={`border-b border-slate-100 hover:bg-blue-50 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}`}
+                          style={{
+                            background:
+                              i % 2 === 0
+                                ? "transparent"
+                                : "rgba(255,255,255,0.012)",
+                            borderBottom: `1px solid ${T.border}`,
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = T.elevated)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background =
+                              i % 2 === 0
+                                ? "transparent"
+                                : "rgba(255,255,255,0.012)")
+                          }
                         >
                           <td
-                            className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate"
+                            style={{
+                              padding: "11px 16px",
+                              color: T.text1,
+                              fontWeight: 500,
+                              maxWidth: 240,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
                             title={r["Account"]}
                           >
                             {r["Account"]}
                           </td>
-                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                          <td
+                            style={{
+                              padding: "11px 16px",
+                              color: T.text2,
+                              whiteSpace: "nowrap",
+                              fontSize: 12,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
                             {r["Dated"]}
                           </td>
-                          <td className="px-4 py-3 text-slate-600 font-mono text-xs">
+                          <td
+                            style={{
+                              padding: "11px 16px",
+                              color: T.text3,
+                              fontFamily: "monospace",
+                              fontSize: 11,
+                            }}
+                          >
                             {r["Ref. No."]}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                            ₹{Number(r["Pending Amt."]).toLocaleString("en-IN")}
-                          </td>
-                          <td className="px-4 py-3 text-center">
+                          <td
+                            style={{
+                              padding: "11px 16px",
+                              textAlign: "right",
+                              color: T.text1,
+                              fontWeight: 700,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
                             <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
+                              style={{
+                                color: T.text3,
+                                marginRight: 1,
+                                fontSize: 11,
+                              }}
                             >
+                              ₹
+                            </span>
+                            {Number(r["Pending Amt."]).toLocaleString("en-IN")}
+                          </td>
+                          <td
+                            style={{
+                              padding: "11px 16px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <span style={{ ...badgePill, ...badge.style }}>
                               {badge.label}
                             </span>
                           </td>
-                          {/* Delete button */}
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => confirmDeleteRow(r)}
-                              title="Delete this entry"
-                              className="inline-flex items-center justify-center w-7 h-7 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition text-base leading-none"
+                          <td
+                            style={{
+                              padding: "11px 16px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 4,
+                                justifyContent: "center",
+                              }}
                             >
-                              ✕
-                            </button>
+                              <button
+                                onClick={() => setPaymentRow(r)}
+                                title="Record payment"
+                                style={{ ...actionBtn }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "rgba(16,185,129,0.12)")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "transparent")
+                                }
+                              >
+                                💰
+                              </button>
+                              <button
+                                onClick={() => confirmDeleteRow(r)}
+                                title="Delete entry"
+                                style={{ ...actionBtn }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "rgba(244,63,94,0.12)")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "transparent")
+                                }
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
-                    <tr className="bg-blue-50 border-t-2 border-blue-300">
+                    <tr
+                      style={{
+                        background: `rgba(212,160,23,0.05)`,
+                        borderTop: `1px solid ${T.gold}40`,
+                      }}
+                    >
                       <td
                         colSpan={3}
-                        className="px-4 py-3 text-right font-bold text-slate-700 text-sm"
+                        style={{
+                          padding: "12px 16px",
+                          textAlign: "right",
+                          color: T.text2,
+                          fontWeight: 700,
+                          fontSize: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                        }}
                       >
-                        TOTAL ({filtered.length} records)
+                        Total · {filtered.length} records
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-blue-800 text-base">
-                        {fmt(total)}
+                      <td
+                        style={{
+                          padding: "12px 16px",
+                          textAlign: "right",
+                          color: T.gold,
+                          fontWeight: 800,
+                          fontSize: 16,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        <span
+                          style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
+                        >
+                          ₹
+                        </span>
+                        {total.toLocaleString("en-IN")}
                       </td>
-                      <td />
-                      <td />
+                      <td colSpan={2} />
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="sm:hidden space-y-3">
-              {filtered.map((r) => {
-                const badge = getDueBadge(r["Due Days"]);
-                return (
-                  <div
-                    key={r._id}
-                    className="bg-white rounded-xl shadow-sm border border-slate-200 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="font-semibold text-slate-800 text-sm leading-tight">
-                        {r["Account"]}
-                      </p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
-                        >
-                          {badge.label}
-                        </span>
-                        <button
-                          onClick={() => confirmDeleteRow(r)}
-                          title="Delete"
-                          className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-500 hover:bg-red-50 hover:text-red-700 transition text-sm leading-none"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>
-                        <span className="font-medium text-slate-600">
-                          Date:
-                        </span>{" "}
-                        {r["Dated"]}
-                      </span>
-                      <span>
-                        <span className="font-medium text-slate-600">
-                          Type:
-                        </span>{" "}
-                        {r["Type"]}
-                      </span>
-                      <span className="col-span-2">
-                        <span className="font-medium text-slate-600">Ref:</span>{" "}
-                        <span className="font-mono">{r["Ref. No."]}</span>
-                      </span>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center">
-                      <span className="text-xs text-slate-400">
-                        Pending Amount
-                      </span>
-                      <span className="text-base font-bold text-slate-800">
-                        ₹{Number(r["Pending Amt."]).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              {filtered.length > 0 && (
-                <div className="bg-blue-600 text-white rounded-xl p-4 flex justify-between items-center">
-                  <span className="font-semibold text-sm">
-                    Total ({filtered.length} records)
-                  </span>
-                  <span className="font-bold text-lg">{fmt(total)}</span>
-                </div>
-              )}
-            </div>
-
-            {filtered.length === 0 && (
-              <div className="text-center py-16 text-slate-400">
-                <p className="text-4xl mb-3">🔍</p>
-                <p className="font-medium">No records match your filters.</p>
+            {filtered.length === 0 && data.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "64px 0",
+                  color: T.text3,
+                }}
+              >
+                <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
+                <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+                  No data loaded yet
+                </p>
+                <p style={{ fontSize: 13, marginTop: 6 }}>
+                  Upload an Excel file above to get started.
+                </p>
+              </div>
+            )}
+            {filtered.length === 0 && data.length > 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "64px 0",
+                  color: T.text3,
+                }}
+              >
+                <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
+                <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+                  No records match your filters
+                </p>
               </div>
             )}
           </>
         )}
 
-        {/* ══════════════════════════════════════════
-            TAB 2 — ACCOUNT SUMMARY
-        ══════════════════════════════════════════ */}
-        {activeTab === "summary" && (
-          <div className="space-y-4">
-            {/* Sort controls */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-                Sort by:
+        {/* ══ TAB 2: ACCOUNT SUMMARY ══ */}
+        {activeTab === "summary" && data.length === 0 && (
+          <div
+            style={{ textAlign: "center", padding: "64px 0", color: T.text3 }}
+          >
+            <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
+            <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+              No data loaded yet
+            </p>
+            <p style={{ fontSize: 13, marginTop: 6 }}>
+              Upload an Excel file above to get started.
+            </p>
+          </div>
+        )}
+        {activeTab === "summary" && data.length > 0 && (
+          <div>
+            {/* Sort pills */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 16,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  color: T.text3,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Sort by
               </span>
               {[
                 ["total", "Pending Amount"],
@@ -1364,12 +1635,17 @@ export default function App() {
                 <button
                   key={key}
                   onClick={() => setSummarySort(key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
-                    ${
-                      summarySort === key
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
-                    }`}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: `1px solid ${T.border}`,
+                    background: summarySort === key ? T.gold : "transparent",
+                    color: summarySort === key ? "#000" : T.text2,
+                    transition: "all 0.15s",
+                  }}
                 >
                   {label}
                 </button>
@@ -1377,35 +1653,55 @@ export default function App() {
             </div>
 
             {/* Desktop Summary Table */}
-            <div className="hidden sm:block bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-              <table className="w-full text-sm">
+            <div
+              className="hidden sm:block"
+              style={{ ...card, overflow: "hidden" }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
                 <thead>
-                  <tr className="bg-slate-800 text-white text-xs uppercase tracking-wide">
-                    <th className="px-4 py-3 text-left w-6 font-semibold">#</th>
-                    <th className="px-4 py-3 text-left font-semibold">
-                      Account Name
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Bills
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Total Pending
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold">
-                      Overdue Amt.
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Max Days
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left font-semibold"
-                      style={{ minWidth: "140px" }}
-                    >
-                      Amount Share
-                    </th>
-                    <th className="px-4 py-3 text-center font-semibold w-28">
-                      Action
-                    </th>
+                  <tr style={{ background: T.elevated }}>
+                    {[
+                      "#",
+                      "Account Name",
+                      "Bills",
+                      "Total Pending",
+                      "Overdue Amt.",
+                      "Max Days",
+                      "Share",
+                      "Action",
+                    ].map((h, i) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: "11px 16px",
+                          color: T.text3,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          borderBottom: `1px solid ${T.border}`,
+                          textAlign:
+                            i >= 2 && i <= 4
+                              ? i === 2
+                                ? "center"
+                                : "right"
+                              : i === 6
+                                ? "left"
+                                : i === 7
+                                  ? "center"
+                                  : "left",
+                          minWidth: h === "Share" ? "130px" : "auto",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -1417,7 +1713,6 @@ export default function App() {
                       .filter((r) => r["Account"] === row.account)
                       .sort((a, b) => b["Due Days"] - a["Due Days"]);
                     const badge = getDueBadge(row.maxDays);
-
                     return (
                       <>
                         <tr
@@ -1425,122 +1720,342 @@ export default function App() {
                           onClick={() =>
                             setExpandedAccount(isExpanded ? null : row.account)
                           }
-                          className={`border-b border-slate-100 cursor-pointer transition-colors
-                            ${i % 2 === 0 ? "bg-white" : "bg-slate-50/40"}
-                            ${isExpanded ? "bg-blue-50 hover:bg-blue-50" : "hover:bg-blue-50/60"}`}
+                          style={{
+                            borderBottom: `1px solid ${T.border}`,
+                            cursor: "pointer",
+                            background: isExpanded ? T.elevated : "transparent",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isExpanded)
+                              e.currentTarget.style.background =
+                                "rgba(255,255,255,0.02)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = isExpanded
+                              ? T.elevated
+                              : "transparent";
+                          }}
                         >
-                          <td className="px-4 py-3 text-slate-400 font-mono text-xs">
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              color: T.text3,
+                              fontFamily: "monospace",
+                              fontSize: 11,
+                            }}
+                          >
                             {i + 1}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-800 max-w-xs">
-                            <div className="flex items-center gap-2">
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              color: T.text1,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
                               <span
-                                className={`transition-transform text-slate-400 text-xs ${isExpanded ? "rotate-90" : ""}`}
+                                style={{
+                                  color: T.text3,
+                                  fontSize: 10,
+                                  display: "inline-block",
+                                  transition: "transform 0.2s",
+                                  transform: isExpanded
+                                    ? "rotate(90deg)"
+                                    : "rotate(0)",
+                                }}
                               >
                                 ▶
                               </span>
-                              <span className="truncate" title={row.account}>
+                              <span
+                                style={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  maxWidth: 200,
+                                }}
+                                title={row.account}
+                              >
                                 {row.account}
                               </span>
-                            </div>
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-xs font-semibold">
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <span
+                              style={{
+                                background: "rgba(255,255,255,0.06)",
+                                color: T.text2,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                fontSize: 11,
+                                fontWeight: 700,
+                              }}
+                            >
                               {row.entries}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-800">
-                            {fmt(row.total)}
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              textAlign: "right",
+                              color: T.text1,
+                              fontWeight: 700,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: T.text3,
+                                fontSize: 11,
+                                marginRight: 1,
+                              }}
+                            >
+                              ₹
+                            </span>
+                            {row.total.toLocaleString("en-IN")}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-red-700">
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              textAlign: "right",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
                             {row.overdueAmt > 0 ? (
-                              fmt(row.overdueAmt)
+                              <span
+                                style={{ color: T.critical, fontWeight: 600 }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    opacity: 0.7,
+                                    marginRight: 1,
+                                  }}
+                                >
+                                  ₹
+                                </span>
+                                {row.overdueAmt.toLocaleString("en-IN")}
+                              </span>
                             ) : (
-                              <span className="text-green-600 text-xs font-medium">
+                              <span style={{ color: T.safe, fontSize: 12 }}>
                                 —
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
-                            >
+                          <td
+                            style={{
+                              padding: "12px 16px",
+                              textAlign: "center",
+                            }}
+                          >
+                            <span style={{ ...badgePill, ...badge.style }}>
                               {badge.label}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                          <td style={{ padding: "12px 16px" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
                               <div
-                                className="flex-1 bg-slate-100 rounded-full h-2"
-                                style={{ minWidth: "80px" }}
+                                style={{
+                                  flex: 1,
+                                  background: T.border,
+                                  borderRadius: 999,
+                                  height: 4,
+                                  minWidth: 80,
+                                }}
                               >
                                 <div
-                                  className="bg-blue-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${barW}%` }}
+                                  style={{
+                                    width: `${barW}%`,
+                                    height: 4,
+                                    borderRadius: 999,
+                                    background: `linear-gradient(90deg,${T.gold}99,${T.gold})`,
+                                    transition: "width 0.3s",
+                                  }}
                                 />
                               </div>
-                              <span className="text-xs text-slate-500 font-medium w-10 text-right">
+                              <span
+                                style={{
+                                  color: T.text3,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  width: 38,
+                                  textAlign: "right",
+                                  flexShrink: 0,
+                                  fontVariantNumeric: "tabular-nums",
+                                }}
+                              >
                                 {pct}%
                               </span>
                             </div>
                           </td>
-                          {/* Delete account button */}
                           <td
-                            className="px-4 py-3 text-center"
+                            style={{
+                              padding: "12px 16px",
+                              textAlign: "center",
+                            }}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => confirmDeleteAccount(row.account)}
-                              title={`Delete all ${row.entries} entries for ${row.account}`}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-400 transition"
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: T.critical,
+                                border: `1px solid rgba(244,63,94,0.25)`,
+                                background: "transparent",
+                                cursor: "pointer",
+                              }}
                             >
                               ✕ All
                             </button>
                           </td>
                         </tr>
-
-                        {/* Expanded sub-rows */}
                         {isExpanded &&
                           subRows.map((r, j) => {
                             const sb = getDueBadge(r["Due Days"]);
                             return (
                               <tr
                                 key={`${row.account}-${j}`}
-                                className="bg-blue-50/80 border-b border-blue-100"
+                                style={{
+                                  background: `rgba(212,160,23,0.03)`,
+                                  borderBottom: `1px solid ${T.border}`,
+                                }}
                               >
-                                <td className="px-4 py-2 text-slate-300">└</td>
-                                <td className="px-4 py-2 text-slate-500 text-xs pl-8 font-mono">
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    color: T.text3,
+                                  }}
+                                >
+                                  └
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    color: T.text3,
+                                    fontFamily: "monospace",
+                                    fontSize: 11,
+                                    paddingLeft: 32,
+                                  }}
+                                >
                                   {r["Ref. No."]}
                                 </td>
-                                <td className="px-4 py-2 text-center text-xs text-slate-400">
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    textAlign: "center",
+                                    color: T.text3,
+                                    fontSize: 11,
+                                  }}
+                                >
                                   {r["Dated"]}
                                 </td>
-                                <td className="px-4 py-2 text-right text-xs font-semibold text-slate-700">
-                                  ₹
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    textAlign: "right",
+                                    color: T.text2,
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    fontVariantNumeric: "tabular-nums",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      opacity: 0.7,
+                                      marginRight: 1,
+                                    }}
+                                  >
+                                    ₹
+                                  </span>
                                   {Number(r["Pending Amt."]).toLocaleString(
                                     "en-IN",
                                   )}
                                 </td>
-                                <td className="px-4 py-2 text-right text-xs text-slate-400">
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    textAlign: "right",
+                                    color: T.text3,
+                                    fontSize: 11,
+                                  }}
+                                >
                                   {r["Type"]}
                                 </td>
-                                <td className="px-4 py-2 text-center">
-                                  <span
-                                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${sb.bg}`}
-                                  >
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  <span style={{ ...badgePill, ...sb.style }}>
                                     {sb.label}
                                   </span>
                                 </td>
                                 <td />
-                                {/* Delete individual row from expanded view */}
-                                <td className="px-4 py-2 text-center">
-                                  <button
-                                    onClick={() => confirmDeleteRow(r)}
-                                    title="Delete this entry"
-                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-400 hover:bg-red-50 hover:text-red-600 transition text-sm leading-none"
+                                <td
+                                  style={{
+                                    padding: "8px 16px",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: 4,
+                                      justifyContent: "center",
+                                    }}
                                   >
-                                    ✕
-                                  </button>
+                                    <button
+                                      onClick={() => setPaymentRow(r)}
+                                      style={{ ...actionBtn }}
+                                      onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(16,185,129,0.12)")
+                                      }
+                                      onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "transparent")
+                                      }
+                                    >
+                                      💰
+                                    </button>
+                                    <button
+                                      onClick={() => confirmDeleteRow(r)}
+                                      style={{ ...actionBtn }}
+                                      onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(244,63,94,0.12)")
+                                      }
+                                      onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "transparent")
+                                      }
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1548,169 +2063,76 @@ export default function App() {
                       </>
                     );
                   })}
-
-                  {/* Grand Total */}
-                  <tr className="bg-blue-50 border-t-2 border-blue-300">
+                  <tr
+                    style={{
+                      background: `rgba(212,160,23,0.05)`,
+                      borderTop: `1px solid ${T.gold}40`,
+                    }}
+                  >
                     <td
                       colSpan={2}
-                      className="px-4 py-3 font-bold text-slate-700 text-sm"
+                      style={{
+                        padding: "13px 16px",
+                        color: T.text2,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}
                     >
-                      GRAND TOTAL ({accountSummary.length} accounts)
+                      Grand Total · {accountSummary.length} accounts
                     </td>
-                    <td className="px-4 py-3 text-center font-bold text-slate-700">
+                    <td
+                      style={{
+                        padding: "13px 16px",
+                        textAlign: "center",
+                        color: T.text2,
+                        fontWeight: 700,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
                       {data.length}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-blue-800 text-base">
-                      {fmt(grandTotal)}
+                    <td
+                      style={{
+                        padding: "13px 16px",
+                        textAlign: "right",
+                        color: T.gold,
+                        fontWeight: 800,
+                        fontSize: 16,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
+                      >
+                        ₹
+                      </span>
+                      {grandTotal.toLocaleString("en-IN")}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-red-700">
-                      {fmt(
-                        data
-                          .filter((r) => r["Due Days"] > 0)
-                          .reduce((s, r) => s + (r["Pending Amt."] || 0), 0),
-                      )}
+                    <td
+                      style={{
+                        padding: "13px 16px",
+                        textAlign: "right",
+                        color: T.critical,
+                        fontWeight: 700,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: 11, opacity: 0.7, marginRight: 1 }}
+                      >
+                        ₹
+                      </span>
+                      {data
+                        .filter((r) => r["Due Days"] > 0)
+                        .reduce((s, r) => s + (r["Pending Amt."] || 0), 0)
+                        .toLocaleString("en-IN")}
                     </td>
                     <td colSpan={3} />
                   </tr>
                 </tbody>
               </table>
-            </div>
-
-            {/* Mobile Summary Cards */}
-            <div className="sm:hidden space-y-3">
-              {accountSummary.map((row, i) => {
-                const pct = ((row.total / grandTotal) * 100).toFixed(1);
-                const barW = Math.round((row.total / maxBar) * 100);
-                const badge = getDueBadge(row.maxDays);
-                const isExpanded = expandedAccount === row.account;
-                const subRows = data
-                  .filter((r) => r["Account"] === row.account)
-                  .sort((a, b) => b["Due Days"] - a["Due Days"]);
-
-                return (
-                  <div
-                    key={row.account}
-                    className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
-                  >
-                    <div
-                      className="p-4 cursor-pointer"
-                      onClick={() =>
-                        setExpandedAccount(isExpanded ? null : row.account)
-                      }
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div>
-                          <span className="text-xs text-slate-400 font-mono">
-                            #{i + 1}
-                          </span>
-                          <p className="font-semibold text-slate-800 text-sm leading-tight mt-0.5">
-                            {row.account}
-                          </p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <div className="text-right">
-                            <p className="font-bold text-slate-800 text-base">
-                              {fmt(row.total)}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {pct}% of total
-                            </p>
-                          </div>
-                          {/* Delete account on mobile */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              confirmDeleteAccount(row.account);
-                            }}
-                            title="Delete all entries for this account"
-                            className="mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-md text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-700 transition text-sm leading-none shrink-0"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                      <div className="bg-slate-100 rounded-full h-1.5 mb-3">
-                        <div
-                          className="bg-blue-500 h-1.5 rounded-full"
-                          style={{ width: `${barW}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex gap-3">
-                          <span className="text-slate-500">
-                            <span className="font-medium">{row.entries}</span>{" "}
-                            bills
-                          </span>
-                          {row.overdueAmt > 0 && (
-                            <span className="text-red-600 font-medium">
-                              Overdue: {fmt(row.overdueAmt)}
-                            </span>
-                          )}
-                        </div>
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${badge.bg}`}
-                        >
-                          {badge.label}
-                        </span>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="border-t border-blue-100 bg-blue-50/50 px-4 py-3 space-y-2">
-                        {subRows.map((r, j) => {
-                          const sb = getDueBadge(r["Due Days"]);
-                          return (
-                            <div
-                              key={j}
-                              className="flex items-center justify-between text-xs py-1 border-b border-blue-100 last:border-0"
-                            >
-                              <div>
-                                <p className="font-mono text-slate-600">
-                                  {r["Ref. No."]}
-                                </p>
-                                <p className="text-slate-400">
-                                  {r["Dated"]} &nbsp;·&nbsp; {r["Type"]}
-                                </p>
-                              </div>
-                              <div className="text-right flex items-center gap-2">
-                                <div>
-                                  <p className="font-semibold text-slate-700">
-                                    ₹
-                                    {Number(r["Pending Amt."]).toLocaleString(
-                                      "en-IN",
-                                    )}
-                                  </p>
-                                  <span
-                                    className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-semibold ${sb.bg}`}
-                                  >
-                                    {sb.label}
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => confirmDeleteRow(r)}
-                                  title="Delete entry"
-                                  className="inline-flex items-center justify-center w-6 h-6 rounded-md text-red-400 hover:bg-red-50 hover:text-red-600 transition text-sm leading-none shrink-0"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              <div className="bg-blue-600 text-white rounded-xl p-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-sm">
-                    Grand Total ({accountSummary.length} accounts)
-                  </span>
-                  <span className="font-bold text-lg">{fmt(grandTotal)}</span>
-                </div>
-              </div>
             </div>
           </div>
         )}

@@ -339,7 +339,7 @@ export default function Notepad() {
             if (!(k in patch)) merged[k] = n[k];
           });
           return merged;
-        })
+        }),
       );
     } catch (err) {
       showToast(err.message || "Save failed", "error");

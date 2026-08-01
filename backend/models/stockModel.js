@@ -13,7 +13,7 @@ const productSchema = new mongoose.Schema(
     supplier: { type: String, default: "" },
     reorderNote: { type: String, default: "" },
   },
-  { _id: false }
+  { _id: false },
 );
 // _id:false because frontend already generates its own numeric `id` field —
 // we keep that id so existing React state logic (find/map by id) works unchanged.
@@ -22,15 +22,43 @@ productSchema.add({ id: { type: Number, required: true } });
 const changeLogSchema = new mongoose.Schema(
   {
     id: { type: Number, required: true },
-    action: { type: String, required: true }, // ADD | EDIT | DELETE | QTY | IMPORT
+    action: { type: String, required: true }, // ADD | EDIT | DELETE | QTY | IMPORT | DISPATCH | UNDO_DISPATCH
     tab: { type: String, required: true },
     details: { type: String, default: "" },
     time: { type: String, default: "" },
   },
-  { _id: false }
+  { _id: false },
 );
 
-// One document per "workspace" (a company / store). All 4 tabs live inside it
+// ── NEW: dispatch item + dispatch entry, embedded the same way products are ──
+const dispatchItemSchema = new mongoose.Schema(
+  {
+    productId: { type: Number, required: true }, // matches product.id, not Mongo _id
+    productName: { type: String, required: true },
+    shade: { type: String, default: "" },
+    qtyDispatched: { type: Number, required: true, min: 1 },
+    unit: { type: String, default: "" },
+    prevQty: { type: Number, required: true },
+    newQty: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+const dispatchEntrySchema = new mongoose.Schema(
+  {
+    id: { type: Number, required: true }, // frontend-style numeric id (genId())
+    customerName: { type: String, required: true, trim: true },
+    location: { type: String, required: true },
+    items: { type: [dispatchItemSchema], default: [] },
+    note: { type: String, default: "" },
+    date: { type: String, default: "" },
+    time: { type: String, default: "" },
+    totalQty: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
+// One document per "workspace" (a company / store). All tabs live inside it
 // as sub-fields, mirroring the `stocks` object shape already used in React.
 const stockWorkspaceSchema = new mongoose.Schema(
   {
@@ -54,8 +82,10 @@ const stockWorkspaceSchema = new mongoose.Schema(
       faridabad: { type: String, default: "" },
       shadecard: { type: String, default: "" },
     },
+    // ── NEW — pehle ye field hi missing thi, isliye dispatches save nahi ho rahe the ──
+    dispatches: { type: [dispatchEntrySchema], default: [] },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const StockWorkspace = mongoose.model("StockWorkspace", stockWorkspaceSchema);
