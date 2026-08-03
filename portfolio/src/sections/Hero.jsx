@@ -22,7 +22,6 @@ const officeModules = [
     accent: "from-amber-400 to-orange-400",
     items: [
       { name: "Expense Form", path: "/expense-form", icon: FileText },
-      { name: "Food Bills", path: "/foodbills", icon: ReceiptText },
       { name: "Overdues", path: "/OverduesDashboard", icon: Wallet },
     ],
   },
