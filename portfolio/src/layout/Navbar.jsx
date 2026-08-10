@@ -1,6 +1,8 @@
 // layout/Navbar.jsx
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+// Apple Liquid Glass · Mobile Drawer
+
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   Bars3Icon,
@@ -15,368 +17,1010 @@ import {
   ClipboardDocumentListIcon,
   PlusCircleIcon,
   QueueListIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 
+/* ─── Design tokens (light) ─────────────────────────────────────────── */
+const T = {
+  navBg: "rgba(255,255,255,0.72)",
+  navBgSolid: "rgba(251,251,253,0.96)",
+  dropBg: "rgba(251,251,253,0.98)",
+  border: "rgba(0,0,0,0.08)",
+  borderMd: "rgba(0,0,0,0.13)",
+  text: "#1d1d1f",
+  muted: "#6e6e73",
+  dim: "#aeaeb2",
+  hover: "rgba(0,0,0,0.04)",
+  itemHv: "rgba(0,0,0,0.05)",
+  accent: "#0071e3",
+  accentT: "rgba(0,113,227,0.10)",
+  red: "#ff3b30",
+  redT: "rgba(255,59,48,0.08)",
+  shadow: "0 8px 40px rgba(0,0,0,0.10)",
+  overlay: "rgba(0,0,0,0.40)",
+  font: "-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Helvetica Neue',sans-serif",
+};
+
+/* ─── Category dot colors ───────────────────────────────────────────── */
+const CAT_META = {
+  Finance: "#30d158",
+  "Sales & CRM": "#0071e3",
+  Management: "#bf5af2",
+};
+
+/* ─── Nav data ──────────────────────────────────────────────────────── */
+const NAV = [{ name: "Home", path: "/", icon: HomeIcon }];
+
+const BIZ_CATS = [
+  {
+    label: "Finance",
+    items: [
+      { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
+      { name: "Food Bills", path: "/foodbills", icon: ReceiptPercentIcon },
+      { name: "Overdues", path: "/OverduesDashboard", icon: CurrencyRupeeIcon },
+    ],
+  },
+  {
+    label: "Sales & CRM",
+    items: [
+      { name: "Sales Report", path: "/DailySalesReport", icon: ChartBarIcon },
+      { name: "CRM Activity", path: "/Chemsalescrm", icon: PlusCircleIcon },
+      { name: "Purchase Order", path: "/purchase", icon: PlusCircleIcon },
+      { name: "Price List Customer", path: "/pricelist", icon: PlusCircleIcon },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      {
+        name: "Customer Lists",
+        path: "/Customerlistpage",
+        icon: QueueListIcon,
+      },
+      { name: "Stock List", path: "/Stockmanager", icon: CircleStackIcon },
+      {
+        name: "PDF Documents",
+        path: "/Pdfdocumentmanager",
+        icon: ClipboardDocumentListIcon,
+      },
+      { name: "Notepad", path: "/notepad", icon: ClipboardDocumentListIcon },
+      {
+        name: "Copy Code",
+        path: "/copypaste",
+        icon: ClipboardDocumentListIcon,
+      },
+      {
+        name: "Mind Map Pro",
+        path: "/mindmap",
+        icon: ClipboardDocumentListIcon,
+      },
+    ],
+  },
+];
+
+/* ─── Icon button ───────────────────────────────────────────────────── */
+function IBtn({ children, onClick, title, size = 30 }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      aria-label={title}
+      title={title}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        borderRadius: "8px",
+        background: hov ? T.hover : "transparent",
+        border: "none",
+        cursor: "pointer",
+        color: T.muted,
+        transition: "background 0.18s, color 0.18s",
+        flexShrink: 0,
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ─── Dropdown item ─────────────────────────────────────────────────── */
+function DropItem({ item, onClick }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <Link
+      to={item.path}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "7px",
+        padding: "6px 7px",
+        borderRadius: "7px",
+        textDecoration: "none",
+        color: hov ? T.text : T.muted,
+        background: hov ? T.itemHv : "transparent",
+        fontSize: "13px",
+        letterSpacing: "-0.018em",
+        fontFamily: T.font,
+        transition: "color 0.15s, background 0.15s",
+      }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
+      <item.icon
+        style={{
+          width: "13px",
+          height: "13px",
+          flexShrink: 0,
+          strokeWidth: 1.5,
+        }}
+      />
+      {item.name}
+    </Link>
+  );
+}
+
+/* ─── Main component ────────────────────────────────────────────────── */
 export function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileCat, setMobileCat] = useState(null);
+
+  const dropTimer = useRef(null);
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  /* scroll border */
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 2);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+
+  /* close on route change */
+  useEffect(() => {
+    setMobileOpen(false);
+    setMobileCat(null);
+    setDropOpen(false);
+  }, [location.pathname]);
+
+  /* ESC key */
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.key === "Escape") {
+        setDropOpen(false);
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, []);
+
+  /* lock body scroll on mobile drawer */
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  const isActive = (p) => location.pathname === p;
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  // Navigation items
-  const navItems = [{ name: "Home", path: "/", icon: HomeIcon }];
-
-  // Business items grouped by category
-  const businessCategories = [
-    {
-      label: "Finance",
-      items: [
-        { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
-        { name: "Food Bills", path: "/foodbills", icon: ReceiptPercentIcon },
-        {
-          name: "Overdues",
-          path: "/OverduesDashboard",
-          icon: CurrencyRupeeIcon,
-        },
-      ],
-    },
-    {
-      label: "Sales & CRM",
-      items: [
-        { name: "Sales Report", path: "/DailySalesReport", icon: ChartBarIcon },
-        { name: "CRM Activity", path: "/Chemsalescrm", icon: PlusCircleIcon },
-        { name: "Purchase Order", path: "/purchase", icon: PlusCircleIcon },
-        {
-          name: "Price list Customer",
-          path: "/pricelist",
-          icon: PlusCircleIcon,
-        },
-      ],
-    },
-    {
-      label: "Management",
-      items: [
-        {
-          name: "Customer Lists",
-          path: "/Customerlistpage",
-          icon: QueueListIcon,
-        },
-        { name: "Stock List", path: "/Stockmanager", icon: CircleStackIcon },
-        {
-          name: "PDF Documents",
-          path: "/Pdfdocumentmanager",
-          icon: ClipboardDocumentListIcon,
-        },
-        {
-          name: "Notepad",
-          path: "/notepad",
-          icon: ClipboardDocumentListIcon,
-        },
-        {
-          name: "Copy Code",
-          path: "/copypaste",
-          icon: ClipboardDocumentListIcon,
-        },
-        {
-          name: "Mind Map Pro",
-          path: "/mindmap",
-          icon: ClipboardDocumentListIcon,
-        },
-      ],
-    },
-  ];
-
-  const handleHashLink = (path) => {
-    if (window.location.pathname !== "/") {
-      navigate("/");
-      setTimeout(() => {
-        const element = document.querySelector(path.replace("/#", "#"));
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth" });
-        }
-      }, 100);
-    } else {
-      const element = document.querySelector(path.replace("/#", "#"));
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-    setIsMobileMenuOpen(false);
+  /* dropdown hover with delay gap */
+  const openDrop = () => {
+    clearTimeout(dropTimer.current);
+    setDropOpen(true);
+  };
+  const closeDrop = () => {
+    dropTimer.current = setTimeout(() => setDropOpen(false), 90);
   };
 
-  return (
-    <nav className="bg-white shadow-lg fixed w-full z-50 top-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg"></div>
-              <span className="font-bold text-xl text-gray-900">MyApp</span>
-            </Link>
-          </div>
+  /* shared text-link base style */
+  const base = {
+    fontFamily: T.font,
+    fontSize: "13px",
+    fontWeight: "400",
+    letterSpacing: "-0.022em",
+    textDecoration: "none",
+    transition: "color 0.18s, background 0.18s",
+  };
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
-            {navItems.map((item) => (
-              <React.Fragment key={item.name}>
-                {item.isHash ? (
+  /* ── Render ──────────────────────────────────────────────────────── */
+  return (
+    <>
+      <style>{`
+        @keyframes appleSlideIn {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+        @keyframes appleOverlay {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+      `}</style>
+
+      <nav
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          background: scrolled ? T.navBgSolid : T.navBg,
+          backdropFilter: "saturate(180%) blur(20px)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)",
+          borderBottom: `0.5px solid ${scrolled ? T.border : "transparent"}`,
+          transition: "background 0.3s, border-color 0.3s",
+          fontFamily: T.font,
+        }}
+      >
+        <div
+          style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 20px" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              height: "52px",
+              gap: "16px",
+            }}
+          >
+            {/* ── Logo ──────────────────────────────────────────────── */}
+            <Link
+              to="/"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                textDecoration: "none",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M10 2C10 2 3 7.5 3 12a7 7 0 0014 0C17 7.5 10 2 10 2Z"
+                  fill={T.accent}
+                  opacity=".9"
+                />
+                <path
+                  d="M10 6v8M7 11l3-3 3 3"
+                  stroke="#fff"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span
+                style={{
+                  color: T.text,
+                  fontSize: "17px",
+                  fontWeight: "600",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                MyApp
+              </span>
+            </Link>
+
+            {/* ── Desktop center nav ────────────────────────────────── */}
+            <div
+              className="hidden md:flex"
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "1px",
+              }}
+            >
+              {NAV.map((item) =>
+                item.isHash ? (
                   <button
-                    onClick={() => handleHashLink(item.path)}
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    key={item.name}
+                    onClick={() => {
+                      if (window.location.pathname !== "/") {
+                        navigate("/");
+                        setTimeout(
+                          () =>
+                            document
+                              .querySelector(item.path.replace("/#", "#"))
+                              ?.scrollIntoView({ behavior: "smooth" }),
+                          100,
+                        );
+                      } else {
+                        document
+                          .querySelector(item.path.replace("/#", "#"))
+                          ?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    style={{
+                      ...base,
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      color: T.muted,
+                      border: "none",
+                      cursor: "pointer",
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = T.text;
+                      e.currentTarget.style.background = T.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = T.muted;
+                      e.currentTarget.style.background = "transparent";
+                    }}
                   >
                     {item.name}
                   </button>
                 ) : (
                   <Link
+                    key={item.name}
                     to={item.path}
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    style={{
+                      ...base,
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      color: isActive(item.path) ? T.accent : T.muted,
+                      background: "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = T.text;
+                      e.currentTarget.style.background = T.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isActive(item.path)
+                        ? T.accent
+                        : T.muted;
+                      e.currentTarget.style.background = "transparent";
+                    }}
                   >
                     {item.name}
                   </Link>
-                )}
-              </React.Fragment>
-            ))}
+                ),
+              )}
 
-            {/* Business Dropdown — categorized */}
-            {user && (
-              <div className="relative group">
-                <button className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center">
-                  Business Tools
-                  <svg
-                    className="ml-1 w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {/* Business Tools dropdown */}
+              {user && (
+                <div
+                  style={{ position: "relative" }}
+                  onMouseEnter={openDrop}
+                  onMouseLeave={closeDrop}
+                >
+                  <button
+                    style={{
+                      ...base,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      background: dropOpen ? T.hover : "transparent",
+                      color: dropOpen ? T.text : T.muted,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
+                    Business Tools
+                    <ChevronDownIcon
+                      style={{
+                        width: "11px",
+                        height: "11px",
+                        transform: dropOpen ? "rotate(180deg)" : "none",
+                        transition: "transform 0.2s ease",
+                      }}
                     />
-                  </svg>
-                </button>
+                  </button>
 
-                {/* Multi-column dropdown */}
-                <div className="absolute left-0 mt-2 w-auto min-w-max bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-100">
-                  <div className="flex divide-x divide-gray-100">
-                    {businessCategories.map((category) => (
+                  {/* ── Mega dropdown panel ──────────────────────── */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      left: "50%",
+                      transform: `translateX(-50%) translateY(${dropOpen ? "0" : "5px"})`,
+                      background: T.dropBg,
+                      backdropFilter: "saturate(180%) blur(24px)",
+                      WebkitBackdropFilter: "saturate(180%) blur(24px)",
+                      border: `0.5px solid ${T.border}`,
+                      borderRadius: "14px",
+                      display: "flex",
+                      overflow: "hidden",
+                      zIndex: 200,
+                      opacity: dropOpen ? 1 : 0,
+                      visibility: dropOpen ? "visible" : "hidden",
+                      transition:
+                        "opacity 0.16s ease, visibility 0.16s, transform 0.16s ease",
+                      pointerEvents: dropOpen ? "auto" : "none",
+                      boxShadow: T.shadow,
+                      minWidth: "510px",
+                    }}
+                  >
+                    {BIZ_CATS.map((cat, i) => (
                       <div
-                        key={category.label}
-                        className="py-3 px-4 min-w-[160px]"
+                        key={cat.label}
+                        style={{
+                          flex: 1,
+                          padding: "14px 12px",
+                          borderRight:
+                            i < BIZ_CATS.length - 1
+                              ? `0.5px solid ${T.border}`
+                              : "none",
+                        }}
                       >
-                        {/* Category heading */}
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">
-                          {category.label}
-                        </p>
-                        {category.items.map((item) => (
-                          <Link
-                            key={item.name}
-                            to={item.path}
-                            className="flex items-center px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-md"
+                        {/* Category label */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "0 5px",
+                            marginBottom: "5px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: "5px",
+                              height: "5px",
+                              borderRadius: "50%",
+                              background: CAT_META[cat.label],
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontSize: "10.5px",
+                              fontWeight: "600",
+                              color: T.dim,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              fontFamily: T.font,
+                            }}
                           >
-                            <item.icon className="w-4 h-4 mr-2 flex-shrink-0" />
-                            {item.name}
-                          </Link>
+                            {cat.label}
+                          </span>
+                        </div>
+                        {/* Links */}
+                        {cat.items.map((item) => (
+                          <DropItem key={item.name} item={item} />
                         ))}
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Auth Section */}
-            {user ? (
-              <div className="flex items-center space-x-3">
-                <Link
-                  to="/"
-                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                    {user.profilePic ? (
-                      <img
-                        src={user.profilePic}
-                        alt={user.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-sm font-medium text-white">
-                        {user.name?.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium hidden lg:inline">
-                    {user.name}
-                  </span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-1 text-red-600 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link
-                  to="/login"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 focus:outline-none"
-            >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="h-6 w-6" />
-              ) : (
-                <Bars3Icon className="h-6 w-6" />
               )}
-            </button>
+            </div>
+
+            {/* ── Desktop auth ──────────────────────────────────────── */}
+            <div
+              className="hidden md:flex"
+              style={{
+                alignItems: "center",
+                gap: "2px",
+                flexShrink: 0,
+              }}
+            >
+              {user ? (
+                <>
+                  {/* Avatar + name */}
+                  <Link
+                    to="/"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      textDecoration: "none",
+                      padding: "4px 8px",
+                      borderRadius: "9px",
+                      transition: "background 0.18s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = T.hover)
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    <div
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        background: T.accentT,
+                        border: `0.5px solid ${T.accent}55`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "10px",
+                        fontWeight: "600",
+                        color: T.accent,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {user.profilePic ? (
+                        <img
+                          src={user.profilePic}
+                          alt={user.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        user.name?.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <span
+                      style={{ ...base, color: T.muted }}
+                      className="hidden lg:inline"
+                    >
+                      {user.name}
+                    </span>
+                  </Link>
+
+                  {/* Sign out */}
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      ...base,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "5px 10px",
+                      borderRadius: "7px",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: T.muted,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = T.red;
+                      e.currentTarget.style.background = T.redT;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = T.muted;
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <ArrowRightOnRectangleIcon
+                      style={{ width: "14px", height: "14px" }}
+                    />
+                    <span className="hidden lg:inline">Sign out</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    style={{
+                      ...base,
+                      padding: "5px 10px",
+                      borderRadius: "7px",
+                      color: T.muted,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = T.text;
+                      e.currentTarget.style.background = T.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = T.muted;
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    Sign in
+                  </Link>
+                  {/* Apple pill CTA */}
+                  <Link
+                    to="/register"
+                    style={{
+                      ...base,
+                      padding: "6px 16px",
+                      borderRadius: "980px",
+                      background: T.accent,
+                      color: "#fff",
+                      fontWeight: "500",
+                      transition: "opacity 0.18s",
+                      marginLeft: "4px",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.opacity = "0.84")
+                    }
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    Get started
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* ── Mobile hamburger ──────────────────────────────────── */}
+            <div
+              className="md:hidden"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+                marginLeft: "auto",
+              }}
+            >
+              <IBtn onClick={() => setMobileOpen(true)} title="Menu" size={32}>
+                <Bars3Icon style={{ width: "18px", height: "18px" }} />
+              </IBtn>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navItems.map((item) => (
-              <React.Fragment key={item.name}>
-                {item.isHash ? (
-                  <button
-                    onClick={() => handleHashLink(item.path)}
-                    className="block w-full text-left text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                  >
-                    {item.name}
-                  </button>
-                ) : (
-                  <Link
-                    to={item.path}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                  >
-                    {item.name}
-                  </Link>
-                )}
-              </React.Fragment>
-            ))}
+      {/* ── Mobile overlay ─────────────────────────────────────────────── */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 110,
+            background: T.overlay,
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            animation: "appleOverlay 0.22s ease",
+          }}
+        />
+      )}
 
-            {/* Mobile — Categorized Business Tools */}
-            {user && (
-              <>
-                <div className="border-t border-gray-200 my-2"></div>
+      {/* ── Mobile slide-in drawer ─────────────────────────────────────── */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 120,
+          width: "min(300px, 86vw)",
+          background: T.dropBg,
+          backdropFilter: "saturate(180%) blur(28px)",
+          WebkitBackdropFilter: "saturate(180%) blur(28px)",
+          borderLeft: `0.5px solid ${T.border}`,
+          display: "flex",
+          flexDirection: "column",
+          fontFamily: T.font,
+          transform: mobileOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.3s cubic-bezier(0.32,0,0.67,0)",
+          willChange: "transform",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "16px 18px 14px",
+            borderBottom: `0.5px solid ${T.border}`,
+          }}
+        >
+          <span
+            style={{
+              fontSize: "17px",
+              fontWeight: "600",
+              color: T.text,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Menu
+          </span>
+          <IBtn onClick={() => setMobileOpen(false)} title="Close">
+            <XMarkIcon style={{ width: "16px", height: "16px" }} />
+          </IBtn>
+        </div>
 
-                {businessCategories.map((category) => (
-                  <div key={category.label}>
-                    {/* Toggle category on mobile */}
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
+          {/* Static nav links */}
+          {NAV.map((item) => (
+            <Link
+              key={item.name}
+              to={item.path}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                textDecoration: "none",
+                color: isActive(item.path) ? T.accent : T.text,
+                background: isActive(item.path) ? T.accentT : "transparent",
+                fontSize: "15px",
+                fontWeight: "400",
+                letterSpacing: "-0.022em",
+                transition: "all 0.18s",
+                fontFamily: T.font,
+              }}
+            >
+              <item.icon
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  color: isActive(item.path) ? T.accent : T.muted,
+                  strokeWidth: 1.5,
+                }}
+              />
+              {item.name}
+            </Link>
+          ))}
+
+          {/* Business categories */}
+          {user && (
+            <>
+              <div
+                style={{
+                  height: "0.5px",
+                  background: T.border,
+                  margin: "8px 4px",
+                }}
+              />
+              <div
+                style={{
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  color: T.dim,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  padding: "4px 12px 6px",
+                  fontFamily: T.font,
+                }}
+              >
+                Business Tools
+              </div>
+
+              {BIZ_CATS.map((cat) => {
+                const isOpen = mobileCat === cat.label;
+                return (
+                  <div key={cat.label}>
                     <button
-                      onClick={() =>
-                        setActiveCategory(
-                          activeCategory === category.label
-                            ? null
-                            : category.label,
-                        )
-                      }
-                      className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-500 uppercase tracking-wider"
+                      onClick={() => setMobileCat(isOpen ? null : cat.label)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        background: isOpen ? T.hover : "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: T.text,
+                        fontSize: "15px",
+                        fontWeight: "400",
+                        letterSpacing: "-0.022em",
+                        fontFamily: T.font,
+                        transition: "all 0.15s",
+                      }}
                     >
-                      <span>{category.label}</span>
-                      <svg
-                        className={`w-4 h-4 transition-transform ${
-                          activeCategory === category.label ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
+                        <span
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            background: CAT_META[cat.label],
+                            flexShrink: 0,
+                          }}
                         />
-                      </svg>
+                        {cat.label}
+                      </div>
+                      <ChevronDownIcon
+                        style={{
+                          width: "13px",
+                          height: "13px",
+                          color: T.muted,
+                          transform: isOpen ? "rotate(180deg)" : "none",
+                          transition: "transform 0.2s",
+                        }}
+                      />
                     </button>
 
-                    {activeCategory === category.label && (
-                      <div className="ml-2 border-l border-gray-100 pl-2">
-                        {category.items.map((item) => (
-                          <Link
+                    {isOpen && (
+                      <div
+                        style={{
+                          marginLeft: "20px",
+                          paddingLeft: "12px",
+                          borderLeft: `0.5px solid ${T.border}`,
+                          marginBottom: "4px",
+                        }}
+                      >
+                        {cat.items.map((item) => (
+                          <DropItem
                             key={item.name}
-                            to={item.path}
+                            item={item}
                             onClick={() => {
-                              setIsMobileMenuOpen(false);
-                              setActiveCategory(null);
+                              setMobileOpen(false);
+                              setMobileCat(null);
                             }}
-                            className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                          >
-                            <item.icon className="w-5 h-5 mr-2" />
-                            {item.name}
-                          </Link>
+                          />
                         ))}
                       </div>
                     )}
                   </div>
-                ))}
-              </>
-            )}
-
-            <div className="border-t border-gray-200 my-2"></div>
-
-            {user ? (
-              <>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left text-red-600 hover:text-red-700 px-3 py-2 rounded-md text-base font-medium"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-base font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-base font-medium text-center"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
+                );
+              })}
+            </>
+          )}
         </div>
-      )}
-    </nav>
+
+        {/* Footer — auth */}
+        <div
+          style={{ padding: "12px 14px", borderTop: `0.5px solid ${T.border}` }}
+        >
+          {user ? (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
+              {/* User card */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border: `0.5px solid ${T.border}`,
+                }}
+              >
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: T.accentT,
+                    border: `0.5px solid ${T.accent}55`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: T.accent,
+                    overflow: "hidden",
+                  }}
+                >
+                  {user.profilePic ? (
+                    <img
+                      src={user.profilePic}
+                      alt={user.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    user.name?.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: T.text,
+                      letterSpacing: "-0.022em",
+                    }}
+                  >
+                    {user.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: T.muted,
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    Signed in
+                  </div>
+                </div>
+              </div>
+              {/* Sign out */}
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: T.red,
+                  fontSize: "14px",
+                  letterSpacing: "-0.022em",
+                  fontFamily: T.font,
+                  fontWeight: "400",
+                  transition: "background 0.18s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = T.redT)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <ArrowRightOnRectangleIcon
+                  style={{ width: "15px", height: "15px" }}
+                />
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "7px" }}
+            >
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: "11px",
+                  borderRadius: "12px",
+                  textDecoration: "none",
+                  color: T.accent,
+                  fontSize: "15px",
+                  fontWeight: "500",
+                  border: `0.5px solid ${T.accent}55`,
+                  background: T.accentT,
+                  letterSpacing: "-0.022em",
+                  fontFamily: T.font,
+                }}
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: "11px",
+                  borderRadius: "12px",
+                  textDecoration: "none",
+                  color: "#fff",
+                  fontSize: "15px",
+                  fontWeight: "500",
+                  background: T.accent,
+                  letterSpacing: "-0.022em",
+                  fontFamily: T.font,
+                }}
+              >
+                Get started
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

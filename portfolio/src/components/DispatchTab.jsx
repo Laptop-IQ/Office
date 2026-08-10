@@ -84,6 +84,8 @@ const DispatchTab = forwardRef(function DispatchTab(
   const [confirmUndoDispatch, setConfirmUndoDispatch] = useState(null);
   const [expandedDispatchId, setExpandedDispatchId] = useState(null);
   const [viewInvoiceId, setViewInvoiceId] = useState(null);
+  const [editDispatchId, setEditDispatchId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const logAction = (action, tab, details) => {
@@ -149,6 +151,72 @@ const DispatchTab = forwardRef(function DispatchTab(
     return ms && ml;
   });
 
+  // ── Edit-invoice computed values ─────────────────────────────────────────
+  const editOriginalDispatch = editDispatchId
+    ? dispatches.find((d) => d.id === editDispatchId)
+    : null;
+  const editOriginalItems = editOriginalDispatch
+    ? normD(editOriginalDispatch).items
+    : [];
+
+  // Stock "as if this dispatch never happened" — original qtyDispatched added
+  // back to whatever is currently in stock, so availability shown while
+  // editing is correct instead of already looking short by this invoice.
+  const virtualStock = editForm
+    ? (() => {
+        const base = stocks[editForm.location] || [];
+        const addBack = {};
+        editOriginalItems.forEach((i) => {
+          addBack[String(i.productId)] =
+            (addBack[String(i.productId)] || 0) + i.qtyDispatched;
+        });
+        return base.map((p) => ({
+          ...p,
+          qty: p.qty + (addBack[String(p.id)] || 0),
+        }));
+      })()
+    : [];
+
+  const editSelectedPIds = new Set(
+    (editForm?.items || []).map((i) => String(i.productId)).filter(Boolean),
+  );
+
+  const editItemsEnriched = (editForm?.items || []).map((item) => {
+    const product = item.productId
+      ? virtualStock.find((p) => String(p.id) === String(item.productId))
+      : null;
+    const qty = parseInt(item.qty) || 0;
+    const overLimit = product && qty > 0 ? qty > product.qty : false;
+    const remaining =
+      product && qty > 0 ? product.qty - qty : product ? product.qty : null;
+    const willBeLow =
+      product && remaining !== null && remaining >= 0
+        ? remaining <= product.minQty && remaining > 0
+        : false;
+    const willBeZero = remaining === 0;
+    return {
+      ...item,
+      product,
+      qty,
+      overLimit,
+      remaining,
+      willBeLow,
+      willBeZero,
+    };
+  });
+
+  const editHasAnyOverLimit = editItemsEnriched.some((i) => i.overLimit);
+  const editValidItemCount = editItemsEnriched.filter(
+    (i) => i.product && i.qty > 0 && !i.overLimit,
+  ).length;
+  const editTotalQty = editItemsEnriched
+    .filter((i) => i.product && i.qty > 0 && !i.overLimit)
+    .reduce((s, i) => s + i.qty, 0);
+  const canSaveEdit =
+    editValidItemCount > 0 &&
+    !editHasAnyOverLimit &&
+    (editForm?.customerName || "").trim();
+
   // ── Item management ───────────────────────────────────────────────────────
   const addDispatchItem = () =>
     setDispatchForm((p) => ({ ...p, items: [...p.items, newItem()] }));
@@ -160,6 +228,42 @@ const DispatchTab = forwardRef(function DispatchTab(
     }));
   const updateDispatchItem = (_id, field, value) =>
     setDispatchForm((p) => ({
+      ...p,
+      items: p.items.map((i) => (i._id === _id ? { ...i, [field]: value } : i)),
+    }));
+
+  // ── Edit invoice: open / item management ───────────────────────────────────
+  const openEditDispatch = (d) => {
+    const nd = normD(d);
+    setViewInvoiceId(null);
+    setEditDispatchId(d.id);
+    setEditForm({
+      customerName: d.customerName,
+      date: d.date,
+      note: d.note || "",
+      location: d.location,
+      items: nd.items.map((i) => ({
+        _id: genId(),
+        productId: String(i.productId),
+        shade: i.shade || "",
+        qty: String(i.qtyDispatched),
+      })),
+    });
+  };
+  const closeEditDispatch = () => {
+    setEditDispatchId(null);
+    setEditForm(null);
+  };
+  const addEditItem = () =>
+    setEditForm((p) => ({ ...p, items: [...p.items, newItem()] }));
+  const removeEditItem = (_id) =>
+    setEditForm((p) => ({
+      ...p,
+      items:
+        p.items.length > 1 ? p.items.filter((i) => i._id !== _id) : [newItem()],
+    }));
+  const updateEditItem = (_id, field, value) =>
+    setEditForm((p) => ({
       ...p,
       items: p.items.map((i) => (i._id === _id ? { ...i, [field]: value } : i)),
     }));
@@ -315,11 +419,117 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (viewInvoiceId === d.id) setViewInvoiceId(null);
   };
 
+  // ── Save Edited Invoice ───────────────────────────────────────────────────
+  const handleSaveEditDispatch = async () => {
+    const d = editOriginalDispatch;
+    if (!d || !editForm) return;
+    if (!editForm.customerName.trim())
+      return toast("Customer name required", "error");
+    const toProcess = editItemsEnriched.filter((i) => i.productId || i.qty);
+    if (!toProcess.length) return toast("Koi product select nahi hua", "error");
+    for (const item of toProcess) {
+      if (!item.product) return toast("Ek product select nahi hua", "error");
+      if (item.qty <= 0)
+        return toast(
+          `${item.product?.name || "Product"}: quantity enter karein`,
+          "error",
+        );
+      if (item.overLimit)
+        return toast(
+          `${item.product.name}: sirf ${item.product.qty} ${item.product.unit} available`,
+          "error",
+        );
+    }
+    const pIds = toProcess.map((i) => String(i.productId));
+    if (new Set(pIds).size !== pIds.length)
+      return toast("Ek product dobara select hua hai", "error");
+
+    try {
+      const res = await fetch(`${DISPATCH_API_BASE}/${d.id}`, {
+        method: "PUT",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          customerName: editForm.customerName.trim(),
+          date: editForm.date,
+          note: editForm.note.trim(),
+          items: toProcess.map((i) => ({
+            productId: i.productId,
+            shade: (i.shade || "").trim(),
+            qty: i.qty,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.message || "Update failed", "error");
+      setStocksRaw(data.stocks);
+      setDispatches(data.dispatches);
+      setChangeLog(data.changeLog);
+      setLastUpdated(data.lastUpdated);
+      toast(`✓ Invoice ${getInvNo(d)} updated`);
+    } catch {
+      // Offline: restore what this invoice originally took, then deduct the
+      // edited quantities — so stock stays correct however items changed.
+      setStocksRaw((s) => {
+        const tab = s[editForm.location] || [];
+        const restored = tab.map((p) => {
+          const orig = editOriginalItems.find(
+            (i) => String(i.productId) === String(p.id),
+          );
+          return orig ? { ...p, qty: p.qty + orig.qtyDispatched } : p;
+        });
+        const final = restored.map((p) => {
+          const item = toProcess.find(
+            (i) => String(i.productId) === String(p.id),
+          );
+          return item ? { ...p, qty: p.qty - item.qty } : p;
+        });
+        return { ...s, [editForm.location]: final };
+      });
+
+      const newItems = toProcess.map((i) => ({
+        productId: i.productId,
+        productName: i.product.name,
+        shade: (i.shade || "").trim(),
+        qtyDispatched: i.qty,
+        unit: i.product.unit,
+        prevQty: i.product.qty,
+        newQty: i.product.qty - i.qty,
+      }));
+
+      setDispatches((prev) =>
+        prev.map((x) =>
+          x.id === d.id
+            ? {
+                ...x,
+                customerName: editForm.customerName.trim(),
+                date: editForm.date,
+                note: editForm.note.trim(),
+                items: newItems,
+                totalQty: newItems.reduce((s, i) => s + i.qtyDispatched, 0),
+                edited: true,
+                editedAt: nowStr(),
+              }
+            : x,
+        ),
+      );
+
+      logAction(
+        "EDIT_DISPATCH",
+        editForm.location,
+        `${getInvNo(d)} updated${
+          d.customerName !== editForm.customerName.trim()
+            ? ` — ${d.customerName} → ${editForm.customerName.trim()}`
+            : ""
+        }`,
+      );
+      toast(`✓ Invoice ${getInvNo(d)} updated (offline)`);
+    }
+    closeEditDispatch();
+  };
+
   // ── Export Invoice PDF ────────────────────────────────────────────────────
-  const exportDispatchPDF = () => {
-    if (!filteredDispatches.length)
-      return toast("Koi dispatch record nahi", "error");
-    const invoicePages = filteredDispatches
+  const buildInvoicesPDF = (list) => {
+    const invoicePages = list
       .map((d, di) => {
         const nd = normD(d);
         const tabInfo = TABS.find((t) => t.id === d.location);
@@ -330,14 +540,12 @@ const DispatchTab = forwardRef(function DispatchTab(
         <tr style="background:${ii % 2 ? "#F9FAFB" : "#fff"}">
           <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:11px;color:#6B7280;text-align:center">${ii + 1}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:600">${item.productName}${item.shade ? ` <span style="color:#7C3AED;font-size:10px">(${item.shade})</span>` : ""}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:11px;text-align:center;color:#64748B">${item.prevQty} ${item.unit}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:800;text-align:center;color:#DC2626">−${item.qtyDispatched} ${item.unit}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:700;text-align:center;color:${item.newQty === 0 ? "#DC2626" : item.newQty <= 5 ? "#D97706" : "#059669"}">${item.newQty} ${item.unit}${item.newQty === 0 ? " ✕" : ""}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:800;text-align:center;color:#DC2626;white-space:nowrap">${item.qtyDispatched} ${item.unit}</td>
         </tr>`,
           )
           .join("");
         return `
-        <div style="page-break-after:${di < filteredDispatches.length - 1 ? "always" : "avoid"};margin-bottom:40px">
+        <div style="page-break-after:${di < list.length - 1 ? "always" : "avoid"};margin-bottom:40px">
           <div style="background:#0F172A;padding:20px 28px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">
             <div>
               <div style="color:#F8FAFC;font-size:18px;font-weight:900;letter-spacing:-.3px">⚗ DISPATCH INVOICE</div>
@@ -346,6 +554,7 @@ const DispatchTab = forwardRef(function DispatchTab(
             <div style="text-align:right">
               <div style="color:#64748B;font-size:9px;text-transform:uppercase;letter-spacing:.1em">Invoice No.</div>
               <div style="color:#F1F5F9;font-size:16px;font-weight:800;font-family:monospace;margin-top:3px">${getInvNo(d)}</div>
+              ${d.edited ? `<div style="color:#FCD34D;font-size:9px;margin-top:4px">✏ Edited${d.editedAt ? ` · ${d.editedAt}` : ""}</div>` : ""}
             </div>
           </div>
           <div style="border:1px solid #E2E8F0;border-top:none;border-radius:0 0 10px 10px;overflow:hidden">
@@ -370,17 +579,17 @@ const DispatchTab = forwardRef(function DispatchTab(
                 <tr style="background:#F8FAFC">
                   <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;width:36px">#</th>
                   <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:left">Product / Chemical</th>
-                  <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">Prev Stock</th>
-                  <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">Dispatched</th>
-                  <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">Balance</th>
+                  <th style="padding:9px 12px;font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;width:110px;white-space:nowrap">Dispatched</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
               <tfoot>
                 <tr style="background:#0F172A">
-                  <td colspan="3" style="padding:12px 20px;color:#64748B;font-size:11px">${nd.items.length} line item${nd.items.length > 1 ? "s" : ""}</td>
-                  <td style="padding:12px 12px;text-align:center;color:#FCA5A5;font-size:14px;font-weight:900">−${totalQ}</td>
-                  <td style="padding:12px 12px;text-align:center;color:#6EE7B7;font-size:11px;font-weight:700">units</td>
+                  <td colspan="2" style="padding:12px 20px;color:#64748B;font-size:11px">${nd.items.length} line item${nd.items.length > 1 ? "s" : ""}</td>
+                  <td style="padding:12px 12px;text-align:center;white-space:nowrap">
+                    <span style="color:#FCA5A5;font-size:14px;font-weight:900">${totalQ}</span>
+                    <span style="color:#6EE7B7;font-size:11px;font-weight:700;margin-left:4px">units</span>
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -389,7 +598,7 @@ const DispatchTab = forwardRef(function DispatchTab(
       })
       .join("");
 
-    const totalDispatched = filteredDispatches.reduce(
+    const totalDispatched = list.reduce(
       (s, d) => s + normD(d).items.reduce((ss, i) => ss + i.qtyDispatched, 0),
       0,
     );
@@ -397,7 +606,7 @@ const DispatchTab = forwardRef(function DispatchTab(
       <style>@media print{.no-print{display:none}@page{margin:16mm}}body{font-family:Arial,sans-serif;padding:20px;margin:0;font-size:12px}</style>
       </head><body>
       <div class="no-print" style="background:#0F172A;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-weight:700">⚗ ${companyName} · ${filteredDispatches.length} Invoice${filteredDispatches.length > 1 ? "s" : ""} · Total ${totalDispatched} units dispatched</span>
+        <span style="font-weight:700">⚗ ${companyName} · ${list.length} Invoice${list.length > 1 ? "s" : ""} · Total ${totalDispatched} units dispatched</span>
         <button onclick="window.print()" style="background:#fff;color:#0F172A;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print / Save PDF</button>
       </div>
       ${invoicePages}
@@ -405,6 +614,19 @@ const DispatchTab = forwardRef(function DispatchTab(
     const w = window.open("", "_blank", "width=900,height=800");
     w.document.write(html);
     w.document.close();
+  };
+
+  const exportDispatchPDF = () => {
+    if (!filteredDispatches.length)
+      return toast("Koi dispatch record nahi", "error");
+    buildInvoicesPDF(filteredDispatches);
+  };
+
+  // Single-invoice PDF — used by the View Invoice modal's PDF button so a
+  // customer copy can be printed straight from that invoice's own view.
+  const exportSingleInvoicePDF = (d) => {
+    if (!d) return;
+    buildInvoicesPDF([d]);
   };
 
   // ── Export Excel ──────────────────────────────────────────────────────────
@@ -430,6 +652,12 @@ const DispatchTab = forwardRef(function DispatchTab(
           "Stock After": item.newQty,
           Location: ii === 0 ? locLabel : "",
           Note: ii === 0 ? d.note || "" : "",
+          Edited:
+            ii === 0
+              ? d.edited
+                ? `Yes${d.editedAt ? ` (${d.editedAt})` : ""}`
+                : "No"
+              : "",
         });
       });
     });
@@ -712,6 +940,21 @@ const DispatchTab = forwardRef(function DispatchTab(
                       >
                         {getInvNo(viewInvoice)}
                       </div>
+                      {viewInvoice.edited && (
+                        <div
+                          style={{
+                            color: "#C4B5FD",
+                            fontSize: 9,
+                            marginTop: 3,
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✏ Edited
+                          {viewInvoice.editedAt
+                            ? ` · ${viewInvoice.editedAt}`
+                            : ""}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => setViewInvoiceId(null)}
@@ -814,9 +1057,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <tr>
                       <th style={TH({ textAlign: "center", width: 32 })}>#</th>
                       <th style={TH({ textAlign: "left" })}>Product</th>
-                      <th style={TH({ textAlign: "center" })}>Before</th>
                       <th style={TH({ textAlign: "center" })}>Dispatched</th>
-                      <th style={TH({ textAlign: "center" })}>Balance</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -861,11 +1102,6 @@ const DispatchTab = forwardRef(function DispatchTab(
                             </span>
                           )}
                         </td>
-                        <td
-                          style={TD({ textAlign: "center", color: "#64748B" })}
-                        >
-                          {item.prevQty} {item.unit}
-                        </td>
                         <td style={TD({ textAlign: "center" })}>
                           <span
                             style={{
@@ -874,7 +1110,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                               fontSize: 13,
                             }}
                           >
-                            −{item.qtyDispatched}
+                            {item.qtyDispatched}
                           </span>
                           <span
                             style={{
@@ -886,30 +1122,13 @@ const DispatchTab = forwardRef(function DispatchTab(
                             {item.unit}
                           </span>
                         </td>
-                        <td style={TD({ textAlign: "center" })}>
-                          <span
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 12,
-                              color:
-                                item.newQty === 0
-                                  ? "#DC2626"
-                                  : item.newQty <= 5
-                                    ? "#D97706"
-                                    : "#059669",
-                            }}
-                          >
-                            {item.newQty} {item.unit}
-                            {item.newQty === 0 ? " ✕" : ""}
-                          </span>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr style={{ background: "#0F172A" }}>
                       <td
-                        colSpan={3}
+                        colSpan={2}
                         style={{
                           padding: "12px 20px",
                           color: "#64748B",
@@ -927,25 +1146,54 @@ const DispatchTab = forwardRef(function DispatchTab(
                             fontSize: 15,
                           }}
                         >
-                          −{totalQ}
+                          {totalQ}
                         </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 12px",
-                          textAlign: "center",
-                          color: "#6EE7B7",
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}
-                      >
-                        units
+                        <span
+                          style={{
+                            color: "#6EE7B7",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            marginLeft: 4,
+                          }}
+                        >
+                          units
+                        </span>
                       </td>
                     </tr>
                   </tfoot>
                 </table>
                 {/* Actions */}
                 <div style={{ padding: "14px 20px", display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => openEditDispatch(viewInvoice)}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 9,
+                      border: "1.5px solid #DDD6FE",
+                      background: "#F5F3FF",
+                      color: "#6D28D9",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✏ Edit
+                  </button>
+                  <button
+                    onClick={() => exportSingleInvoicePDF(viewInvoice)}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 9,
+                      border: "1.5px solid #0F172A",
+                      background: "#0F172A",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    📄 PDF
+                  </button>
                   <button
                     onClick={() => {
                       setViewInvoiceId(null);
@@ -979,6 +1227,569 @@ const DispatchTab = forwardRef(function DispatchTab(
                     }}
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Edit Invoice Modal ────────────────────────────────────────── */}
+      {editForm &&
+        (() => {
+          const d = editOriginalDispatch;
+          if (!d) return null;
+          const tabInfo = TABS.find((t) => t.id === editForm.location);
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 203,
+                background: "rgba(0,0,0,.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeEditDispatch();
+              }}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 14,
+                  width: "100%",
+                  maxWidth: 640,
+                  maxHeight: "92vh",
+                  overflowY: "auto",
+                  boxShadow: "0 24px 64px rgba(0,0,0,.25)",
+                }}
+              >
+                {/* Header */}
+                <div
+                  style={{
+                    background: "#0F172A",
+                    padding: "18px 24px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: 15,
+                        fontWeight: 900,
+                      }}
+                    >
+                      ✏ EDIT INVOICE
+                    </div>
+                    <div
+                      style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
+                    >
+                      Chemical Stock Outward Record
+                    </div>
+                  </div>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <div style={{ textAlign: "right" }}>
+                      <div
+                        style={{
+                          color: "#64748B",
+                          fontSize: 9,
+                          letterSpacing: ".1em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Invoice No.
+                      </div>
+                      <div
+                        style={{
+                          color: "#F1F5F9",
+                          fontSize: 13,
+                          fontWeight: 800,
+                          fontFamily: "monospace",
+                          marginTop: 2,
+                        }}
+                      >
+                        {getInvNo(d)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeEditDispatch}
+                      style={{
+                        background: "rgba(255,255,255,.1)",
+                        border: "none",
+                        borderRadius: 7,
+                        width: 28,
+                        height: 28,
+                        cursor: "pointer",
+                        color: "#94A3B8",
+                        fontSize: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                {/* From / To */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    borderBottom: "1px solid #E5E7EB",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderRight: "1px solid #E5E7EB",
+                    }}
+                  >
+                    <div style={labelStyle}>From</div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: "#0F172A",
+                      }}
+                    >
+                      {companyName}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}
+                    >
+                      {tabInfo?.icon} {tabInfo?.label || editForm.location}{" "}
+                      <span style={{ color: "#CBD5E1" }}>(fixed)</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: "14px 20px" }}>
+                    <div style={labelStyle}>Dispatch To *</div>
+                    <input
+                      value={editForm.customerName}
+                      onChange={(e) =>
+                        setEditForm((p) => ({
+                          ...p,
+                          customerName: e.target.value,
+                        }))
+                      }
+                      style={{
+                        ...S.input(
+                          editForm.customerName ? "#2563EB" : "#EF4444",
+                        ),
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                      placeholder="Customer / Party Name"
+                    />
+                  </div>
+                </div>
+
+                {/* Date / Note */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    borderBottom: "2px solid #E5E7EB",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 20px",
+                      borderRight: "1px solid #E5E7EB",
+                    }}
+                  >
+                    <div style={labelStyle}>Invoice Date</div>
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) =>
+                        setEditForm((p) => ({ ...p, date: e.target.value }))
+                      }
+                      style={{
+                        ...S.input(),
+                        fontSize: 12,
+                        padding: "7px 10px",
+                      }}
+                    />
+                  </div>
+                  <div style={{ padding: "12px 20px" }}>
+                    <div style={labelStyle}>Reference / Note</div>
+                    <input
+                      value={editForm.note}
+                      onChange={(e) =>
+                        setEditForm((p) => ({ ...p, note: e.target.value }))
+                      }
+                      style={{
+                        ...S.input(),
+                        fontSize: 12,
+                        padding: "7px 10px",
+                      }}
+                      placeholder="Order no., PO ref., batch…"
+                    />
+                  </div>
+                </div>
+
+                {/* Line Items Table */}
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={TH({ textAlign: "center", width: 32 })}>#</th>
+                      <th style={TH({ textAlign: "left" })}>
+                        Product / Chemical
+                      </th>
+                      <th style={TH({ textAlign: "center", width: 80 })}>
+                        Available
+                      </th>
+                      <th style={TH({ textAlign: "center", width: 100 })}>
+                        Qty
+                      </th>
+                      <th style={TH({ textAlign: "center", width: 100 })}>
+                        After
+                      </th>
+                      <th
+                        style={{
+                          width: 32,
+                          background: "#F8FAFC",
+                          borderBottom: "2px solid #E2E8F0",
+                        }}
+                      ></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editItemsEnriched.map((item, idx) => {
+                      const avail = item.product?.qty ?? null;
+                      const isDup =
+                        item.productId &&
+                        editForm.items.filter(
+                          (i) => i.productId === item.productId,
+                        ).length > 1;
+                      const rowErr = item.overLimit || isDup;
+                      const sc = item.overLimit
+                        ? "#DC2626"
+                        : item.willBeZero
+                          ? "#DC2626"
+                          : item.willBeLow
+                            ? "#D97706"
+                            : "#059669";
+                      const stIcon = item.overLimit
+                        ? "✕ OVER"
+                        : item.willBeZero
+                          ? "🚫 OUT"
+                          : item.willBeLow
+                            ? "⚠ LOW"
+                            : "✓ OK";
+                      return (
+                        <tr
+                          key={item._id}
+                          style={{
+                            background: rowErr
+                              ? "#FFF5F5"
+                              : idx % 2
+                                ? "#FAFAFA"
+                                : "#fff",
+                            borderBottom: "1px solid #F1F5F9",
+                          }}
+                        >
+                          <td
+                            style={TD({
+                              textAlign: "center",
+                              color: "#94A3B8",
+                              fontSize: 11,
+                            })}
+                          >
+                            {idx + 1}
+                          </td>
+                          <td style={TD()}>
+                            <select
+                              value={item.productId}
+                              onChange={(e) => {
+                                updateEditItem(
+                                  item._id,
+                                  "productId",
+                                  e.target.value,
+                                );
+                                updateEditItem(item._id, "qty", "");
+                              }}
+                              style={{
+                                ...S.input(
+                                  rowErr
+                                    ? "#EF4444"
+                                    : item.productId
+                                      ? "#2563EB"
+                                      : undefined,
+                                ),
+                                fontSize: 12,
+                                padding: "7px 9px",
+                                appearance: "auto",
+                              }}
+                            >
+                              <option value="">— Select Product —</option>
+                              {virtualStock.map((p) => {
+                                const isDisabledDup =
+                                  editSelectedPIds.has(String(p.id)) &&
+                                  String(p.id) !== String(item.productId);
+                                return (
+                                  <option
+                                    key={p.id}
+                                    value={p.id}
+                                    disabled={isDisabledDup || p.qty === 0}
+                                    style={{
+                                      color:
+                                        p.qty === 0
+                                          ? "#DC2626"
+                                          : isDisabledDup
+                                            ? "#94A3B8"
+                                            : "inherit",
+                                    }}
+                                  >
+                                    {p.name}
+                                    {p.qty === 0
+                                      ? " (OUT)"
+                                      : isDisabledDup
+                                        ? " ✓ added"
+                                        : ""}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {isDup && (
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  color: "#DC2626",
+                                  fontWeight: 700,
+                                  marginTop: 3,
+                                }}
+                              >
+                                ⚠ Already added above
+                              </div>
+                            )}
+                          </td>
+                          <td style={TD({ textAlign: "center" })}>
+                            {item.product ? (
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color:
+                                    avail === 0
+                                      ? "#DC2626"
+                                      : avail <= item.product.minQty
+                                        ? "#D97706"
+                                        : "#0F172A",
+                                  fontSize: 13,
+                                }}
+                              >
+                                {avail}
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    color: "#94A3B8",
+                                    marginLeft: 3,
+                                  }}
+                                >
+                                  {item.product.unit}
+                                </span>
+                              </span>
+                            ) : (
+                              <span style={{ color: "#CBD5E1" }}>—</span>
+                            )}
+                          </td>
+                          <td style={TD({ textAlign: "center" })}>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={item.qty}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "" || /^\d+$/.test(v))
+                                  updateEditItem(item._id, "qty", v);
+                              }}
+                              style={{
+                                ...S.input(
+                                  item.overLimit
+                                    ? "#EF4444"
+                                    : item.qty &&
+                                        item.product &&
+                                        !item.overLimit
+                                      ? "#059669"
+                                      : undefined,
+                                ),
+                                fontSize: 13,
+                                fontWeight: 700,
+                                textAlign: "center",
+                                padding: "7px 10px",
+                              }}
+                              placeholder="0"
+                              disabled={!item.productId}
+                            />
+                            {item.overLimit && (
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  color: "#DC2626",
+                                  fontWeight: 700,
+                                  marginTop: 2,
+                                }}
+                              >
+                                Max {avail}
+                              </div>
+                            )}
+                          </td>
+                          <td style={TD({ textAlign: "center" })}>
+                            {item.product && item.qty > 0 ? (
+                              <div>
+                                <span
+                                  style={{
+                                    fontWeight: 800,
+                                    fontSize: 13,
+                                    color: sc,
+                                  }}
+                                >
+                                  {item.overLimit ? "—" : item.remaining}
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      color: "#94A3B8",
+                                      marginLeft: 2,
+                                    }}
+                                  >
+                                    {item.product.unit}
+                                  </span>
+                                </span>
+                                <div style={{ marginTop: 3 }}>
+                                  <span
+                                    style={{
+                                      background: item.overLimit
+                                        ? "#FEE2E2"
+                                        : item.willBeZero
+                                          ? "#FEE2E2"
+                                          : item.willBeLow
+                                            ? "#FEF3C7"
+                                            : "#D1FAE5",
+                                      color: sc,
+                                      padding: "1px 6px",
+                                      borderRadius: 5,
+                                      fontSize: 9,
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    {stIcon}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ color: "#CBD5E1", fontSize: 12 }}>
+                                —
+                              </span>
+                            )}
+                          </td>
+                          <td style={TD({ textAlign: "center", width: 32 })}>
+                            <button
+                              onClick={() => removeEditItem(item._id)}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: 6,
+                                border: "1px solid #E2E8F0",
+                                background: "#F8FAFC",
+                                color: "#94A3B8",
+                                cursor: "pointer",
+                                fontSize: 15,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: "1px dashed #E2E8F0" }}>
+                      <td colSpan={6} style={{ padding: "8px 16px" }}>
+                        <button
+                          onClick={addEditItem}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            background: "none",
+                            border: "1.5px dashed #CBD5E1",
+                            borderRadius: 7,
+                            padding: "6px 14px",
+                            cursor: "pointer",
+                            color: "#64748B",
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ＋ Add Line Item
+                        </button>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Footer: totals + actions */}
+                <div
+                  style={{
+                    padding: "14px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    borderTop: "1px solid #E5E7EB",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ fontSize: 11, color: "#64748B", flex: 1 }}>
+                    {editValidItemCount > 0 ? (
+                      `${editValidItemCount} line item${editValidItemCount > 1 ? "s" : ""} · ${editTotalQty} units`
+                    ) : (
+                      <span style={{ color: "#EF4444" }}>No valid items</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={closeEditDispatch}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 9,
+                      border: "1.5px solid #E2E8F0",
+                      background: "#fff",
+                      color: "#374151",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEditDispatch}
+                    disabled={!canSaveEdit}
+                    style={{
+                      padding: "10px 20px",
+                      borderRadius: 9,
+                      border: "none",
+                      background: canSaveEdit ? "#2563EB" : "#CBD5E1",
+                      color: canSaveEdit ? "#fff" : "#94A3B8",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: canSaveEdit ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    💾 Save Changes
                   </button>
                 </div>
               </div>
@@ -1827,6 +2638,18 @@ const DispatchTab = forwardRef(function DispatchTab(
                             Ref: {d.note}
                           </div>
                         )}
+                        {d.edited && (
+                          <div
+                            style={{
+                              fontSize: 9,
+                              color: "#7C3AED",
+                              marginTop: 1,
+                              fontWeight: 700,
+                            }}
+                          >
+                            ✏ Edited{d.editedAt ? ` · ${d.editedAt}` : ""}
+                          </div>
+                        )}
                       </td>
                       <td
                         style={{
@@ -1927,6 +2750,21 @@ const DispatchTab = forwardRef(function DispatchTab(
                             View
                           </button>
                           <button
+                            onClick={() => openEditDispatch(d)}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 7,
+                              border: "1.5px solid #DDD6FE",
+                              background: "#F5F3FF",
+                              color: "#6D28D9",
+                              cursor: "pointer",
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => setConfirmUndoDispatch(d)}
                             style={{
                               padding: "5px 10px",
@@ -2003,33 +2841,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     letterSpacing: ".06em",
                                   }}
                                 >
-                                  Before
-                                </th>
-                                <th
-                                  style={{
-                                    padding: "7px 12px",
-                                    fontSize: 9,
-                                    color: "#BFDBFE",
-                                    fontWeight: 700,
-                                    textAlign: "center",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".06em",
-                                  }}
-                                >
                                   Dispatched
-                                </th>
-                                <th
-                                  style={{
-                                    padding: "7px 12px",
-                                    fontSize: 9,
-                                    color: "#BFDBFE",
-                                    fontWeight: 700,
-                                    textAlign: "center",
-                                    textTransform: "uppercase",
-                                    letterSpacing: ".06em",
-                                  }}
-                                >
-                                  Balance
                                 </th>
                               </tr>
                             </thead>
@@ -2082,16 +2894,6 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     style={{
                                       padding: "8px 12px",
                                       textAlign: "center",
-                                      color: "#64748B",
-                                      fontSize: 12,
-                                    }}
-                                  >
-                                    {item.prevQty} {item.unit}
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "8px 12px",
-                                      textAlign: "center",
                                     }}
                                   >
                                     <span
@@ -2100,7 +2902,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                         color: "#DC2626",
                                       }}
                                     >
-                                      −{item.qtyDispatched}
+                                      {item.qtyDispatched}
                                     </span>
                                     <span
                                       style={{
@@ -2110,28 +2912,6 @@ const DispatchTab = forwardRef(function DispatchTab(
                                       }}
                                     >
                                       {item.unit}
-                                    </span>
-                                  </td>
-                                  <td
-                                    style={{
-                                      padding: "8px 12px",
-                                      textAlign: "center",
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        fontWeight: 800,
-                                        fontSize: 12,
-                                        color:
-                                          item.newQty === 0
-                                            ? "#DC2626"
-                                            : item.newQty <= 5
-                                              ? "#D97706"
-                                              : "#059669",
-                                      }}
-                                    >
-                                      {item.newQty} {item.unit}
-                                      {item.newQty === 0 ? " ✕" : ""}
                                     </span>
                                   </td>
                                 </tr>

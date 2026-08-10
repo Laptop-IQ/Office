@@ -575,7 +575,9 @@ const IS = {
   boxSizing: "border-box",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
+  colorScheme: "dark", // ← ADD THIS
 };
+
 const IH = {
   ...IS,
   borderColor: "#F59E0B",
@@ -3493,6 +3495,20 @@ const DailySalesReport = () => {
     }
     return records;
   }, [records, activeFilter, filterStart, filterEnd]);
+
+  const uniqueLatestRecords = useMemo(() => {
+    const seen = {};
+    for (const r of filteredByDate) {
+      if (!r.customer) continue;
+      if (
+        !seen[r.customer] ||
+        new Date(r.date) > new Date(seen[r.customer].date)
+      ) {
+        seen[r.customer] = r;
+      }
+    }
+    return Object.values(seen);
+  }, [filteredByDate]);
   const filteredRecords = filteredByDate.filter((r) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -3509,12 +3525,15 @@ const DailySalesReport = () => {
         filteredByDate.length
       ).toFixed(1)
     : "0.0";
-  const totalPot = filteredByDate
-    .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
-    .toFixed(1);
-  const totalYTD = filteredByDate
-    .reduce((s, r) => s + toNum(r.ytd), 0)
-    .toFixed(1);
+
+    const totalPot = uniqueLatestRecords
+      .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
+      .toFixed(1);
+
+const totalYTD = uniqueLatestRecords
+  .reduce((s, r) => s + toNum(r.ytd), 0)
+  .toFixed(1);
+
   const today = new Date().toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
