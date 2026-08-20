@@ -1,5 +1,3 @@
-// ChemicalStockManager.jsx — main component (stock management + orchestration)
-// Dispatch logic lives in DispatchTab.jsx; shared constants/utils in shared.jsx
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
@@ -22,6 +20,31 @@ import {
   FormField,
 } from "./shared";
 import DispatchTab from "./DispatchTab";
+
+const EMPTY_PRODUCT_PKG = {
+  ...EMPTY_PRODUCT,
+  packageSize: "",
+  packageCount: "",
+};
+
+const computePkgQty = (packageSize, packageCount) => {
+  const size = parseInt(packageSize, 10);
+  const count = parseInt(packageCount, 10);
+  if (
+    packageSize !== "" &&
+    !isNaN(size) &&
+    size > 0 &&
+    packageCount !== "" &&
+    !isNaN(count) &&
+    count >= 0
+  ) {
+    return size * count;
+  }
+  return null;
+};
+
+const isPkgTracked = (row) =>
+  !!row && computePkgQty(row.packageSize, row.packageCount) !== null;
 
 /* ── Permanent localStorage storage ─────────────────────────────────────────── */
 const LS_KEY = "chem_stock_app_v1";
@@ -121,6 +144,7 @@ const exportPDF = (
         <span style="background:${cat?.bg || "#F3F4F6"};color:${cat?.color || "#555"};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${cat?.label || p.category || ""}</span>
       </td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;font-weight:700;text-align:center;color:${sc}">${p.qty} ${p.unit || ""}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:10px;text-align:center;color:#6B7280">${isPkgTracked(p) ? `${p.packageCount} × ${p.packageSize}${p.unit || ""}` : "—"}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;font-size:11px;text-align:center;color:#6B7280">${p.minQty} ${p.unit || ""}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:center">
         <span style="background:${isZero ? "#FEE2E2" : isLow ? "#FEF3C7" : "#D1FAE5"};color:${sc};padding:2px 8px;border-radius:10px;font-weight:700;font-size:10px">${st}</span>
@@ -144,7 +168,7 @@ const exportPDF = (
       <div class="sb" style="background:#FEE2E2;color:#991B1B"><strong style="font-size:20px">${outCount}</strong><br><span style="font-size:11px">Out of Stock</span></div>
     </div>
     <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:8px 20px;background:#0F172A;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">🖨 Print / Save PDF</button>
-    <table><thead><tr><th>#</th>${filterLow ? "<th>Location</th>" : ""}<th>Product Name</th><th>Category</th><th>Qty</th><th>Min Qty</th><th>Status</th><th>Reorder Note</th></tr></thead>
+    <table><thead><tr><th>#</th>${filterLow ? "<th>Location</th>" : ""}<th>Product Name</th><th>Category</th><th>Qty</th><th>Package</th><th>Min Qty</th><th>Status</th><th>Reorder Note</th></tr></thead>
     <tbody>${rows}</tbody></table></body></html>`;
 
   const w = window.open("", "_blank", "width=1100,height=800");
@@ -172,7 +196,7 @@ export default function ChemicalStockManager() {
   const [showLowOnly, setShowLowOnly] = useState(false);
   const [editRow, setEditRow] = useState(null);
   const [addMode, setAddMode] = useState(false);
-  const [newRow, setNewRow] = useState(EMPTY_PRODUCT);
+  const [newRow, setNewRow] = useState(EMPTY_PRODUCT_PKG);
   const [toastMsg, setToastMsg] = useState(null);
   const [importMode, setImportMode] = useState("manual");
   const [confirmDel, setConfirmDel] = useState(null);
@@ -327,10 +351,14 @@ export default function ChemicalStockManager() {
       qty: parseInt(newRow.qty) || 0,
       minQty: parseInt(newRow.minQty) || 0,
       category: newRow.category || getCategory(newRow.name),
+      packageSize:
+        newRow.packageSize !== "" ? parseInt(newRow.packageSize) || "" : "",
+      packageCount:
+        newRow.packageCount !== "" ? parseInt(newRow.packageCount) || 0 : "",
     };
     setStocks((s) => ({ ...s, [activeTab]: [...s[activeTab], p] }));
     logAction("ADD", activeTab, `"${p.name}" added (QT: ${p.qty} ${p.unit})`);
-    setNewRow(EMPTY_PRODUCT);
+    setNewRow(EMPTY_PRODUCT_PKG);
     setAddMode(false);
     toast(`"${p.name}" added ✓`);
   };
@@ -341,6 +369,10 @@ export default function ChemicalStockManager() {
       ...editRow,
       qty: parseInt(editRow.qty) || 0,
       minQty: parseInt(editRow.minQty) || 0,
+      packageSize:
+        editRow.packageSize !== "" ? parseInt(editRow.packageSize) || "" : "",
+      packageCount:
+        editRow.packageCount !== "" ? parseInt(editRow.packageCount) || 0 : "",
     };
     const prev = current.find((p) => p.id === editRow.id);
     setStocks((s) => ({
@@ -374,6 +406,22 @@ export default function ChemicalStockManager() {
   const nudgeQty = (id, delta) => {
     const p = current.find((x) => x.id === id);
     if (!p) return;
+    if (isPkgTracked(p)) {
+      const newCount = Math.max(0, (parseInt(p.packageCount, 10) || 0) + delta);
+      const newQty = p.packageSize * newCount;
+      setStocks((s) => ({
+        ...s,
+        [activeTab]: s[activeTab].map((x) =>
+          x.id === id ? { ...x, qty: newQty, packageCount: newCount } : x,
+        ),
+      }));
+      logAction(
+        "QTY",
+        activeTab,
+        `"${p.name}" Packages: ${p.packageCount} → ${newCount} (QT: ${p.qty} → ${newQty})`,
+      );
+      return;
+    }
     const newQty = Math.max(0, p.qty + delta);
     setStocks((s) => ({
       ...s,
@@ -410,6 +458,8 @@ export default function ChemicalStockManager() {
               expiry: "",
               supplier: "",
               reorderNote: "",
+              packageSize: "",
+              packageCount: "",
             }));
           if (!imported.length) return toast("No valid data found", "error");
           setStocks((s) => ({
@@ -441,6 +491,8 @@ export default function ChemicalStockManager() {
         QT: p.qty,
         Unit: p.unit,
         "Min QT": p.minQty,
+        "Package Size": p.packageSize || "",
+        "No. of Packages": p.packageCount || "",
         Status: p.qty <= p.minQty ? "LOW" : "OK",
         "Reorder Note": p.reorderNote || "",
       })),
@@ -613,17 +665,75 @@ export default function ChemicalStockManager() {
                   />
                 </FormField>
               </div>
-              <FormField label="Quantity *">
+              <FormField label="Package Size">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={String(drawerData.packageSize ?? "")}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d+$/.test(v))
+                      setDrawer((r) => {
+                        const q = computePkgQty(v, r.packageCount);
+                        return {
+                          ...r,
+                          packageSize: v,
+                          qty: q !== null ? String(q) : r.qty,
+                        };
+                      });
+                  }}
+                  style={S.input()}
+                  placeholder="e.g. 25"
+                />
+              </FormField>
+              <FormField label="No. of Packages">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={String(drawerData.packageCount ?? "")}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d+$/.test(v))
+                      setDrawer((r) => {
+                        const q = computePkgQty(r.packageSize, v);
+                        return {
+                          ...r,
+                          packageCount: v,
+                          qty: q !== null ? String(q) : r.qty,
+                        };
+                      });
+                  }}
+                  style={S.input()}
+                  placeholder="e.g. 10"
+                />
+              </FormField>
+              <FormField
+                label={
+                  isPkgTracked(drawerData)
+                    ? `Quantity (= ${drawerData.packageCount} × ${drawerData.packageSize}${drawerData.unit || ""})`
+                    : "Quantity *"
+                }
+              >
                 <input
                   type="text"
                   inputMode="numeric"
                   value={String(drawerData.qty ?? "")}
+                  disabled={isPkgTracked(drawerData)}
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v === "" || /^\d+$/.test(v))
                       setDrawer((r) => ({ ...r, qty: v }));
                   }}
-                  style={S.input()}
+                  style={{
+                    ...S.input(),
+                    ...(isPkgTracked(drawerData)
+                      ? {
+                          background: "#F1F5F9",
+                          opacity: 0.6,
+                          cursor: "not-allowed",
+                        }
+                      : {}),
+                  }}
                   placeholder="0"
                 />
               </FormField>
@@ -828,6 +938,14 @@ export default function ChemicalStockManager() {
                 isZero = detailRow.qty === 0;
               const fields = [
                 ["Quantity", `${detailRow.qty} ${detailRow.unit || ""}`],
+                ...(isPkgTracked(detailRow)
+                  ? [
+                      [
+                        "Package Size",
+                        `${detailRow.packageCount} × ${detailRow.packageSize} ${detailRow.unit || ""}`,
+                      ],
+                    ]
+                  : []),
                 ["Min Quantity", `${detailRow.minQty} ${detailRow.unit || ""}`],
                 ["Category", cat?.label || detailRow.category],
                 [
@@ -1777,7 +1895,7 @@ export default function ChemicalStockManager() {
               <button
                 onClick={() => {
                   setAddMode(true);
-                  setNewRow(EMPTY_PRODUCT);
+                  setNewRow(EMPTY_PRODUCT_PKG);
                 }}
                 style={S.smBtn("#2563EB", "#fff", "none")}
               >
@@ -2004,6 +2122,11 @@ export default function ChemicalStockManager() {
                             >
                               <button
                                 onClick={() => nudgeQty(p.id, -1)}
+                                title={
+                                  isPkgTracked(p)
+                                    ? `−1 package (${p.packageSize}${p.unit})`
+                                    : "−1"
+                                }
                                 style={{
                                   width: 22,
                                   height: 22,
@@ -2033,6 +2156,11 @@ export default function ChemicalStockManager() {
                               </span>
                               <button
                                 onClick={() => nudgeQty(p.id, +1)}
+                                title={
+                                  isPkgTracked(p)
+                                    ? `+1 package (${p.packageSize}${p.unit})`
+                                    : "+1"
+                                }
                                 style={{
                                   width: 22,
                                   height: 22,
@@ -2059,6 +2187,18 @@ export default function ChemicalStockManager() {
                             >
                               {p.unit}
                             </div>
+                            {isPkgTracked(p) && (
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  color: "#94A3B8",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {p.packageCount} × {p.packageSize}
+                                {p.unit}
+                              </div>
+                            )}
                           </td>
                         )}
                         {isColVisible("minQty") && (
@@ -2256,7 +2396,7 @@ export default function ChemicalStockManager() {
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 else {
                   setAddMode(true);
-                  setNewRow(EMPTY_PRODUCT);
+                  setNewRow(EMPTY_PRODUCT_PKG);
                 }
               } else if (item.id === "pdf") {
                 if (activeTab === "dispatch")
