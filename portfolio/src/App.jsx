@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable react/react-in-jsx-scope */
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,9 +13,11 @@ import HeroSection from "./sections/Hero";
 
 // Business Components
 import SFDyesExpenseForm from "./components/SFDyesExpenseForm";
-import ThermalBill from "./components/ThermalBill";
 import FoodBill from "./components/FoodBill";
 import DailySalesReport from "./components/DailySalesReport";
+import ExpenseClaimBuilder from "./components/ExpenseClaimBuilder";
+
+
 import OverduesDashboard from "./components/OverduesDashboard";
 import QRGenerator from "./components/QRGenerator";
 
@@ -87,11 +87,12 @@ function App() {
               </PrivateRoute>
             }
           />
+        
           <Route
-            path="/foodbills"
+            path="/ExpenseClaimBuilder"
             element={
               <PrivateRoute>
-                <ThermalBill />
+                <ExpenseClaimBuilder />
               </PrivateRoute>
             }
           />

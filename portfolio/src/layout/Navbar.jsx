@@ -1,10 +1,3 @@
-// layout/Navbar.jsx
-// ╔══════════════════════════════════════════════════════════╗
-//   PREMIUM DARK GLASS EDITION — v2.0
-//   Dark glass morphism · Purple–Indigo gradient system
-//   Glowing accents · Animated logo · Refined micro-interactions
-// ╚══════════════════════════════════════════════════════════╝
-
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -76,7 +69,6 @@ const BIZ_CATS = [
     label: "Finance",
     items: [
       { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
-      { name: "Food Bills", path: "/foodbills", icon: ReceiptPercentIcon },
       { name: "Overdues", path: "/OverduesDashboard", icon: CurrencyRupeeIcon },
     ],
   },
