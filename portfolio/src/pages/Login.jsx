@@ -1,240 +1,414 @@
-// pages/Login.jsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  EnvelopeIcon,
+  LockClosedIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  // FIX: false → true — default checked rehega, localStorage use hoga, browser reopen = logged in
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
     setLoading(true);
-    const result = await login(email, password, remember);
-    if (result?.success) {
-      navigate("/");
+
+    try {
+      const result = await login(email, password, remember);
+
+      if (result?.success) {
+        navigate("/");
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 flex-col justify-between p-12 overflow-hidden">
-        {/* Background circles */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white opacity-5"></div>
-          <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-indigo-400 opacity-10"></div>
-          <div className="absolute top-1/2 left-1/4 w-48 h-48 rounded-full bg-blue-400 opacity-10"></div>
-        </div>
+    <main className="relative min-h-screen overflow-hidden bg-[#080712]">
+      {/* Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(124,58,237,0.25),transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.20),transparent_35%)]" />
 
-        {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-            <div className="w-5 h-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-md"></div>
-          </div>
-          <span className="text-white font-bold text-xl">MyApp</span>
-        </div>
+        <div className="absolute top-[-150px] left-[10%] w-[420px] h-[420px] rounded-full bg-purple-600/20 blur-[120px]" />
 
-        {/* Center content */}
-        <div className="relative z-10">
-          <h1 className="text-4xl font-bold text-white leading-tight mb-4">
-            Welcome back to
-            <br />
-            your workspace
-          </h1>
-          <p className="text-blue-200 text-lg leading-relaxed">
-            Manage your business tools, reports, and daily operations — all in
-            one place.
-          </p>
+        <div className="absolute bottom-[-150px] right-[10%] w-[450px] h-[450px] rounded-full bg-blue-600/20 blur-[120px]" />
 
-          {/* Feature pills */}
-          <div className="mt-8 flex flex-col gap-3">
-            {[
-              "Expense tracking & reports",
-              "Daily sales dashboard",
-              "Food bills & receipts",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-white bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <span className="text-blue-100 text-sm">{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="absolute top-[40%] left-[45%] w-[300px] h-[300px] rounded-full bg-fuchsia-500/10 blur-[100px]" />
 
-        {/* Bottom quote */}
-        <div className="relative z-10 border-t border-white border-opacity-20 pt-6">
-          <p className="text-blue-200 text-sm italic">
-            "Streamline every part of your business from one dashboard."
-          </p>
-        </div>
+        {/* Grid */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.4) 1px, transparent 1px)",
+            backgroundSize: "50px 50px",
+          }}
+        />
       </div>
 
-      {/* Right Panel — Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg"></div>
-            <span className="font-bold text-xl text-gray-900">MyApp</span>
+      {/* Content */}
+      <div className="relative z-10 min-h-screen grid lg:grid-cols-2">
+        {/* LEFT SIDE */}
+        <section className="hidden lg:flex relative flex-col justify-between p-12 xl:p-16">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <div className="absolute inset-[2px] rounded-[14px] bg-[#0d0b18]" />
+
+              <div className="relative w-5 h-5 rounded-lg bg-gradient-to-br from-violet-400 to-white" />
+            </div>
+
+            <div>
+              <h1 className="text-white font-bold text-xl tracking-tight">
+                MyApp
+              </h1>
+
+              <p className="text-white/40 text-[10px] tracking-[0.25em] uppercase">
+                Business Workspace
+              </p>
+            </div>
           </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">Sign in</h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Enter your credentials to continue
+          {/* Hero */}
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.06] border border-white/10 backdrop-blur-xl mb-8">
+              <SparklesIcon className="w-4 h-4 text-violet-300" />
+
+              <span className="text-xs text-white/70 font-medium">
+                Smart business management
+              </span>
+            </div>
+
+            <h2 className="text-5xl xl:text-6xl font-bold tracking-[-0.04em] leading-[1.05] text-white">
+              Everything your
+              <br />
+              <span className="bg-gradient-to-r from-violet-400 via-purple-300 to-blue-400 bg-clip-text text-transparent">
+                business needs.
+              </span>
+            </h2>
+
+            <p className="mt-7 max-w-lg text-white/50 text-base leading-7">
+              Manage operations, track sales and keep your business organized
+              from one secure workspace.
+            </p>
+
+            {/* Stats */}
+            <div className="mt-12 grid grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-5">
+                <p className="text-2xl font-bold text-white">24/7</p>
+
+                <p className="text-xs text-white/40 mt-1">Access</p>
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-5">
+                <p className="text-2xl font-bold text-white">100%</p>
+
+                <p className="text-xs text-white/40 mt-1">Secure</p>
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-5">
+                <p className="text-2xl font-bold text-white">One</p>
+
+                <p className="text-xs text-white/40 mt-1">Workspace</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom */}
+          <div className="flex items-center gap-3 text-white/30 text-xs">
+            <ShieldCheckIcon className="w-4 h-4" />
+            Secure workspace. Your data stays protected.
+          </div>
+        </section>
+
+        {/* RIGHT SIDE */}
+        <section className="flex items-center justify-center px-5 py-10 sm:px-8 lg:px-12 xl:px-20">
+          <div className="w-full max-w-[460px]">
+            {/* Mobile Logo */}
+            <div className="flex lg:hidden items-center gap-3 mb-12">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <div className="w-5 h-5 rounded-lg bg-white" />
+              </div>
+
+              <div>
+                <h1 className="text-white font-bold text-lg">MyApp</h1>
+
+                <p className="text-white/40 text-[9px] uppercase tracking-[0.2em]">
+                  Business Workspace
+                </p>
+              </div>
+            </div>
+
+            {/* Login Card */}
+            <div className="relative rounded-[32px] border border-white/[0.08] bg-white/[0.06] backdrop-blur-2xl shadow-2xl shadow-black/30 p-6 sm:p-10">
+              {/* Card glow */}
+              <div className="absolute -top-20 right-0 w-40 h-40 bg-purple-500/10 blur-[80px] pointer-events-none" />
+
+              <div className="relative">
+                {/* Heading */}
+                <div className="mb-9">
+                  <p className="text-violet-300 text-sm font-medium mb-3">
+                    Welcome back
+                  </p>
+
+                  <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                    Sign in to continue
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-6 text-white/45">
+                    Enter your account details to access your workspace.
+                  </p>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Email */}
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block mb-2 text-xs font-medium text-white/60"
+                    >
+                      Email address
+                    </label>
+
+                    <div className="relative">
+                      <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/30 pointer-events-none" />
+
+                      <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className="
+                          w-full
+                          h-[58px]
+                          pl-12
+                          pr-4
+                          rounded-2xl
+                          border
+                          border-white/[0.08]
+                          bg-black/20
+                          text-white
+                          text-sm
+                          placeholder:text-white/20
+                          outline-none
+                          transition-all
+                          focus:border-violet-400/60
+                          focus:bg-black/30
+                          focus:ring-4
+                          focus:ring-violet-500/10
+                        "
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label
+                        htmlFor="password"
+                        className="text-xs font-medium text-white/60"
+                      >
+                        Password
+                      </label>
+
+                      <Link
+                        to="/forgot-password"
+                        className="text-xs font-medium text-violet-300 hover:text-violet-200 transition-colors"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    <div className="relative">
+                      <LockClosedIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-white/30 pointer-events-none" />
+
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter your password"
+                        className="
+                          w-full
+                          h-[58px]
+                          pl-12
+                          pr-12
+                          rounded-2xl
+                          border
+                          border-white/[0.08]
+                          bg-black/20
+                          text-white
+                          text-sm
+                          placeholder:text-white/20
+                          outline-none
+                          transition-all
+                          focus:border-violet-400/60
+                          focus:bg-black/30
+                          focus:ring-4
+                          focus:ring-violet-500/10
+                        "
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+                        aria-label="Toggle password visibility"
+                      >
+                        {showPassword ? (
+                          <EyeSlashIcon className="w-[18px] h-[18px]" />
+                        ) : (
+                          <EyeIcon className="w-[18px] h-[18px]" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember */}
+                  <label className="flex items-center gap-3 cursor-pointer select-none pt-1">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="sr-only peer"
+                    />
+
+                    <span
+                      className="
+                      w-[19px]
+                      h-[19px]
+                      rounded-md
+                      border
+                      border-white/20
+                      bg-white/[0.04]
+                      flex
+                      items-center
+                      justify-center
+                      transition-all
+                      peer-checked:bg-violet-500
+                      peer-checked:border-violet-500
+                    "
+                    >
+                      {remember && (
+                        <CheckIcon className="w-3.5 h-3.5 text-white stroke-[3]" />
+                      )}
+                    </span>
+
+                    <span className="text-xs text-white/45">
+                      Keep me signed in
+                    </span>
+                  </label>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="
+                      group
+                      relative
+                      w-full
+                      h-[58px]
+                      mt-2
+                      rounded-2xl
+                      bg-gradient-to-r
+                      from-violet-600
+                      via-purple-600
+                      to-fuchsia-600
+                      text-white
+                      text-sm
+                      font-semibold
+                      shadow-lg
+                      shadow-purple-900/30
+                      transition-all
+                      hover:brightness-110
+                      hover:-translate-y-[1px]
+                      active:translate-y-0
+                      disabled:opacity-60
+                      disabled:cursor-not-allowed
+                      flex
+                      items-center
+                      justify-center
+                      gap-2
+                    "
+                  >
+                    {loading ? (
+                      <>
+                        <svg
+                          className="w-5 h-5 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="9"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            className="opacity-30"
+                          />
+
+                          <path
+                            d="M12 3a9 9 0 019 9"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        Sign in
+                        <ArrowRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Register */}
+                <p className="mt-8 text-center text-sm text-white/40">
+                  New here?
+                  <Link
+                    to="/register"
+                    className="ml-1.5 font-semibold text-violet-300 hover:text-violet-200 transition-colors"
+                  >
+                    Create an account
+                  </Link>
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom */}
+            <p className="mt-6 text-center text-[11px] text-white/20">
+              Protected by secure authentication
             </p>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 pr-11 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="w-4 h-4" />
-                  ) : (
-                    <EyeIcon className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember me */}
-            <div className="flex items-center gap-2">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <label
-                htmlFor="remember"
-                className="text-sm text-gray-600 cursor-pointer"
-              >
-                Remember me for 30 days
-              </label>
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Don't have an account?{" "}
-            <Link
-              to="/register"
-              className="font-semibold text-blue-600 hover:text-blue-700"
-            >
-              Create one
-            </Link>
-          </p>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 
