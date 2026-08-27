@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   getAllGroups,
   getGroupById,
@@ -9,17 +10,20 @@ import {
   removeCommandFromGroup,
 } from "../controllers/commandController.js";
 
+import { protect } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
 
-// ── CRUD ───────────────────────────────────────────────────────────────────
-router.get("/", getAllGroups);                          // GET    /api/commands
-router.get("/:id", getGroupById);                      // GET    /api/commands/:id
-router.post("/", createGroup);                         // POST   /api/commands
-router.put("/:id", updateGroup);                       // PUT    /api/commands/:id
-router.delete("/:id", deleteGroup);                    // DELETE /api/commands/:id
+// PUBLIC
+router.get("/", getAllGroups);
+router.get("/:id", getGroupById);
 
-// ── Sub-command operations ─────────────────────────────────────────────────
-router.post("/:id/add-command", addCommandToGroup);                    // POST   /api/commands/:id/add-command
-router.delete("/:id/remove-command/:cmdId", removeCommandFromGroup);   // DELETE /api/commands/:id/remove-command/:cmdId
+// PROTECTED
+router.post("/", protect, createGroup);
+router.put("/:id", protect, updateGroup);
+router.delete("/:id", protect, deleteGroup);
+
+router.post("/:id/add-command", protect, addCommandToGroup);
+router.delete("/:id/remove-command/:cmdId", protect, removeCommandFromGroup);
 
 export default router;

@@ -1,332 +1,1360 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight,
-  Sparkles,
-  ChevronRight,
-  TrendingUp,
-  Boxes,
-  Wallet,
-  CircleDot,
   Activity,
-  Package,
-  Command,
-  Zap,
+  ArrowRight,
   BarChart2,
-  Clock,
+  Boxes,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Clock3,
+  Command,
+  CreditCard,
+  Layers3,
+  Package,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+  Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-/* ═══════════════════════════════════════
+/* =========================================================
    DATA
-═══════════════════════════════════════ */
+========================================================= */
 
 const MODULES = [
   {
     id: "finance",
     label: "Finance",
+    shortLabel: "Finance",
     tagline: "Billing & receivables",
-    accentHex: "#F59E0B",
-    accentTo: "#EF4444",
+    accent: "#F59E0B",
+    accent2: "#F97316",
+    soft: "245,158,11",
     shortcut: "⌥1",
+    icon: Wallet,
     spark: [4, 7, 3, 9, 5, 8, 3],
     sparkLabel: "Overdue trend",
     progress: 34,
-    statusText: "3 overdue",
-    items: [
-      {
-        name: "Overdues",
-        path: "/OverduesDashboard",
-        icon: Wallet,
-        badge: { text: "3 alerts", hot: true },
-      },
-    ],
+    status: "3 overdue",
+    statusType: "warning",
+    path: "/OverduesDashboard",
+    item: "Overdues",
+    badge: "3 alerts",
   },
   {
     id: "sales",
     label: "Sales & CRM",
+    shortLabel: "Sales",
     tagline: "Pipeline & performance",
-    accentHex: "#6366F1",
-    accentTo: "#22D3EE",
+    accent: "#6366F1",
+    accent2: "#22D3EE",
+    soft: "99,102,241",
     shortcut: "⌥2",
+    icon: TrendingUp,
     spark: [62, 71, 58, 84, 77, 93, 110],
-    sparkLabel: "Revenue (7d)",
+    sparkLabel: "Revenue · 7 days",
     progress: 87,
-    statusText: "₹2.4L today",
-    items: [
-      {
-        name: "Sales Report",
-        path: "/DailySalesReport",
-        icon: TrendingUp,
-        badge: { text: "Live", hot: false },
-      },
-    ],
+    status: "₹2.4L today",
+    statusType: "success",
+    path: "/DailySalesReport",
+    item: "Sales Report",
+    badge: "Live",
   },
   {
     id: "management",
     label: "Management",
+    shortLabel: "Stock",
     tagline: "Inventory & operations",
-    accentHex: "#A78BFA",
-    accentTo: "#EC4899",
+    accent: "#A78BFA",
+    accent2: "#EC4899",
+    soft: "167,139,250",
     shortcut: "⌥3",
+    icon: Boxes,
     spark: [22, 18, 21, 17, 15, 13, 12],
     sparkLabel: "Low-stock items",
     progress: 25,
-    statusText: "12 low stock",
-    items: [
-      {
-        name: "Chemicals Stock",
-        path: "/Stockmanager",
-        icon: Boxes,
-        badge: { text: "12 low", hot: true },
-      },
-    ],
+    status: "12 low stock",
+    statusType: "danger",
+    path: "/Stockmanager",
+    item: "Chemicals Stock",
+    badge: "12 low",
   },
 ];
 
 const METRICS = [
-  { label: "Revenue", raw: 240000, color: "#10B981", ring: 78 },
-  { label: "Overdue", raw: 3, color: "#F59E0B", ring: 30 },
-  { label: "Low Stock", raw: 12, color: "#F43F5E", ring: 20 },
+  {
+    label: "Revenue",
+    raw: 240000,
+    color: "#34D399",
+    ring: 78,
+    prefix: "₹",
+  },
+  {
+    label: "Overdue",
+    raw: 3,
+    color: "#FBBF24",
+    ring: 30,
+  },
+  {
+    label: "Low Stock",
+    raw: 12,
+    color: "#FB7185",
+    ring: 20,
+  },
 ];
 
 const PULSE = [
-  { dot: "#10B981", text: "Sales Report refreshed 6 min ago" },
-  { dot: "#F59E0B", text: "3 invoices marked overdue today" },
-  { dot: "#22D3EE", text: "12 stock items below threshold" },
-  { dot: "#A78BFA", text: "2 new CRM activities logged" },
+  {
+    dot: "#34D399",
+    title: "Sales Report",
+    text: "refreshed 6 min ago",
+  },
+  {
+    dot: "#FBBF24",
+    title: "Finance",
+    text: "3 invoices marked overdue today",
+  },
+  {
+    dot: "#22D3EE",
+    title: "Inventory",
+    text: "12 stock items below threshold",
+  },
+  {
+    dot: "#A78BFA",
+    title: "CRM",
+    text: "2 new activities logged",
+  },
 ];
 
-const MARQUEE = [
-  { Icon: Activity, text: "Sales report updated · 6 min ago" },
-  { Icon: Wallet, text: "Invoice #1042 marked overdue" },
-  { Icon: Boxes, text: "Reorder triggered for 4 chemicals" },
-  { Icon: BarChart2, text: "Monthly target 87% achieved" },
-  { Icon: Zap, text: "₹85,000 collected today" },
-  { Icon: Clock, text: "Stock audit scheduled · 3 pm" },
+const ACTIVITY = [
+  { Icon: Activity, text: "Sales report updated", time: "6 min ago" },
+  { Icon: Wallet, text: "Invoice #1042 marked overdue", time: "18 min ago" },
+  {
+    Icon: Boxes,
+    text: "Reorder triggered for 4 chemicals",
+    time: "32 min ago",
+  },
+  { Icon: BarChart2, text: "Monthly target reached 87%", time: "1 hr ago" },
+  { Icon: Zap, text: "₹85,000 collected today", time: "2 hr ago" },
+  { Icon: Clock3, text: "Stock audit scheduled", time: "3 pm" },
 ];
 
-/* ═══════════════════════════════════════
+/* =========================================================
    GLOBAL CSS
-═══════════════════════════════════════ */
+========================================================= */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
-.ho * { box-sizing: border-box; }
-.ho   { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
-
-@keyframes ho-pulse-ring {
-  0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.55); }
-  50%     { box-shadow: 0 0 0 7px rgba(16,185,129,0); }
-}
-@keyframes ho-grad-shift {
-  0%,100% { background-position: 0% center; }
-  50%     { background-position: 100% center; }
-}
-@keyframes ho-shimmer {
-  from { background-position: -300% center; }
-  to   { background-position:  300% center; }
-}
-@keyframes ho-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+.hq *,
+.hq *::before,
+.hq *::after {
+  box-sizing: border-box;
 }
 
-.ho-live-dot { animation: ho-pulse-ring 2.2s ease-in-out infinite; }
+.hq {
+  --bg: #05070d;
+  --panel: rgba(15, 18, 29, .72);
+  --panel-strong: rgba(17, 21, 34, .9);
+  --border: rgba(255,255,255,.075);
+  --border-hover: rgba(255,255,255,.15);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --dim: #475569;
 
-.ho-grad-word {
-  background: linear-gradient(120deg, #6366F1, #22D3EE, #A78BFA, #6366F1);
-  background-size: 300% auto;
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; animation: ho-grad-shift 5s ease infinite;
-}
-
-.ho-btn-p {
-  position: relative; overflow: hidden;
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 14px 28px; border-radius: 14px; border: none;
-  background: linear-gradient(135deg, #4338CA, #6366F1, #4338CA);
-  background-size: 200% auto; color: #fff; font-size: 14px;
-  font-weight: 700; cursor: pointer; letter-spacing: -.015em;
-  font-family: inherit;
-  box-shadow: 0 0 32px rgba(99,102,241,.5), 0 10px 28px rgba(99,102,241,.28);
-  transition: transform .2s, box-shadow .2s;
-}
-.ho-btn-p::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), transparent);
-  background-size: 300% 100%; animation: ho-shimmer 4s ease infinite;
-}
-.ho-btn-p:hover { transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0 44px rgba(99,102,241,.65), 0 14px 36px rgba(99,102,241,.38); }
-.ho-btn-p .ho-arr { transition: transform .2s; }
-.ho-btn-p:hover .ho-arr { transform: translateX(3px); }
-
-.ho-btn-g {
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 14px 26px; border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
-  color: #CBD5E1; font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: all .2s; font-family: inherit; letter-spacing: -.01em;
-}
-.ho-btn-g:hover { background: rgba(255,255,255,.08);
-  border-color: rgba(255,255,255,.2); transform: translateY(-2px); }
-
-.ho-chip {
-  display: flex; align-items: center; gap: 7px;
-  padding: 5px 13px 5px 8px; border-radius: 10px;
-  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07);
-  transition: all .15s; cursor: default;
-}
-.ho-chip:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
-
-.ho-card {
-  border-radius: 20px; border: 1px solid; padding: 22px;
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  transition: border-color .25s, box-shadow .25s, transform .3s, background .25s;
-}
-.ho-card:hover { transform: translateY(-4px); }
-
-.ho-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 14px; border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.04); border-left: 2px solid transparent;
-  background: transparent; cursor: pointer; transition: all .15s;
-  width: 100%; font-family: inherit; text-align: left;
-}
-
-.ho-qnav {
-  display: flex; align-items: center; gap: 6px; padding: 4px 10px;
-  border-radius: 8px; border: 1px solid rgba(255,255,255,.07);
-  background: rgba(255,255,255,.03); cursor: pointer; transition: all .15s;
-}
-.ho-qnav:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.14); }
-
-.ho-mq-wrap {
+  position: relative;
+  min-height: 100vh;
   overflow: hidden;
-  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  color: var(--text);
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      rgba(99,102,241,.16),
+      transparent 38%
+    ),
+    #05070d;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  isolation: isolate;
 }
-.ho-mq-track { display: flex; width: max-content;
-  animation: ho-marquee 30s linear infinite; }
-.ho-mq-track:hover { animation-play-state: paused; }
 
-/* ── Responsive ── */
-@media (max-width: 1024px) {
-  .ho-cards { grid-template-columns: repeat(2,1fr) !important; }
+.hq button {
+  font: inherit;
 }
-@media (max-width: 860px) {
-  .ho-hero  { grid-template-columns: 1fr !important; }
-  .ho-h1   { font-size: 42px !important; }
-  .ho-container { padding: 16px 28px 56px !important; }
-  .ho-topbar { flex-direction: column; align-items: flex-start !important; }
+
+.hq button:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 3px;
 }
-@media (max-width: 640px) {
-  .ho-cards { grid-template-columns: 1fr !important; }
-  .ho-h1   { font-size: 34px !important; }
-  .ho-cta-row { flex-direction: column !important; }
+
+.hq-container {
+  position: relative;
+  z-index: 2;
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+/* =========================================================
+   BACKGROUND
+========================================================= */
+
+.hq-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    rgba(0,0,0,.55) 65%,
+    transparent 100%
+  );
+}
+
+.hq-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.65'/%3E%3C/svg%3E");
+}
+
+.hq-orb {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(90px);
+}
+
+.hq-orb-a {
+  width: 620px;
+  height: 620px;
+  top: -320px;
+  left: -180px;
+  background: rgba(99,102,241,.12);
+}
+
+.hq-orb-b {
+  width: 520px;
+  height: 520px;
+  right: -220px;
+  top: 360px;
+  background: rgba(34,211,238,.065);
+}
+
+.hq-orb-c {
+  width: 480px;
+  height: 480px;
+  bottom: -280px;
+  left: 35%;
+  background: rgba(167,139,250,.065);
+}
+
+/* =========================================================
+   TOP BAR
+========================================================= */
+
+.hq-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.hq-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.hq-logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: white;
+  background:
+    linear-gradient(135deg,#6366f1,#8b5cf6 48%,#22d3ee);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.14) inset,
+    0 8px 28px rgba(99,102,241,.32);
+}
+
+.hq-logo::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: inherit;
+  background: rgba(99,102,241,.12);
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.hq-brand-name {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: -.025em;
+}
+
+.hq-version {
+  padding: 4px 8px;
+  border: 1px solid rgba(129,140,248,.2);
+  border-radius: 7px;
+  color: #818cf8;
+  background: rgba(99,102,241,.07);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   KPI STRIP
+========================================================= */
+
+.hq-kpis {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hq-kpi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 5px 11px 5px 7px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 11px;
+  background: rgba(255,255,255,.025);
+  transition: .2s ease;
+}
+
+.hq-kpi:hover {
+  border-color: rgba(255,255,255,.13);
+  background: rgba(255,255,255,.045);
+  transform: translateY(-1px);
+}
+
+.hq-kpi-label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.hq-kpi-value {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.hq-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, .7fr);
+  gap: 80px;
+  align-items: center;
+  padding: 82px 0 72px;
+}
+
+.hq-eyebrow {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px 7px 8px;
+  border: 1px solid rgba(129,140,248,.22);
+  border-radius: 999px;
+  background: rgba(99,102,241,.065);
+  color: #a5b4fc;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hq-eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 12px rgba(52,211,153,.8);
+}
+
+.hq-title {
+  margin: 22px 0 0;
+  max-width: 720px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(46px, 6vw, 76px);
+  line-height: .98;
+  letter-spacing: -.065em;
+  font-weight: 800;
+}
+
+.hq-gradient-text {
+  background:
+    linear-gradient(
+      105deg,
+      #818cf8 0%,
+      #22d3ee 35%,
+      #c084fc 65%,
+      #818cf8 100%
+    );
+  background-size: 240% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hq-gradient 7s ease infinite;
+}
+
+@keyframes hq-gradient {
+  0%,100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+.hq-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(148,163,184,.26);
+}
+
+.hq-description {
+  max-width: 570px;
+  margin: 24px 0 0;
+  color: #718096;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.hq-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px;
+  margin-top: 32px;
+}
+
+.hq-primary,
+.hq-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 0 19px;
+  border-radius: 13px;
+  cursor: pointer;
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    border-color .2s ease,
+    background .2s ease;
+}
+
+.hq-primary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(129,140,248,.35);
+  color: white;
+  background:
+    linear-gradient(135deg,#4f46e5,#6366f1 55%,#4f46e5);
+  box-shadow:
+    0 10px 32px rgba(79,70,229,.27),
+    0 0 45px rgba(99,102,241,.13);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.hq-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-110%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.18),
+    transparent
+  );
+  transition: transform .65s ease;
+}
+
+.hq-primary:hover::before {
+  transform: translateX(110%);
+}
+
+.hq-primary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 15px 40px rgba(79,70,229,.35),
+    0 0 55px rgba(99,102,241,.18);
+}
+
+.hq-secondary {
+  border: 1px solid rgba(255,255,255,.085);
+  color: #cbd5e1;
+  background: rgba(255,255,255,.035);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.hq-secondary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,.17);
+  background: rgba(255,255,255,.065);
+}
+
+.hq-arrow {
+  transition: transform .2s ease;
+}
+
+.hq-primary:hover .hq-arrow {
+  transform: translateX(3px);
+}
+
+/* =========================================================
+   QUICK NAV
+========================================================= */
+
+.hq-quick {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.hq-quick-label {
+  margin-right: 4px;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.hq-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 8px;
+  color: #64748b;
+  background: rgba(255,255,255,.02);
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.hq-quick-btn:hover {
+  color: #cbd5e1;
+  border-color: rgba(129,140,248,.2);
+  background: rgba(99,102,241,.06);
+}
+
+.hq-key {
+  padding: 2px 5px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 5px;
+  color: #64748b;
+  background: rgba(255,255,255,.04);
+  font-family: monospace;
+  font-size: 9px;
+}
+
+/* =========================================================
+   LIVE PANEL
+========================================================= */
+
+.hq-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hq-glass {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.045),
+      rgba(255,255,255,.018)
+    );
+  box-shadow:
+    0 20px 70px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.045);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.hq-live {
+  padding: 18px;
+}
+
+.hq-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.hq-live-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.hq-live-status {
+  color: #34d399;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.hq-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52,211,153,.6);
+  animation: hq-pulse 2s infinite;
+}
+
+@keyframes hq-pulse {
+  0%,100% {
+    box-shadow: 0 0 0 0 rgba(52,211,153,.5);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(52,211,153,0);
+  }
+}
+
+.hq-pulse {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 12px;
+  background: rgba(0,0,0,.16);
+}
+
+.hq-pulse-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: rgba(255,255,255,.045);
+}
+
+.hq-pulse-title {
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hq-pulse-text {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.hq-health {
+  padding: 18px;
+}
+
+.hq-panel-title {
+  margin: 0 0 13px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.hq-health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,.045);
+}
+
+.hq-health-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.hq-health-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hq-health-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* =========================================================
+   MODULE SECTION
+========================================================= */
+
+.hq-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.hq-section-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.hq-section-title::before {
+  content: "";
+  width: 3px;
+  height: 15px;
+  border-radius: 4px;
+  background: linear-gradient(#818cf8,#22d3ee);
+  box-shadow: 0 0 12px rgba(99,102,241,.4);
+}
+
+.hq-section-count {
+  color: #334155;
+  font-size: 10px;
+}
+
+/* =========================================================
+   MODULE CARDS
+========================================================= */
+
+.hq-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+}
+
+.hq-card {
+  --accent: 99,102,241;
+
+  position: relative;
+  min-width: 0;
+  padding: 19px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(var(--accent),.065),
+      rgba(255,255,255,.022) 48%,
+      rgba(255,255,255,.012)
+    );
+  box-shadow:
+    0 15px 45px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  transition:
+    transform .25s ease,
+    border-color .25s ease,
+    box-shadow .25s ease;
+}
+
+.hq-card::before {
+  content: "";
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  top: -100px;
+  right: -70px;
+  border-radius: 50%;
+  background: rgba(var(--accent),.11);
+  filter: blur(35px);
+  pointer-events: none;
+}
+
+.hq-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(var(--accent),.3);
+  box-shadow:
+    0 25px 65px rgba(0,0,0,.3),
+    0 0 45px rgba(var(--accent),.08),
+    inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+.hq-card-top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hq-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hq-card-icon {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid rgba(var(--accent),.2);
+  border-radius: 10px;
+  color: rgb(var(--accent));
+  background: rgba(var(--accent),.1);
+}
+
+.hq-card-title {
+  margin: 0;
+  color: #e2e8f0;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.hq-card-tagline {
+  margin: 3px 0 0;
+  color: #475569;
+  font-size: 10px;
+}
+
+.hq-card-shortcut {
+  padding: 4px 7px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 6px;
+  color: #475569;
+  background: rgba(255,255,255,.025);
+  font-family: monospace;
+  font-size: 9px;
+}
+
+/* =========================================================
+   DATA STRIP
+========================================================= */
+
+.hq-data-strip {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 18px 0 13px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 12px;
+  background: rgba(0,0,0,.14);
+}
+
+.hq-data-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hq-data-label {
+  margin: 0 0 8px;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.hq-progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+}
+
+.hq-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1s cubic-bezier(.2,.8,.2,1);
+  box-shadow: 0 0 12px rgba(var(--accent),.5);
+}
+
+.hq-spark {
+  flex: 0 0 auto;
+}
+
+/* =========================================================
+   CARD ACTION
+========================================================= */
+
+.hq-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255,255,255,.045);
+  border-radius: 12px;
+  color: #94a3b8;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.hq-card-action:hover {
+  border-color: rgba(var(--accent),.23);
+  color: #f1f5f9;
+  background: rgba(var(--accent),.07);
+}
+
+.hq-action-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hq-action-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.045);
+  transition: .18s ease;
+}
+
+.hq-card-action:hover .hq-action-icon {
+  color: rgb(var(--accent));
+  background: rgba(var(--accent),.13);
+}
+
+.hq-action-name {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hq-action-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hq-badge {
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.hq-badge-warning {
+  border: 1px solid rgba(251,191,36,.2);
+  color: #fbbf24;
+  background: rgba(251,191,36,.08);
+}
+
+.hq-badge-success {
+  border: 1px solid rgba(52,211,153,.2);
+  color: #34d399;
+  background: rgba(52,211,153,.08);
+}
+
+.hq-badge-danger {
+  border: 1px solid rgba(251,113,133,.2);
+  color: #fb7185;
+  background: rgba(251,113,133,.08);
+}
+
+/* =========================================================
+   ACTIVITY
+========================================================= */
+
+.hq-activity {
+  margin-top: 46px;
+  padding: 16px 0 25px;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+
+.hq-activity-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+}
+
+.hq-activity-title {
+  color: #475569;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.hq-activity-window {
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 7%,
+    black 93%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 7%,
+    black 93%,
+    transparent
+  );
+}
+
+.hq-activity-track {
+  display: flex;
+  width: max-content;
+  animation: hq-marquee 32s linear infinite;
+}
+
+.hq-activity-window:hover .hq-activity-track {
+  animation-play-state: paused;
+}
+
+.hq-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 28px;
+  border-right: 1px solid rgba(255,255,255,.04);
+  white-space: nowrap;
+}
+
+.hq-activity-item svg {
+  color: #334155;
+}
+
+.hq-activity-text {
+  color: #475569;
+  font-size: 10px;
+}
+
+.hq-activity-time {
+  color: #293548;
+  font-size: 9px;
+}
+
+@keyframes hq-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* =========================================================
+   ENTRANCE
+========================================================= */
+
+.hq-enter {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity .65s ease,
+    transform .65s cubic-bezier(.2,.8,.2,1);
+}
+
+.hq-enter.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1050px) {
+  .hq-hero {
+    grid-template-columns: 1fr;
+    gap: 35px;
+    padding-top: 62px;
+  }
+
+  .hq-side {
+    max-width: 700px;
+  }
+
+  .hq-cards {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .hq-container {
+    width: min(100% - 30px, 680px);
+  }
+
+  .hq-topbar {
+    min-height: auto;
+    padding: 16px 0;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .hq-kpis {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+  }
+
+  .hq-kpis::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hq-kpi {
+    flex: 0 0 auto;
+  }
+
+  .hq-hero {
+    padding: 52px 0 55px;
+  }
+
+  .hq-title {
+    font-size: clamp(42px, 12vw, 62px);
+  }
+
+  .hq-description {
+    font-size: 14px;
+  }
+
+  .hq-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .hq-container {
+    width: min(100% - 22px, 680px);
+  }
+
+  .hq-actions {
+    flex-direction: column;
+  }
+
+  .hq-primary,
+  .hq-secondary {
+    width: 100%;
+  }
+
+  .hq-quick {
+    align-items: flex-start;
+  }
+
+  .hq-side {
+    gap: 10px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .hq *,
+  .hq *::before,
+  .hq *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
 }
 `;
 
-/* ═══════════════════════════════════════
+/* =========================================================
    HELPERS
-═══════════════════════════════════════ */
+========================================================= */
 
-function hexToRgb(hex) {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return m
-    ? `${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)}`
-    : "99,102,241";
-}
+function useCountUp(target, duration = 1300, delay = 0) {
+  const [value, setValue] = useState(0);
 
-function useCountUp(target, duration = 1400, delay = 0) {
-  const [val, setVal] = useState(0);
   useEffect(() => {
-    let start = null,
-      raf;
-    const step = (ts) => {
-      if (!start) start = ts + delay;
-      const p = Math.min(Math.max(0, ts - start) / duration, 1);
-      setVal(Math.round((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) raf = requestAnimationFrame(step);
+    let raf;
+    let start = null;
+
+    const frame = (timestamp) => {
+      if (!start) start = timestamp + delay;
+
+      const progress = Math.min(Math.max(0, timestamp - start) / duration, 1);
+
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      setValue(Math.round(eased * target));
+
+      if (progress < 1) {
+        raf = requestAnimationFrame(frame);
+      }
     };
-    raf = requestAnimationFrame(step);
+
+    raf = requestAnimationFrame(frame);
+
     return () => cancelAnimationFrame(raf);
   }, [target, duration, delay]);
-  return val;
+
+  return value;
 }
 
-/* ═══════════════════════════════════════
-   BACKGROUND CANVAS
-═══════════════════════════════════════ */
+function formatMetric(metric, value) {
+  if (metric.prefix === "₹") {
+    if (value >= 100000) {
+      return `₹${(value / 100000).toFixed(1)}L`;
+    }
 
-function ParticlesBg() {
-  const ref = useRef(null);
+    return `₹${value.toLocaleString("en-IN")}`;
+  }
+
+  return value.toLocaleString("en-IN");
+}
+
+/* =========================================================
+   BACKGROUND PARTICLES
+========================================================= */
+
+function ParticleBackground() {
+  const canvasRef = useRef(null);
+
   useEffect(() => {
-    const cvs = ref.current;
-    if (!cvs) return;
-    const ctx = cvs.getContext("2d");
-    let raf, W, H;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reducedMotion) return;
+
+    const ctx = canvas.getContext("2d");
+
+    let width = 0;
+    let height = 0;
+    let raf;
+
     const resize = () => {
-      W = cvs.width = cvs.offsetWidth;
-      H = cvs.height = cvs.offsetHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      width = canvas.offsetWidth;
+      height = canvas.offsetHeight;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    window.addEventListener("resize", resize);
-    resize();
-    class P {
+
+    class Particle {
       constructor() {
-        this.x = Math.random() * W;
-        this.y = Math.random() * H;
-        this.vx = (Math.random() - 0.5) * 0.26;
-        this.vy = (Math.random() - 0.5) * 0.26;
-        this.r = Math.random() * 1.2 + 0.4;
-        this.o = Math.random() * 0.32 + 0.07;
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.18;
+        this.vy = (Math.random() - 0.5) * 0.18;
+        this.radius = Math.random() * 1.1 + 0.3;
+        this.alpha = Math.random() * 0.22 + 0.04;
       }
-      tick() {
+
+      update() {
         this.x += this.vx;
         this.y += this.vy;
-        if (this.x < 0 || this.x > W) this.vx *= -1;
-        if (this.y < 0 || this.y > H) this.vy *= -1;
+
+        if (this.x < -10 || this.x > width + 10) this.vx *= -1;
+        if (this.y < -10 || this.y > height + 10) this.vy *= -1;
       }
+
       draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(99,102,241,${this.o})`;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(129,140,248,${this.alpha})`;
         ctx.fill();
       }
     }
-    const pts = Array.from({ length: 28 }, () => new P());
-    const MAXD = 140;
-    const loop = () => {
-      ctx.clearRect(0, 0, W, H);
-      pts.forEach((p) => {
-        p.tick();
-        p.draw();
+
+    const count = Math.min(
+      34,
+      Math.max(14, Math.floor(window.innerWidth / 42)),
+    );
+
+    const particles = Array.from({ length: count }, () => new Particle());
+
+    resize();
+
+    window.addEventListener("resize", resize);
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      particles.forEach((particle) => {
+        particle.update();
+        particle.draw();
       });
-      for (let i = 0; i < pts.length; i++)
-        for (let j = i + 1; j < pts.length; j++) {
-          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
-          if (d < MAXD) {
+
+      const maxDistance = 125;
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i];
+          const b = particles[j];
+
+          const distance = Math.hypot(a.x - b.x, a.y - b.y);
+
+          if (distance < maxDistance) {
             ctx.beginPath();
-            ctx.moveTo(pts[i].x, pts[i].y);
-            ctx.lineTo(pts[j].x, pts[j].y);
-            ctx.strokeStyle = `rgba(99,102,241,${(1 - d / MAXD) * 0.09})`;
-            ctx.lineWidth = 0.8;
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+
+            ctx.strokeStyle = `rgba(
+              99,
+              102,
+              241,
+              ${(1 - distance / maxDistance) * 0.055}
+            )`;
+
+            ctx.lineWidth = 0.7;
             ctx.stroke();
           }
         }
-      raf = requestAnimationFrame(loop);
+      }
+
+      raf = requestAnimationFrame(render);
     };
-    loop();
+
+    render();
+
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
   }, []);
+
   return (
     <canvas
-      ref={ref}
+      ref={canvasRef}
+      aria-hidden="true"
       style={{
         position: "absolute",
         inset: 0,
@@ -338,162 +1366,177 @@ function ParticlesBg() {
   );
 }
 
-/* ═══════════════════════════════════════
+/* =========================================================
    SPARKLINE
-═══════════════════════════════════════ */
+========================================================= */
 
-function Sparkline({ data, color, width = 88 }) {
-  const W = width,
-    H = 26;
-  const lo = Math.min(...data),
-    hi = Math.max(...data);
-  const xOf = (i) => (i / (data.length - 1)) * W;
-  const yOf = (v) => H - ((v - lo) / (hi - lo || 1)) * (H - 5) - 2;
-  const pts = data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(" ");
-  const area = `M ${data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(" L ")} L ${W},${H} L 0,${H} Z`;
-  const id = `sg${color.replace("#", "").slice(0, 6)}`;
+function Sparkline({ data, color }) {
+  const width = 94;
+  const height = 30;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+
+  const x = (index) => (index / (data.length - 1)) * width;
+
+  const y = (value) =>
+    height - ((value - min) / (max - min || 1)) * (height - 7) - 3;
+
+  const points = data
+    .map((value, index) => `${x(index)},${y(value)}`)
+    .join(" ");
+
+  const area = `
+    M ${data.map((value, index) => `${x(index)},${y(value)}`).join(" L ")}
+    L ${width},${height}
+    L 0,${height}
+    Z
+  `;
+
+  const gradientId = `spark-${color.replace("#", "")}`;
+
   return (
-    <svg width={W} height={H} style={{ overflow: "visible", flexShrink: 0 }}>
+    <svg
+      className="hq-spark"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+    >
       <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity=".24" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={area} fill={`url(#${id})`} />
+
+      <path d={area} fill={`url(#${gradientId})`} />
+
       <polyline
-        points={pts}
+        points={points}
         fill="none"
         stroke={color}
-        strokeWidth="1.6"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity="0.8"
+        opacity=".9"
+      />
+
+      <circle
+        cx={x(data.length - 1)}
+        cy={y(data[data.length - 1])}
+        r="2.5"
+        fill={color}
+        style={{
+          filter: `drop-shadow(0 0 4px ${color})`,
+        }}
       />
     </svg>
   );
 }
 
-/* ═══════════════════════════════════════
-   PROGRESS BAR
-═══════════════════════════════════════ */
+/* =========================================================
+   KPI
+========================================================= */
 
-function ProgressBar({ value, color }) {
-  const rgb = hexToRgb(color);
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setW(value), 250);
-    return () => clearTimeout(t);
-  }, [value]);
+function Metric({ metric, index }) {
+  const value = useCountUp(metric.raw, 1250, index * 160);
+
+  const radius = 9.5;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (metric.ring / 100) * circumference;
+
   return (
-    <div
-      style={{
-        height: 3,
-        borderRadius: 2,
-        background: "rgba(255,255,255,.06)",
-        overflow: "hidden",
-        flex: 1,
-      }}
-    >
-      <div
-        style={{
-          height: "100%",
-          borderRadius: 2,
-          width: `${w}%`,
-          background: `linear-gradient(to right,${color},rgba(${rgb},.5))`,
-          boxShadow: `0 0 8px rgba(${rgb},.6)`,
-          transition: "width 1.2s cubic-bezier(0,.85,.3,1)",
-        }}
-      />
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════
-   METRIC CHIP (ring + count-up)
-═══════════════════════════════════════ */
-
-function MetricChip({ metric, idx }) {
-  const count = useCountUp(metric.raw, 1400, idx * 180);
-  const display =
-    metric.label === "Revenue"
-      ? count >= 100000
-        ? `₹${(count / 100000).toFixed(1)}L`
-        : `₹${count.toLocaleString()}`
-      : String(count);
-  const R = 10,
-    C = 2 * Math.PI * R,
-    arc = (metric.ring / 100) * C;
-  return (
-    <div className="ho-chip">
-      <svg width="26" height="26" style={{ flexShrink: 0 }}>
+    <div className="hq-kpi">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
         <circle
           cx="13"
           cy="13"
-          r={R}
+          r={radius}
           fill="none"
           stroke="rgba(255,255,255,.07)"
           strokeWidth="2"
         />
+
         <circle
           cx="13"
           cy="13"
-          r={R}
+          r={radius}
           fill="none"
           stroke={metric.color}
           strokeWidth="2"
-          strokeDasharray={`${arc} ${C}`}
+          strokeDasharray={`${dash} ${circumference}`}
           strokeLinecap="round"
           transform="rotate(-90 13 13)"
         />
       </svg>
-      <span style={{ fontSize: 11, color: "#4B5563" }}>{metric.label}</span>
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 800,
-          color: metric.color,
-          letterSpacing: "-.02em",
-        }}
-      >
-        {display}
+
+      <span className="hq-kpi-label">{metric.label}</span>
+
+      <span className="hq-kpi-value" style={{ color: metric.color }}>
+        {formatMetric(metric, value)}
       </span>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════
-   ACTIVITY MARQUEE
-═══════════════════════════════════════ */
+/* =========================================================
+   LIVE PANEL
+========================================================= */
 
-function ActivityMarquee() {
-  const items = [...MARQUEE, ...MARQUEE];
+function LivePanel({ pulseIndex }) {
+  const pulse = PULSE[pulseIndex];
+
   return (
-    <div className="ho-mq-wrap">
-      <div className="ho-mq-track">
-        {items.map(({ Icon, text }, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 24px",
-              borderRight: "1px solid rgba(255,255,255,.05)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <Icon
-              style={{ width: 12, height: 12, color: "#2D3748", flexShrink: 0 }}
-            />
+    <div className="hq-side">
+      <div className="hq-glass hq-live">
+        <div className="hq-live-head">
+          <div className="hq-live-label">
+            <span className="hq-live-dot" />
+            Live updates
+          </div>
+
+          <span className="hq-live-status">● System online</span>
+        </div>
+
+        <div className="hq-pulse">
+          <div className="hq-pulse-icon" style={{ color: pulse.dot }}>
+            <Activity size={15} />
+          </div>
+
+          <div>
+            <div className="hq-pulse-title">{pulse.title}</div>
+
+            <div className="hq-pulse-text">{pulse.text}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="hq-glass hq-health">
+        <p className="hq-panel-title">Module health</p>
+
+        {MODULES.map((module) => (
+          <div className="hq-health-row" key={module.id}>
+            <div className="hq-health-name">
+              <span
+                className="hq-health-dot"
+                style={{
+                  background: module.accent,
+                  boxShadow: `0 0 9px ${module.accent}`,
+                }}
+              />
+
+              {module.label}
+            </div>
+
             <span
               style={{
-                fontSize: 12,
-                color: "#374151",
-                letterSpacing: "-.01em",
+                color: module.accent,
+                fontSize: 10,
+                fontWeight: 750,
               }}
             >
-              {text}
+              {module.status}
             </span>
           </div>
         ))}
@@ -502,854 +1545,384 @@ function ActivityMarquee() {
   );
 }
 
-/* ═══════════════════════════════════════
-   STATUS PANEL (hero right column)
-═══════════════════════════════════════ */
+/* =========================================================
+   MODULE CARD
+========================================================= */
 
-function StatusPanel({ pulseIdx, mounted }) {
+function ModuleCard({ module, navigate, index, visible }) {
+  const Icon = module.icon;
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const timeout = setTimeout(
+      () => {
+        setProgress(module.progress);
+      },
+      220 + index * 100,
+    );
+
+    return () => clearTimeout(timeout);
+  }, [visible, module.progress, index]);
+
+  const badgeClass =
+    module.statusType === "success"
+      ? "hq-badge-success"
+      : module.statusType === "danger"
+        ? "hq-badge-danger"
+        : "hq-badge-warning";
+
   return (
-    <div
+    <article
+      className={`hq-card hq-enter ${visible ? "is-visible" : ""}`}
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-        opacity: mounted ? 1 : 0,
-        transform: mounted ? "translateY(0)" : "translateY(16px)",
-        transition: "opacity .55s .2s, transform .55s .2s",
+        "--accent": module.soft,
+        transitionDelay: `${index * 90}ms`,
       }}
     >
-      {/* Live pulse ticker */}
-      <div
-        style={{
-          padding: "14px 18px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,.07)",
-          background: "rgba(255,255,255,.02)",
-          backdropFilter: "blur(16px)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 10,
-          }}
-        >
-          <span
-            className="ho-live-dot"
-            style={{
-              display: "inline-block",
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#10B981",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: ".12em",
-              textTransform: "uppercase",
-              color: "#374151",
-            }}
-          >
-            Live updates
-          </span>
+      <div className="hq-card-top">
+        <div className="hq-card-title-wrap">
+          <div className="hq-card-icon">
+            <Icon size={16} />
+          </div>
+
+          <div>
+            <h3 className="hq-card-title">{module.label}</h3>
+
+            <p className="hq-card-tagline">{module.tagline}</p>
+          </div>
         </div>
-        <div style={{ height: 22, overflow: "hidden", position: "relative" }}>
-          {PULSE.map((line, idx) => (
+
+        <span className="hq-card-shortcut">{module.shortcut}</span>
+      </div>
+
+      <div className="hq-data-strip">
+        <div className="hq-data-main">
+          <p className="hq-data-label">{module.sparkLabel}</p>
+
+          <div className="hq-progress">
             <div
-              key={line.text}
+              className="hq-progress-fill"
               style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                color: "#6B7280",
-                opacity: idx === pulseIdx ? 1 : 0,
-                transform:
-                  idx === pulseIdx ? "translateY(0)" : "translateY(8px)",
-                transition: "opacity .45s, transform .45s",
+                width: `${progress}%`,
+                background: `linear-gradient(
+                  90deg,
+                  ${module.accent},
+                  ${module.accent2}
+                )`,
               }}
-            >
-              <span
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: line.dot,
-                  flexShrink: 0,
-                  display: "inline-block",
-                }}
-              />
-              {line.text}
+            />
+          </div>
+        </div>
+
+        <Sparkline data={module.spark} color={module.accent} />
+      </div>
+
+      <button
+        type="button"
+        className="hq-card-action"
+        onClick={() => navigate(module.path)}
+        aria-label={`Open ${module.item}`}
+      >
+        <span className="hq-action-left">
+          <span className="hq-action-icon">
+            <Icon size={14} />
+          </span>
+
+          <span className="hq-action-name">{module.item}</span>
+        </span>
+
+        <span className="hq-action-right">
+          <span className={`hq-badge ${badgeClass}`}>{module.badge}</span>
+
+          <ChevronRight size={14} />
+        </span>
+      </button>
+    </article>
+  );
+}
+
+/* =========================================================
+   ACTIVITY MARQUEE
+========================================================= */
+
+function ActivityMarquee() {
+  const items = [...ACTIVITY, ...ACTIVITY];
+
+  return (
+    <div className="hq-activity">
+      <div className="hq-activity-head">
+        <CircleDot size={10} color="#6366f1" />
+
+        <span className="hq-activity-title">Recent activity</span>
+      </div>
+
+      <div className="hq-activity-window">
+        <div className="hq-activity-track">
+          {items.map(({ Icon, text, time }, index) => (
+            <div className="hq-activity-item" key={`${text}-${index}`}>
+              <Icon size={12} />
+
+              <span className="hq-activity-text">{text}</span>
+
+              <span className="hq-activity-time">· {time}</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Module health mini-list */}
-      <div
-        style={{
-          padding: "16px 18px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,.07)",
-          background: "rgba(255,255,255,.02)",
-          backdropFilter: "blur(16px)",
-        }}
-      >
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: ".1em",
-            textTransform: "uppercase",
-            color: "#374151",
-            margin: "0 0 12px",
-          }}
-        >
-          Module Health
-        </p>
-        {MODULES.map((cat) => {
-          const rgb = hexToRgb(cat.accentHex);
-          return (
-            <div
-              key={cat.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "9px 12px",
-                borderRadius: 10,
-                marginBottom: 7,
-                background: `rgba(${rgb},.035)`,
-                border: `1px solid rgba(${rgb},.14)`,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: cat.accentHex,
-                    display: "inline-block",
-                    boxShadow: `0 0 8px rgba(${rgb},.6)`,
-                  }}
-                />
-                <span
-                  style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}
-                >
-                  {cat.label}
-                </span>
-              </div>
-              <span
-                style={{ fontSize: 11, color: cat.accentHex, fontWeight: 700 }}
-              >
-                {cat.statusText}
-              </span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════
-   MODULE CARD
-═══════════════════════════════════════ */
-
-function ModuleCard({ cat, navigate, delay, mounted }) {
-  const [cardHov, setCardHov] = useState(false);
-  const [itemHov, setItemHov] = useState(null);
-  const rgb = hexToRgb(cat.accentHex);
-
-  return (
-    <div
-      className="ho-card"
-      style={{
-        background: cardHov
-          ? `linear-gradient(135deg,rgba(${rgb},.08) 0%,rgba(255,255,255,.04) 100%)`
-          : `linear-gradient(135deg,rgba(${rgb},.04) 0%,rgba(255,255,255,.015) 100%)`,
-        borderColor: cardHov ? `rgba(${rgb},.42)` : `rgba(${rgb},.2)`,
-        boxShadow: cardHov
-          ? `0 0 52px rgba(${rgb},.22),inset 0 1px 0 rgba(255,255,255,.08),0 8px 32px rgba(0,0,0,.45)`
-          : `0 0 24px rgba(${rgb},.07),inset 0 1px 0 rgba(255,255,255,.04),0 4px 16px rgba(0,0,0,.3)`,
-        transform: mounted
-          ? cardHov
-            ? "translateY(-4px)"
-            : "translateY(0)"
-          : "translateY(20px)",
-        opacity: mounted ? 1 : 0,
-        transition: `opacity .5s ease ${delay}ms, transform .35s, border-color .2s, box-shadow .2s, background .2s`,
-      }}
-      onMouseEnter={() => setCardHov(true)}
-      onMouseLeave={() => setCardHov(false)}
-    >
-      {/* ── Card header ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              width: 3,
-              height: 38,
-              borderRadius: 4,
-              flexShrink: 0,
-              display: "inline-block",
-              background: `linear-gradient(to bottom,${cat.accentHex},${cat.accentTo})`,
-              boxShadow: `0 0 18px rgba(${rgb},.6)`,
-            }}
-          />
-          <div>
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: ".08em",
-                textTransform: "uppercase",
-                color: "#D1D5DB",
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              {cat.label}
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#374151",
-                margin: "3px 0 0",
-                lineHeight: 1.3,
-              }}
-            >
-              {cat.tagline}
-            </p>
-          </div>
-        </div>
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            padding: "3px 7px",
-            borderRadius: 5,
-            border: "1px solid rgba(255,255,255,.09)",
-            background: "rgba(255,255,255,.04)",
-            color: "#3B4558",
-            fontFamily: "monospace",
-            letterSpacing: ".04em",
-          }}
-        >
-          {cat.shortcut}
-        </span>
-      </div>
-
-      {/* ── Sparkline data strip ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          marginBottom: 16,
-          padding: "11px 14px",
-          borderRadius: 12,
-          background: "rgba(255,255,255,.025)",
-          border: "1px solid rgba(255,255,255,.05)",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: 10,
-              color: "#374151",
-              letterSpacing: ".06em",
-              textTransform: "uppercase",
-              margin: "0 0 8px",
-              fontWeight: 700,
-            }}
-          >
-            {cat.sparkLabel}
-          </p>
-          <ProgressBar value={cat.progress} color={cat.accentHex} />
-        </div>
-        <Sparkline data={cat.spark} color={cat.accentHex} width={96} />
-      </div>
-
-      {/* ── Items ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {cat.items.map((item) => {
-          const hov = itemHov === item.name;
-          return (
-            <button
-              key={item.name}
-              className="ho-item"
-              style={{
-                background: hov ? `rgba(${rgb},.08)` : "transparent",
-                borderColor: hov ? `rgba(${rgb},.25)` : "rgba(255,255,255,.04)",
-                borderLeftColor: hov ? cat.accentHex : "transparent",
-              }}
-              onClick={() => navigate(item.path)}
-              onMouseEnter={() => setItemHov(item.name)}
-              onMouseLeave={() => setItemHov(null)}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 30,
-                    height: 30,
-                    borderRadius: 9,
-                    flexShrink: 0,
-                    background: hov
-                      ? `rgba(${rgb},.18)`
-                      : "rgba(255,255,255,.05)",
-                    color: hov ? cat.accentHex : "#6B7280",
-                    transition: "background .15s, color .15s",
-                  }}
-                >
-                  <item.icon style={{ width: 14, height: 14 }} />
-                </span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: hov ? "#F1F5F9" : "#9CA3AF",
-                    letterSpacing: "-.01em",
-                    transition: "color .15s",
-                  }}
-                >
-                  {item.name}
-                </span>
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {item.badge && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: ".04em",
-                      textTransform: "uppercase",
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      border: "1px solid",
-                      background: item.badge.hot
-                        ? `rgba(${rgb},.15)`
-                        : "rgba(16,185,129,.12)",
-                      color: item.badge.hot ? cat.accentHex : "#10B981",
-                      borderColor: item.badge.hot
-                        ? `rgba(${rgb},.3)`
-                        : "rgba(16,185,129,.3)",
-                    }}
-                  >
-                    {item.badge.text}
-                  </span>
-                )}
-                <ChevronRight
-                  style={{
-                    width: 13,
-                    height: 13,
-                    color: hov ? "#94A3B8" : "#2D3748",
-                    transition: "color .15s",
-                  }}
-                />
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════
-   HERO SECTION
-═══════════════════════════════════════ */
+/* =========================================================
+   MAIN COMPONENT
+========================================================= */
 
 export default function HeroSection() {
   const navigate = useNavigate();
-  const [pulseIdx, setPulseIdx] = useState(0);
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 60);
-    const id = setInterval(
-      () => setPulseIdx((i) => (i + 1) % PULSE.length),
-      3200,
-    );
-    return () => {
-      clearTimeout(t);
-      clearInterval(id);
-    };
+  const [visible, setVisible] = useState(false);
+  const [pulseIndex, setPulseIndex] = useState(0);
+
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }, []);
+
+  /* Entrance + pulse */
+  useEffect(() => {
+    const entrance = setTimeout(
+      () => setVisible(true),
+      prefersReducedMotion ? 0 : 80,
+    );
+
+    if (prefersReducedMotion) {
+      return () => clearTimeout(entrance);
+    }
+
+    const pulse = setInterval(() => {
+      setPulseIndex((current) => (current + 1) % PULSE.length);
+    }, 3200);
+
+    return () => {
+      clearTimeout(entrance);
+      clearInterval(pulse);
+    };
+  }, [prefersReducedMotion]);
+
+  /* Keyboard shortcuts */
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const modifier = event.altKey;
+
+      if (!modifier) return;
+
+      if (event.key === "1") {
+        event.preventDefault();
+        navigate("/OverduesDashboard");
+      }
+
+      if (event.key === "2") {
+        event.preventDefault();
+        navigate("/DailySalesReport");
+      }
+
+      if (event.key === "3") {
+        event.preventDefault();
+        navigate("/Stockmanager");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
 
   return (
     <>
       <style>{CSS}</style>
 
-      <section
-        className="ho"
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          background: "#030712",
-          minHeight: "100vh",
-        }}
-      >
-        {/* ── Atmosphere layers ── */}
-        <ParticlesBg />
-        <div
-          style={{
-            position: "absolute",
-            top: "-18%",
-            left: "-10%",
-            width: 700,
-            height: 700,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle,rgba(99,102,241,.11) 0%,transparent 70%)",
-            filter: "blur(70px)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-15%",
-            right: "-8%",
-            width: 580,
-            height: 580,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle,rgba(245,158,11,.08) 0%,transparent 70%)",
-            filter: "blur(65px)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "35%",
-            width: 440,
-            height: 440,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle,rgba(167,139,250,.06) 0%,transparent 70%)",
-            filter: "blur(90px)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px)",
-            backgroundSize: "36px 36px",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(ellipse 80% 50% at 50% 100%,#030712 0%,transparent 100%)",
-            pointerEvents: "none",
-          }}
-        />
+      <main className="hq">
+        <ParticleBackground />
 
-        <div
-          className="ho-container"
-          style={{
-            position: "relative",
-            maxWidth: 1200,
-            margin: "0 auto",
-            padding: "22px 48px 64px",
-          }}
-        >
-          {/* ══════════════════════════════
-              TOP CHROME BAR
-          ══════════════════════════════ */}
-          <div
-            className="ho-topbar"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingBottom: 18,
-              marginBottom: 60,
-              borderBottom: "1px solid rgba(255,255,255,.05)",
-              gap: 14,
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 7,
-                  background: "linear-gradient(135deg,#6366F1,#22D3EE)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Sparkles style={{ width: 13, height: 13, color: "#fff" }} />
+        <div className="hq-grid" />
+        <div className="hq-noise" />
+
+        <div className="hq-orb hq-orb-a" />
+        <div className="hq-orb hq-orb-b" />
+        <div className="hq-orb hq-orb-c" />
+
+        <div className="hq-container">
+          {/* =================================================
+              TOP BAR
+          ================================================= */}
+
+          <header className="hq-topbar">
+            <div className="hq-brand">
+              <div className="hq-logo">
+                <Sparkles size={16} />
               </div>
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 800,
-                  letterSpacing: "-.02em",
-                  color: "#D1D5DB",
-                }}
-              >
-                Office Suite
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  background: "rgba(99,102,241,.12)",
-                  color: "#818CF8",
-                  fontWeight: 600,
-                  border: "1px solid rgba(99,102,241,.2)",
-                }}
-              >
-                3 modules
-              </span>
+
+              <span className="hq-brand-name">Office Suite</span>
+
+              <span className="hq-version">3 modules</span>
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              {METRICS.map((m, i) => (
-                <MetricChip key={m.label} metric={m} idx={i} />
+
+            <div className="hq-kpis">
+              {METRICS.map((metric, index) => (
+                <Metric key={metric.label} metric={metric} index={index} />
               ))}
+
               <div
-                style={{
-                  width: 1,
-                  height: 24,
-                  background: "rgba(255,255,255,.07)",
-                  margin: "0 2px",
-                }}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "5px 10px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,.08)",
-                  background: "rgba(255,255,255,.03)",
-                  cursor: "pointer",
-                  transition: "all .15s",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,.07)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,.03)")
-                }
+                className="hq-kpi"
+                title="Keyboard shortcuts: Alt + 1 / 2 / 3"
               >
-                <Command style={{ width: 12, height: 12, color: "#4B5563" }} />
+                <Command size={13} color="#475569" />
+
+                <span className="hq-kpi-label">Alt</span>
+
                 <span
                   style={{
-                    fontSize: 11,
-                    color: "#4B5563",
-                    fontWeight: 700,
+                    color: "#64748b",
                     fontFamily: "monospace",
+                    fontWeight: 800,
+                    fontSize: 11,
                   }}
                 >
-                  K
+                  1–3
                 </span>
               </div>
             </div>
-          </div>
+          </header>
 
-          {/* ══════════════════════════════
-              HERO: 2-col (text | status)
-          ══════════════════════════════ */}
-          <div
-            className="ho-hero"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.25fr 0.75fr",
-              gap: 64,
-              alignItems: "start",
-              marginBottom: 48,
-            }}
-          >
-            {/* LEFT: eyebrow + headline + subtext + CTAs + quicknav */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-              {/* Eyebrow badge */}
+          {/* =================================================
+              HERO
+          ================================================= */}
+
+          <section className="hq-hero">
+            <div>
               <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "7px 16px 7px 10px",
-                  borderRadius: 100,
-                  border: "1px solid rgba(99,102,241,.3)",
-                  background: "rgba(99,102,241,.07)",
-                  backdropFilter: "blur(10px)",
-                  width: "fit-content",
-                  opacity: mounted ? 1 : 0,
-                  transform: mounted ? "translateY(0)" : "translateY(8px)",
-                  transition: "opacity .5s .1s, transform .5s .1s",
-                }}
+                className={`hq-enter ${visible ? "is-visible" : ""}`}
+                style={{ transitionDelay: "80ms" }}
               >
-                <Sparkles style={{ width: 14, height: 14, color: "#818CF8" }} />
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: "linear-gradient(to right,#818CF8,#67E8F9)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
-                  One login · Every tool · Full visibility
-                </span>
+                <div className="hq-eyebrow">
+                  <span className="hq-eyebrow-dot" />
+                  <Sparkles size={12} />
+                  One login · every tool · full visibility
+                </div>
               </div>
 
-              {/* Headline */}
               <div
-                style={{
-                  opacity: mounted ? 1 : 0,
-                  transform: mounted ? "translateY(0)" : "translateY(12px)",
-                  transition: "opacity .55s .18s, transform .55s .18s",
-                }}
+                className={`hq-enter ${visible ? "is-visible" : ""}`}
+                style={{ transitionDelay: "160ms" }}
               >
-                <h1
-                  className="ho-h1"
-                  style={{
-                    fontSize: 68,
-                    fontWeight: 900,
-                    lineHeight: 1.0,
-                    letterSpacing: "-.04em",
-                    margin: 0,
-                  }}
-                >
-                  <span style={{ color: "#F1F5F9" }}>Your</span>
+                <h1 className="hq-title">
+                  Your office.
                   <br />
-                  <span
-                    className="ho-grad-word"
-                    style={{ display: "inline-block" }}
-                  >
-                    Office
-                  </span>
+                  <span className="hq-gradient-text">One command</span>
                   <br />
-                  <span style={{ color: "#F1F5F9" }}>Command</span>
-                  <br />
-                  <span
-                    style={{
-                      color: "transparent",
-                      WebkitTextStroke: "1.5px rgba(99,102,241,.35)",
-                      letterSpacing: "-.02em",
-                    }}
-                  >
-                    Center.
-                  </span>
+                  center
+                  <span className="hq-outline">.</span>
                 </h1>
-                <p
-                  style={{
-                    margin: "22px 0 0",
-                    fontSize: 16,
-                    lineHeight: 1.82,
-                    color: "#52627A",
-                    maxWidth: 460,
-                  }}
-                >
-                  Billing, sales, CRM, and inventory — all from one dashboard.
-                  No chaos. No tab switching. Just the work that matters.
+
+                <p className="hq-description">
+                  Billing, sales, CRM and inventory — connected in one focused
+                  workspace. See what needs attention, act faster, and keep your
+                  entire operation moving.
                 </p>
               </div>
 
-              {/* CTAs + quick-nav */}
               <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 16,
-                  opacity: mounted ? 1 : 0,
-                  transform: mounted ? "translateY(0)" : "translateY(10px)",
-                  transition: "opacity .55s .32s, transform .55s .32s",
-                }}
+                className={`hq-enter ${visible ? "is-visible" : ""}`}
+                style={{ transitionDelay: "280ms" }}
               >
-                <div
-                  className="ho-cta-row"
-                  style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
-                >
+                <div className="hq-actions">
                   <button
-                    className="ho-btn-p"
+                    type="button"
+                    className="hq-primary"
                     onClick={() => navigate("/DailySalesReport")}
                   >
-                    <Activity style={{ width: 15, height: 15 }} />
-                    Sales Report
-                    <ArrowRight
-                      className="ho-arr"
-                      style={{ width: 15, height: 15 }}
-                    />
+                    <Activity size={15} />
+                    Open Sales Report
+                    <ArrowRight className="hq-arrow" size={15} />
                   </button>
+
                   <button
-                    className="ho-btn-g"
+                    type="button"
+                    className="hq-secondary"
                     onClick={() => navigate("/Stockmanager")}
                   >
-                    <Package style={{ width: 15, height: 15 }} />
-                    Stock List
+                    <Package size={15} />
+                    View Stock
                   </button>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span
-                    style={{ fontSize: 11, color: "#2D3748", marginRight: 2 }}
-                  >
-                    Quick nav:
-                  </span>
-                  {MODULES.map((m) => (
+
+                <div className="hq-quick">
+                  <span className="hq-quick-label">Quick access</span>
+
+                  {MODULES.map((module) => (
                     <button
-                      key={m.id}
-                      className="ho-qnav"
-                      onClick={() => navigate(m.items[0].path)}
+                      key={module.id}
+                      type="button"
+                      className="hq-quick-btn"
+                      onClick={() => navigate(module.path)}
                     >
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 700,
-                          padding: "2px 5px",
-                          borderRadius: 5,
-                          border: "1px solid rgba(255,255,255,.1)",
-                          background: "rgba(255,255,255,.05)",
-                          color: "#4B5563",
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {m.shortcut}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: "#374151",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {m.label.split(" ")[0]}
-                      </span>
+                      <span className="hq-key">{module.shortcut}</span>
+
+                      {module.shortLabel}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* RIGHT: live pulse + module health */}
-            <StatusPanel pulseIdx={pulseIdx} mounted={mounted} />
-          </div>
+            {/* =================================================
+                RIGHT SIDE
+            ================================================= */}
 
-          {/* ══════════════════════════════
-              SECTION DIVIDER + LABEL
-          ══════════════════════════════ */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 18,
-              opacity: mounted ? 1 : 0,
-              transition: "opacity .5s .55s",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 3,
-                  height: 16,
-                  borderRadius: 2,
-                  background: "linear-gradient(to bottom,#6366F1,#22D3EE)",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: ".1em",
-                  textTransform: "uppercase",
-                  color: "#374151",
-                }}
-              >
-                All Modules
-              </span>
+            <div
+              className={`hq-enter ${visible ? "is-visible" : ""}`}
+              style={{ transitionDelay: "260ms" }}
+            >
+              <LivePanel pulseIndex={pulseIndex} />
             </div>
-            <span style={{ fontSize: 11, color: "#2D3748" }}>3 active</span>
-          </div>
+          </section>
 
-          {/* ══════════════════════════════
-              HORIZONTAL CARDS ROW
-          ══════════════════════════════ */}
-          <div
-            className="ho-cards"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,1fr)",
-              gap: 16,
-              marginBottom: 48,
-            }}
-          >
-            {MODULES.map((cat, i) => (
-              <ModuleCard
-                key={cat.id}
-                cat={cat}
-                navigate={navigate}
-                delay={i * 100}
-                mounted={mounted}
-              />
-            ))}
-          </div>
+          {/* =================================================
+              MODULES
+          ================================================= */}
 
-          {/* ══════════════════════════════
-              ACTIVITY MARQUEE
-          ══════════════════════════════ */}
-          <div
-            style={{
-              borderTop: "1px solid rgba(255,255,255,.05)",
-              paddingTop: 18,
-              opacity: mounted ? 1 : 0,
-              transition: "opacity .6s .8s",
-            }}
-          >
-            <ActivityMarquee />
-          </div>
+          <section aria-labelledby="modules-heading">
+            <div className="hq-section-head">
+              <h2 id="modules-heading" className="hq-section-title">
+                All modules
+              </h2>
+
+              <span className="hq-section-count">3 active · synced</span>
+            </div>
+
+            <div className="hq-cards">
+              {MODULES.map((module, index) => (
+                <ModuleCard
+                  key={module.id}
+                  module={module}
+                  navigate={navigate}
+                  index={index}
+                  visible={visible}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* =================================================
+              ACTIVITY
+          ================================================= */}
+
+          <ActivityMarquee />
         </div>
-      </section>
+      </main>
     </>
   );
 }

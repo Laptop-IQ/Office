@@ -12,12 +12,7 @@ import { Footer } from "./layout/Footer";
 import HeroSection from "./sections/Hero";
 
 // Business Components
-import SFDyesExpenseForm from "./components/SFDyesExpenseForm";
-import FoodBill from "./components/FoodBill";
 import DailySalesReport from "./components/DailySalesReport";
-import ExpenseClaimBuilder from "./components/ExpenseClaimBuilder";
-
-
 import OverduesDashboard from "./components/OverduesDashboard";
 import QRGenerator from "./components/QRGenerator";
 
@@ -27,6 +22,7 @@ import Register from "@/pages/Register";
 import VerifyOTP from "@/pages/VerifyOTP";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+
 import StockManager from "./components/Stockmanager";
 import PDFDocumentManager from "./components/Pdfdocumentmanager";
 import Chemsalescrm from "./components/Chemsalescrm";
@@ -34,7 +30,6 @@ import Customerlistpage from "./components/Customerlistpage";
 import Notepad from "./components/Notepad";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
-import CommandLibrary from "./components/CommandLibrary";
 import MindMapPro from "./components/MindMapPro";
 import TodoApp from "./components/TodoApp";
 
@@ -78,32 +73,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected Business Routes */}
-          <Route
-            path="/expense-form"
-            element={
-              <PrivateRoute>
-                <SFDyesExpenseForm />
-              </PrivateRoute>
-            }
-          />
-        
-          <Route
-            path="/ExpenseClaimBuilder"
-            element={
-              <PrivateRoute>
-                <ExpenseClaimBuilder />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/foodbill"
-            element={
-              <PrivateRoute>
-                <FoodBill />
-              </PrivateRoute>
-            }
-          />
+         
           <Route
             path="/DailySalesReport"
             element={
@@ -185,14 +155,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/copypaste"
-            element={
-              <PrivateRoute>
-                <CommandLibrary />
-              </PrivateRoute>
-            }
-          />
+       
           <Route
             path="/purchase"
             element={

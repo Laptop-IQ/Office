@@ -68,7 +68,6 @@ const BIZ_CATS = [
   {
     label: "Finance",
     items: [
-      { name: "Expense Form", path: "/expense-form", icon: DocumentTextIcon },
       { name: "Overdues", path: "/OverduesDashboard", icon: CurrencyRupeeIcon },
     ],
   },
@@ -96,11 +95,6 @@ const BIZ_CATS = [
         icon: ClipboardDocumentListIcon,
       },
       { name: "Notepad", path: "/notepad", icon: ClipboardDocumentListIcon },
-      {
-        name: "Copy Code",
-        path: "/copypaste",
-        icon: ClipboardDocumentListIcon,
-      },
       {
         name: "Mind Map Pro",
         path: "/mindmap",
