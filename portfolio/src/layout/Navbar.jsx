@@ -69,6 +69,12 @@ const BIZ_CATS = [
     label: "Finance",
     items: [
       { name: "Overdues", path: "/OverduesDashboard", icon: CurrencyRupeeIcon },
+      { name: "Air bills", path: "/tax-invoice", icon: CurrencyRupeeIcon },
+      {
+        name: "Hotels Bills",
+        path: "/hotels-invoice",
+        icon: CurrencyRupeeIcon,
+      },
     ],
   },
   {

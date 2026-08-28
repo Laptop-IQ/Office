@@ -32,6 +32,8 @@ import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
 import MindMapPro from "./components/MindMapPro";
 import TodoApp from "./components/TodoApp";
+import TaxInvoice from "./pages/TaxInvoice";
+import HotelsInvoice from "./pages/Hotels";
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -72,8 +74,9 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/tax-invoice" element={<TaxInvoice />} />
+          <Route path="/hotels-invoice" element={<HotelsInvoice />} />
 
-         
           <Route
             path="/DailySalesReport"
             element={
@@ -155,7 +158,7 @@ function App() {
               </PrivateRoute>
             }
           />
-       
+
           <Route
             path="/purchase"
             element={
