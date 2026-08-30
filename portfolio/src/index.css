@@ -196,3 +196,832 @@
       0 0 80px color-mix(in srgb, var(--color-primary) 25%, transparent);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   APP NAVBAR
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --nav-bg: rgba(8, 8, 12, 0.72);
+  --nav-bg-solid: rgba(11, 11, 16, 0.97);
+
+  --drawer-bg: rgba(11, 11, 16, 0.99);
+
+  --nav-border: rgba(255, 255, 255, 0.07);
+  --nav-border-md: rgba(255, 255, 255, 0.11);
+
+  --nav-text: #f2f2f7;
+  --nav-muted: #8e8e93;
+  --nav-dim: #55555d;
+
+  --nav-hover: rgba(255, 255, 255, 0.055);
+  --nav-active-bg: rgba(124, 58, 237, 0.13);
+  --nav-accent: #a78bfa;
+
+  --nav-overlay: rgba(0, 0, 0, 0.72);
+
+  --nav-font:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Helvetica Neue",
+    sans-serif;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOP NAVBAR
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  z-index: 1000;
+
+  width: 100%;
+  height: 56px;
+
+  background: var(--nav-bg);
+
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+
+  border-bottom: 0.5px solid var(--nav-border);
+
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
+
+  font-family: var(--nav-font);
+}
+
+
+/* Scrolled state */
+
+.app-navbar.is-scrolled {
+  background: var(--nav-bg-solid);
+  border-bottom-color: var(--nav-border-md);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   NAVBAR INNER
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-navbar-inner {
+  width: 100%;
+  height: 100%;
+
+  max-width: 1180px;
+
+  margin: 0 auto;
+  padding: 0 20px;
+
+  display: flex;
+  align-items: center;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   DESKTOP MENU
+   ══════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Desktop par menu hidden hai.
+ * Navbar ki bottom line visible rahegi.
+ */
+
+.app-desktop-menu {
+  display: none !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE BUTTON
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-menu-button {
+  margin-left: auto;
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 9px;
+
+  background: transparent;
+  color: var(--nav-muted);
+
+  cursor: pointer;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-menu-button:hover {
+  background: var(--nav-hover);
+  color: var(--nav-text);
+}
+
+.app-menu-button:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 2px;
+}
+
+.app-menu-button svg {
+  width: 21px;
+  height: 21px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE OVERLAY
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-mobile-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1100;
+
+  background: var(--nav-overlay);
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  animation: appOverlayIn 0.2s ease;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE DRAWER
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-mobile-drawer {
+  position: fixed;
+
+  top: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 1200;
+
+  width: min(320px, 88vw);
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--drawer-bg);
+
+  border-left: 0.5px solid var(--nav-border-md);
+
+  box-shadow:
+    -20px 0 60px rgba(0, 0, 0, 0.45);
+
+  font-family: var(--nav-font);
+
+  animation:
+    appDrawerIn 0.28s cubic-bezier(.32, 0, .67, 0);
+
+  overscroll-behavior: contain;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   DRAWER HEADER
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-drawer-header {
+  min-height: 60px;
+
+  padding: 0 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom: 0.5px solid var(--nav-border);
+
+  background:
+    linear-gradient(180deg,
+      rgba(124, 58, 237, 0.08),
+      transparent);
+}
+
+.app-drawer-title {
+  color: var(--nav-text);
+
+  font-size: 17px;
+  font-weight: 600;
+
+  letter-spacing: -0.035em;
+}
+
+.app-drawer-close {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--nav-muted);
+
+  cursor: pointer;
+}
+
+.app-drawer-close:hover {
+  color: var(--nav-text);
+  background: var(--nav-hover);
+}
+
+.app-drawer-close:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 2px;
+}
+
+.app-drawer-close svg {
+  width: 19px;
+  height: 19px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   DRAWER CONTENT
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-drawer-content {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 12px 10px;
+
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-mobile-group {
+  margin-bottom: 18px;
+}
+
+.app-mobile-section-title {
+  padding: 6px 12px 8px;
+
+  color: var(--nav-dim);
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.12em;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   NAV ITEM
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-nav-item {
+  min-height: 36px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 7px 11px;
+
+  border-radius: 8px;
+
+  text-decoration: none;
+
+  color: var(--nav-muted);
+
+  font-family: var(--nav-font);
+
+  font-size: 13px;
+  font-weight: 400;
+
+  letter-spacing: -0.022em;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-nav-item:hover {
+  color: var(--nav-text);
+  background: var(--nav-hover);
+}
+
+.app-nav-item.active {
+  color: var(--nav-accent);
+  background: var(--nav-active-bg);
+}
+
+.app-nav-item:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 1px;
+}
+
+.app-nav-icon {
+  width: 16px;
+  height: 16px;
+
+  flex-shrink: 0;
+
+  stroke-width: 1.7;
+}
+
+.app-nav-label {
+  white-space: nowrap;
+}
+
+.app-nav-badge {
+  margin-left: auto;
+
+  padding: 2px 6px;
+
+  border-radius: 999px;
+
+  background: rgba(255, 69, 58, 0.10);
+  color: #ff453a;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE NAV ITEM
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-nav-item.mobile-item {
+  min-height: 44px;
+
+  padding: 10px 12px;
+
+  border-radius: 10px;
+
+  font-size: 14px;
+
+  gap: 11px;
+}
+
+.app-nav-item.mobile-item .app-nav-icon {
+  width: 18px;
+  height: 18px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════════════════════════════════ */
+
+@keyframes appOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes appDrawerIn {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 700px) {
+  .app-mobile-button {
+    display: flex;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .app-navbar,
+  .app-mobile-overlay,
+  .app-mobile-drawer,
+  .app-nav-item {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.app-menu-button {
+  margin-left: auto;
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 9px;
+
+  background: transparent;
+  color: var(--nav-muted, #8e8e93);
+
+  cursor: pointer;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-menu-button:hover {
+  background: rgba(255, 255, 255, 0.055);
+  color: #f2f2f7;
+}
+
+.app-menu-button:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.app-menu-button svg {
+  width: 21px;
+  height: 21px;
+}
+
+/* LOGIN */
+
+.app-login-item {
+  min-height: 36px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 7px 11px;
+
+  border-radius: 8px;
+
+  text-decoration: none;
+
+  color: #8e8e93;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Helvetica Neue",
+    sans-serif;
+
+  font-size: 13px;
+  font-weight: 400;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-login-item:hover {
+  color: #f2f2f7;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.app-login-item.active {
+  color: #a78bfa;
+  background: rgba(124, 58, 237, 0.13);
+}
+
+.app-login-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 1.7;
+}
+
+/* MOBILE LOGIN */
+
+.app-login-group {
+  padding-top: 4px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+}
+
+.app-login-item.mobile-login-item {
+  min-height: 44px;
+  padding: 10px 12px;
+
+  border-radius: 10px;
+
+  font-size: 14px;
+  gap: 11px;
+}
+
+.app-login-item.mobile-login-item .app-login-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MENU BUTTON
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-menu-button {
+  margin-left: auto;
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 9px;
+
+  background: transparent;
+  color: #8e8e93;
+
+  cursor: pointer;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-menu-button:hover {
+  color: #f2f2f7;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.app-menu-button:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.app-menu-button svg {
+  width: 21px;
+  height: 21px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ACCOUNT
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-account-section {
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+}
+
+/* USER CARD */
+
+.app-user-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 11px;
+
+  margin-bottom: 6px;
+
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  background:
+    linear-gradient(135deg,
+      rgba(124, 58, 237, 0.10),
+      rgba(124, 58, 237, 0.025));
+}
+
+/* AVATAR */
+
+.app-user-avatar {
+  width: 38px;
+  height: 38px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 50%;
+
+  color: #a78bfa;
+
+  background: #18182a;
+
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.35),
+    0 0 16px rgba(124, 58, 237, 0.18);
+}
+
+.app-user-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+.app-user-avatar svg {
+  width: 23px;
+  height: 23px;
+}
+
+/* USER INFO */
+
+.app-user-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.app-user-name {
+  overflow: hidden;
+
+  color: #f2f2f7;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  letter-spacing: -0.022em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-user-email {
+  margin-top: 2px;
+
+  overflow: hidden;
+
+  color: #8e8e93;
+
+  font-size: 10px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-user-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  margin-top: 4px;
+
+  color: #8e8e93;
+
+  font-size: 10px;
+}
+
+.app-status-dot {
+  width: 6px;
+  height: 6px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #30d158;
+
+  box-shadow:
+    0 0 7px rgba(48, 209, 88, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LOGIN
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-login-item {
+  min-height: 44px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 10px 12px;
+
+  border-radius: 10px;
+
+  color: #a78bfa;
+
+  background: rgba(124, 58, 237, 0.10);
+
+  text-decoration: none;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Helvetica Neue",
+    sans-serif;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.app-login-item:hover {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.16);
+}
+
+.app-login-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LOGOUT
+   ══════════════════════════════════════════════════════════════════════ */
+
+.app-logout-button {
+  width: 100%;
+  min-height: 44px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: #ff453a;
+
+  cursor: pointer;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Helvetica Neue",
+    sans-serif;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  text-align: left;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.15s ease;
+}
+
+.app-logout-button:hover {
+  color: #ff6961;
+  background: rgba(255, 69, 58, 0.10);
+}
+
+.app-logout-button:active {
+  transform: scale(0.985);
+}
+
+.app-logout-button:focus-visible {
+  outline: 2px solid #ff453a;
+  outline-offset: 2px;
+}
+
+.app-logout-button svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}

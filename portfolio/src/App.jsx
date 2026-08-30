@@ -11,10 +11,6 @@ import { Footer } from "./layout/Footer";
 // Public Sections
 import HeroSection from "./sections/Hero";
 
-// Business Components
-import DailySalesReport from "./components/DailySalesReport";
-import OverduesDashboard from "./components/OverduesDashboard";
-import QRGenerator from "./components/QRGenerator";
 
 // Auth Pages
 import Login from "@/pages/Login";
@@ -23,17 +19,12 @@ import VerifyOTP from "@/pages/VerifyOTP";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 
+import DailySalesReport from "./components/DailySalesReport";
+import OverduesDashboard from "./components/OverduesDashboard";
 import StockManager from "./components/Stockmanager";
-import PDFDocumentManager from "./components/Pdfdocumentmanager";
-import Chemsalescrm from "./components/Chemsalescrm";
-import Customerlistpage from "./components/Customerlistpage";
-import Notepad from "./components/Notepad";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
-import MindMapPro from "./components/MindMapPro";
-import TodoApp from "./components/TodoApp";
-import TaxInvoice from "./pages/TaxInvoice";
-import HotelsInvoice from "./pages/Hotels";
+
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -74,8 +65,6 @@ function App() {
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/tax-invoice" element={<TaxInvoice />} />
-          <Route path="/hotels-invoice" element={<HotelsInvoice />} />
 
           <Route
             path="/DailySalesReport"
@@ -85,31 +74,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/qrgen"
-            element={
-              <PrivateRoute>
-                <QRGenerator />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/Customerlistpage"
-            element={
-              <PrivateRoute>
-                <Customerlistpage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/Chemsalescrm"
-            element={
-              <PrivateRoute>
-                <Chemsalescrm />
-              </PrivateRoute>
-            }
-          />
-
+   
           <Route
             path="/OverduesDashboard"
             element={
@@ -126,14 +91,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/Pdfdocumentmanager"
-            element={
-              <PrivateRoute>
-                <PDFDocumentManager />
-              </PrivateRoute>
-            }
-          />
+        
           <Route
             path="/pricelist"
             element={
@@ -142,23 +100,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/notepad"
-            element={
-              <PrivateRoute>
-                <Notepad />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/mindmap"
-            element={
-              <PrivateRoute>
-                <MindMapPro />
-              </PrivateRoute>
-            }
-          />
-
+        
           <Route
             path="/purchase"
             element={
@@ -167,14 +109,7 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/todo"
-            element={
-              <PrivateRoute>
-                <TodoApp />
-              </PrivateRoute>
-            }
-          />
+         
         </Routes>
       </BrowserRouter>
     </AuthProvider>
