@@ -449,7 +449,8 @@ const injectGlobalStyles = () => {
     .dsr-btn-export:hover { filter:brightness(1.08);transform:translateY(-1.5px); }
     .dsr-record-card { transition:box-shadow 0.25s cubic-bezier(0.16,1,0.3,1),transform 0.25s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 1px 1px rgba(0,0,0,0.15); }
     .dsr-record-card:hover { box-shadow:0 4px 8px rgba(0,0,0,0.3),0 16px 32px -12px rgba(0,200,180,0.20)!important;transform:translateY(-2px);border-color:#254868!important; }
-    .dsr-customer-row { transition:background 0.12s; }
+    .dsr-customer-row { transition:background 0.12s;cursor:pointer; }
+    .dsr-customer-row:focus-visible { outline:2px solid #00C8B4;outline-offset:-2px; }
     .dsr-customer-row:hover { background:rgba(0,200,180,0.06)!important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
     .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
@@ -2521,6 +2522,477 @@ const VisitsModal = ({ data, onClose }) => {
   );
 };
 
+// ── CustomerHistoryModal — full visit history of a customer (start → now) ──
+const CustomerHistoryModal = ({ name, customer, records, onClose }) => {
+  useEffect(() => {
+    const h = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  // records are sorted latest → oldest
+  const total = records.length;
+  const latest = records[0];
+  const first = records[total - 1];
+  const currentStage = latest?.stage || customer?.stage || "";
+  const sc = stageColor(currentStage);
+
+  // group by month (keeps latest-first order)
+  const groups = useMemo(() => {
+    const out = [];
+    const idx = {};
+    records.forEach((r, i) => {
+      const d = new Date(r.date);
+      const valid = !isNaN(d.getTime());
+      const key = valid
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        : "unknown";
+      if (idx[key] === undefined) {
+        idx[key] = out.length;
+        out.push({
+          key,
+          label: valid
+            ? d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+            : "Date missing",
+          items: [],
+        });
+      }
+      out[idx[key]].items.push({ r, i });
+    });
+    return out;
+  }, [records]);
+
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${name} history`}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.82)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 250,
+        padding: 16,
+        backdropFilter: "blur(6px)",
+      }}
+    >
+      <div
+        className="dsr-modal-box"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: DS.card,
+          border: `1px solid ${DS.border}`,
+          borderRadius: 14,
+          width: "100%",
+          maxWidth: 560,
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow:
+            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: "linear-gradient(135deg,#050E1D,#0A2A5A)",
+            padding: "16px 20px",
+            borderBottom: `1px solid ${DS.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: "50%",
+                  background: "rgba(59,130,246,0.15)",
+                  border: "1px solid rgba(59,130,246,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: DS.info,
+                  flexShrink: 0,
+                }}
+              >
+                {getInitials(name)}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: DS.text1,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {name}
+                </div>
+                <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
+                  {customer?.area || latest?.area || "—"} ·{" "}
+                  {customer?.distributor || latest?.distributor || "—"}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                border: `1px solid ${DS.border}`,
+                background: "rgba(255,255,255,0.06)",
+                color: DS.text2,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="close" size={14} strokeWidth={2.2} />
+            </button>
+          </div>
+
+          {/* Summary chips */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+              gap: 8,
+              marginTop: 14,
+            }}
+          >
+            {[
+              ["Total visits", total, DS.primary],
+              ["First visit", first ? fmtDate(first.date) : "—", DS.info],
+              ["Last visit", latest ? fmtDate(latest.date) : "—", DS.gold],
+            ].map(([lbl, val, clr]) => (
+              <div
+                key={lbl}
+                style={{
+                  textAlign: "center",
+                  padding: "8px 6px",
+                  background: "rgba(255,255,255,0.04)",
+                  borderRadius: 8,
+                  border: `1px solid ${DS.border}`,
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: DS.text3,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: 3,
+                  }}
+                >
+                  {lbl}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: clr,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {val}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginTop: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                padding: "3px 8px",
+                borderRadius: 4,
+                fontWeight: 600,
+                background: sc.bg,
+                color: sc.text,
+                border: `1px solid ${sc.border}44`,
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currentStage || "No stage"}
+            </span>
+            <StageLadder stage={currentStage} size="sm" />
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div
+          className="dsr-scroll"
+          style={{ padding: 16, overflowY: "auto", flex: 1 }}
+        >
+          {total === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px 16px",
+                color: DS.text2,
+              }}
+            >
+              <div className="dsr-empty-icon">
+                <Icon
+                  name="inbox"
+                  size={26}
+                  strokeWidth={1.6}
+                  style={{ color: DS.primary }}
+                />
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: DS.text1 }}>
+                Abhi tak koi visit nahi
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                Is customer ka pehla record Add Record se banao
+              </div>
+            </div>
+          ) : (
+            groups.map((g) => (
+              <div key={g.key} style={{ marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: DS.text3,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em",
+                  }}
+                >
+                  <span>{g.label}</span>
+                  <span style={{ color: DS.primary }}>
+                    · {g.items.length} visit{g.items.length > 1 ? "s" : ""}
+                  </span>
+                  <span style={{ flex: 1, height: 1, background: DS.border }} />
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
+                  {g.items.map(({ r, i }) => {
+                    const rsc = stageColor(r.stage);
+                    const isLatest = i === 0;
+                    return (
+                      <div
+                        key={r._id || r.id || i}
+                        style={{
+                          background: DS.surface,
+                          border: `1px solid ${isLatest ? DS.primary : DS.border}`,
+                          borderLeft: `4px solid ${isLatest ? DS.primary : rsc.border}`,
+                          borderRadius: 10,
+                          padding: "12px 14px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            marginBottom: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 12.5,
+                              fontWeight: 700,
+                              color: DS.text1,
+                            }}
+                          >
+                            <Icon
+                              name="calendar"
+                              size={13}
+                              strokeWidth={2}
+                              style={{ color: DS.primary }}
+                            />
+                            {fmtDate(r.date) || "Date missing"}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <span
+                              className="dsr-mono"
+                              style={{
+                                fontSize: 10,
+                                color: DS.text3,
+                                fontWeight: 700,
+                              }}
+                            >
+                              #{total - i}
+                            </span>
+                            {isLatest && (
+                              <span
+                                style={{
+                                  fontSize: 9.5,
+                                  fontWeight: 800,
+                                  color: "#06101E",
+                                  background: DS.primary,
+                                  padding: "2px 8px",
+                                  borderRadius: 20,
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                LATEST
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: DS.text1,
+                            lineHeight: 1.45,
+                            background: "rgba(59,130,246,0.08)",
+                            borderLeft: `3px solid ${DS.info}`,
+                            borderRadius: 6,
+                            padding: "6px 10px",
+                            marginBottom: 6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: DS.text3,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              display: "block",
+                              marginBottom: 2,
+                            }}
+                          >
+                            Visit Outcome
+                          </span>
+                          {r.outcome || (
+                            <span style={{ color: DS.text3 }}>
+                              — no outcome —
+                            </span>
+                          )}
+                        </div>
+
+                        {r.objective && (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: DS.text1,
+                              lineHeight: 1.45,
+                              background: "rgba(0,200,180,0.07)",
+                              borderLeft: `3px solid ${DS.primary}`,
+                              borderRadius: 6,
+                              padding: "6px 10px",
+                              marginBottom: 6,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: DS.text3,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                                display: "block",
+                                marginBottom: 2,
+                              }}
+                            >
+                              Objective
+                            </span>
+                            {r.objective}
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            marginTop: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <StageLadder stage={r.stage} size="sm" />
+                          <span
+                            className="dsr-mono"
+                            style={{
+                              fontSize: 11,
+                              color: DS.gold,
+                              fontWeight: 700,
+                            }}
+                          >
+                            YTD ₹{r.ytd ?? 0}L · {r.pct ?? 0}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MonthAnalysisCard = ({
   month,
   delta,
@@ -3652,6 +4124,7 @@ const DailySalesReport = () => {
   const [filterEnd, setFilterEnd] = useState("");
   const [expandedAnalysisMonths, setExpandedAnalysisMonths] = useState({});
   const [visitsModal, setVisitsModal] = useState(null);
+  const [historyCustomer, setHistoryCustomer] = useState(null);
 
   const toastTimer = useRef(null);
   const showToast = useCallback((msg, type = "success") => {
@@ -3668,6 +4141,7 @@ const DailySalesReport = () => {
   );
 
   const closeVisitsModal = useCallback(() => setVisitsModal(null), []);
+  const closeHistory = useCallback(() => setHistoryCustomer(null), []);
 
   const loadRecords = useCallback(async () => {
     try {
@@ -3700,6 +4174,19 @@ const DailySalesReport = () => {
     for (const r of records) {
       if (r.customer && !map[r.customer]) map[r.customer] = r;
     }
+    return map;
+  }, [records]);
+
+  // All records per customer, latest → oldest (start to now)
+  const customerHistoryMap = useMemo(() => {
+    const map = {};
+    for (const r of records) {
+      if (!r.customer) continue;
+      (map[r.customer] = map[r.customer] || []).push(r);
+    }
+    Object.values(map).forEach((arr) =>
+      arr.sort((a, b) => new Date(b.date) - new Date(a.date)),
+    );
     return map;
   }, [records]);
 
@@ -5046,6 +5533,17 @@ const DailySalesReport = () => {
                   <div
                     key={name}
                     className="dsr-customer-row"
+                    role="button"
+                    tabIndex={0}
+                    title="Visit history dekhein"
+                    onClick={() => setHistoryCustomer(name)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setHistoryCustomer(name);
+                      }
+                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -5095,12 +5593,21 @@ const DailySalesReport = () => {
                             · {fmtDate(lastR.date)}
                           </span>
                         )}
+                        <span style={{ marginLeft: 5, color: DS.primary }}>
+                          · {(customerHistoryMap[name] || []).length} visit
+                          {(customerHistoryMap[name] || []).length !== 1
+                            ? "s"
+                            : ""}
+                        </span>
                       </div>
                     </div>
                     <div style={{ flexShrink: 0 }}>
                       <StageLadder stage={c.stage} size="sm" />
                     </div>
-                    <div className="dsr-row-actions">
+                    <div
+                      className="dsr-row-actions"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         className="dsr-btn-edit"
                         onClick={() => openEditCustomer(name)}
@@ -5291,6 +5798,14 @@ const DailySalesReport = () => {
           onSave={updateRecord}
           onClose={() => setEditingRecord(null)}
           saving={recordSaving}
+        />
+      )}
+      {historyCustomer && customers[historyCustomer] && (
+        <CustomerHistoryModal
+          name={historyCustomer}
+          customer={customers[historyCustomer]}
+          records={customerHistoryMap[historyCustomer] || []}
+          onClose={closeHistory}
         />
       )}
       {visitsModal && (
