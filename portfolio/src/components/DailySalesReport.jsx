@@ -408,12 +408,6 @@ const fmtDate = (d) => {
     year: "numeric",
   });
 };
-const getWeekRange = (weeksBack) => {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - weeksBack * 7);
-  return { start, end };
-};
 const inRange = (dateStr, start, end) => {
   if (!dateStr) return false;
   const d = new Date(dateStr);
@@ -424,9 +418,10 @@ const injectGlobalStyles = () => {
   if (document.getElementById("dsr-global-styles")) return;
   const style = document.createElement("style");
   style.id = "dsr-global-styles";
+  // NOTE: @import must be the very first rule, otherwise browsers ignore it.
   style.textContent = `
-    *, *::before, *::after { box-sizing: border-box; }
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+    *, *::before, *::after { box-sizing: border-box; }
     .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea {
       font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
@@ -463,6 +458,8 @@ const injectGlobalStyles = () => {
     .dsr-nav-item.active { background:rgba(0,200,180,0.14)!important;color:#00C8B4!important; }
     .dsr-topbar-btn:hover { background:rgba(255,255,255,0.12)!important; }
     .dsr-topbar-btn:active { background:rgba(255,255,255,0.20)!important; }
+    .dsr-visits-btn { transition:background 0.15s,border-color 0.15s,transform 0.15s; }
+    .dsr-visits-btn:hover { background:rgba(0,200,180,0.18)!important;border-color:#00C8B4!important;transform:translateY(-1px); }
     .dsr-export-dropdown { position:relative;display:inline-flex;flex-shrink:0; }
     .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:#0B1A2E;border:1px solid #1A3050;border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3); }
     .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:#DAE8F8;border:none;background:transparent;width:100%;text-align:left; }
@@ -494,6 +491,9 @@ const injectGlobalStyles = () => {
     .dsr-modal-box::-webkit-scrollbar { width:4px; }
     .dsr-modal-box::-webkit-scrollbar-track { background:#122035; }
     .dsr-modal-box::-webkit-scrollbar-thumb { background:#1A3050;border-radius:2px; }
+    .dsr-scroll::-webkit-scrollbar { width:4px; }
+    .dsr-scroll::-webkit-scrollbar-track { background:#122035; }
+    .dsr-scroll::-webkit-scrollbar-thumb { background:#1A3050;border-radius:2px; }
     @keyframes ei-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.45);}70%{box-shadow:0 0 0 7px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);} }
     .ei-import-btn { animation:ei-pulse 2s ease-out 1; }
     .ei-import-btn:hover { background:#059669!important; }
@@ -575,7 +575,7 @@ const IS = {
   boxSizing: "border-box",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
-  colorScheme: "dark", // ← ADD THIS
+  colorScheme: "dark",
 };
 
 const IH = {
@@ -585,7 +585,7 @@ const IH = {
   boxShadow: "0 0 0 2px rgba(245,158,11,0.15)",
 };
 
-// ExcelImporter
+// ── ExcelImporter ──────────────────────────────────────────────────────────
 const ExcelImporter = ({
   existingCustomers = {},
   onImportDone,
@@ -1279,7 +1279,7 @@ const ExcelImporter = ({
   );
 };
 
-// ExportDropdown
+// ── ExportDropdown ─────────────────────────────────────────────────────────
 const EXPORT_OPTIONS = [
   { id: "all", label: "All records", icon: "records", weeks: null },
   { id: "custom", label: "Custom range", icon: "calendar", weeks: null },
@@ -1382,6 +1382,7 @@ const ExportDropdown = ({ records, onExport }) => {
                   fontSize: 12,
                   background: DS.surface,
                   color: DS.text1,
+                  colorScheme: "dark",
                 }}
               />
               <span style={{ fontSize: 11, color: DS.text3 }}>to</span>
@@ -1399,6 +1400,7 @@ const ExportDropdown = ({ records, onExport }) => {
                   fontSize: 12,
                   background: DS.surface,
                   color: DS.text1,
+                  colorScheme: "dark",
                 }}
               />
             </div>
@@ -1638,10 +1640,8 @@ const FormInput = ({ label, required, keyBadge, highlight, ...props }) => (
     />
   </div>
 );
-// ── CustomSelect — replaces native <select> with a fully dark-themed panel ──
-// Native selects render their options list with the OS/browser's own styling
-// (always light on most systems) regardless of colorScheme — this component
-// owns the entire visual from trigger button to options panel.
+
+// ── CustomSelect — fully dark-themed replacement for native <select> ───────
 const CustomSelect = ({
   value,
   onChange,
@@ -1655,7 +1655,6 @@ const CustomSelect = ({
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Parse <option> children → plain {value, label} array
   const options = React.Children.toArray(children)
     .filter((c) => React.isValidElement(c) && c.type === "option")
     .map((c) => ({
@@ -1683,7 +1682,6 @@ const CustomSelect = ({
 
   return (
     <div ref={ref} style={{ position: "relative", ...style }}>
-      {/* Trigger button — same height/radius as inputs */}
       <button
         type="button"
         onClick={() => !disabled && setOpen((p) => !p)}
@@ -1694,7 +1692,7 @@ const CustomSelect = ({
           gap: 8,
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.5 : 1,
-          color: isEmpty ? DS.text1 : DS.text1,
+          color: isEmpty ? DS.text2 : DS.text1,
           borderColor: open ? DS.primary : highlight ? DS.amber : DS.border,
           boxShadow: open
             ? `0 0 0 3px rgba(0,200,180,0.18)`
@@ -1712,7 +1710,7 @@ const CustomSelect = ({
             whiteSpace: "nowrap",
           }}
         >
-          {selected?.label || placeholder}
+          {selected?.value ? selected.label : selected?.label || placeholder}
         </span>
         <Icon
           name={open ? "chevronUp" : "chevronDown"}
@@ -1726,9 +1724,9 @@ const CustomSelect = ({
         />
       </button>
 
-      {/* Options panel */}
       {open && !disabled && (
         <div
+          className="dsr-scroll"
           style={{
             position: "absolute",
             top: "calc(100% + 5px)",
@@ -1750,7 +1748,6 @@ const CustomSelect = ({
           {options.map((opt) => {
             const isSel = opt.value === String(value ?? "");
             const isEmptyOpt = !opt.value;
-            // Show a stage-colour dot for Project Stage options
             const isStageOpt = PROJECT_STAGE_OPTIONS.some(
               (s) => s === opt.label,
             );
@@ -1758,7 +1755,7 @@ const CustomSelect = ({
 
             return (
               <div
-                key={opt.value}
+                key={opt.value || "__empty__"}
                 onClick={() => !isEmptyOpt && pick(opt.value)}
                 style={{
                   padding: "9px 12px",
@@ -1785,7 +1782,6 @@ const CustomSelect = ({
                     : "transparent";
                 }}
               >
-                {/* Stage colour dot — glows with its stage colour */}
                 {sc && (
                   <span
                     style={{
@@ -2269,7 +2265,269 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
   );
 };
 
-const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => (
+// ── VisitsModal — shows all visits of a customer in a month (latest first) ─
+const VisitsModal = ({ data, onClose }) => {
+  useEffect(() => {
+    if (!data) return undefined;
+    const h = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [data, onClose]);
+
+  if (!data) return null;
+  const { name, month, records } = data;
+
+  return (
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${name} visits`}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.82)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 250,
+        padding: 16,
+        backdropFilter: "blur(6px)",
+      }}
+    >
+      <div
+        className="dsr-modal-box"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: DS.card,
+          border: `1px solid ${DS.border}`,
+          borderRadius: 14,
+          width: "100%",
+          maxWidth: 520,
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow:
+            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
+        }}
+      >
+        <div
+          style={{
+            background: "linear-gradient(135deg,#050E1D,#0A2A5A)",
+            padding: "16px 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            borderBottom: `1px solid ${DS.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: DS.text1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
+              {month} · {records.length} visit{records.length > 1 ? "s" : ""}{" "}
+              (latest first)
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              border: `1px solid ${DS.border}`,
+              background: "rgba(255,255,255,0.06)",
+              color: DS.text2,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="close" size={14} strokeWidth={2.2} />
+          </button>
+        </div>
+
+        <div
+          className="dsr-scroll"
+          style={{
+            padding: 16,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          {records.map((r, i) => {
+            const sc = stageColor(r.stage);
+            const isLatest = i === 0;
+            return (
+              <div
+                key={r._id || r.id || i}
+                style={{
+                  background: DS.surface,
+                  border: `1px solid ${isLatest ? DS.primary : DS.border}`,
+                  borderLeft: `4px solid ${isLatest ? DS.primary : sc.border}`,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: DS.text1,
+                    }}
+                  >
+                    <Icon
+                      name="calendar"
+                      size={13}
+                      strokeWidth={2}
+                      style={{ color: DS.primary }}
+                    />
+                    {fmtDate(r.date)}
+                  </div>
+                  {isLatest && (
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: 800,
+                        color: "#06101E",
+                        background: DS.primary,
+                        padding: "2px 8px",
+                        borderRadius: 20,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      LATEST
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: DS.text1,
+                    lineHeight: 1.45,
+                    background: "rgba(59,130,246,0.08)",
+                    borderLeft: `3px solid ${DS.info}`,
+                    borderRadius: 6,
+                    padding: "6px 10px",
+                    marginBottom: 6,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: DS.text3,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      display: "block",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Visit Outcome
+                  </span>
+                  {r.outcome || (
+                    <span style={{ color: DS.text3 }}>— no outcome —</span>
+                  )}
+                </div>
+
+                {r.objective && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: DS.text1,
+                      lineHeight: 1.45,
+                      background: "rgba(0,200,180,0.07)",
+                      borderLeft: `3px solid ${DS.primary}`,
+                      borderRadius: 6,
+                      padding: "6px 10px",
+                      marginBottom: 6,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: DS.text3,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        display: "block",
+                        marginBottom: 2,
+                      }}
+                    >
+                      Objective
+                    </span>
+                    {r.objective}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginTop: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <StageLadder stage={r.stage} size="sm" />
+                  <span
+                    className="dsr-mono"
+                    style={{ fontSize: 11, color: DS.gold, fontWeight: 700 }}
+                  >
+                    YTD ₹{r.ytd ?? 0}L · {r.pct ?? 0}%
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MonthAnalysisCard = ({
+  month,
+  delta,
+  expanded,
+  onToggle,
+  onVisitsClick,
+}) => (
   <div
     className="dsr-record-card"
     style={{
@@ -2422,21 +2680,26 @@ const MonthAnalysisCard = ({ month, delta, expanded, onToggle }) => (
               <div style={{ flexShrink: 0 }}>
                 <StageLadder stage={c.latest.stage} size="sm" />
               </div>
-              <span
+              <button
+                type="button"
+                className="dsr-visits-btn"
+                onClick={() => onVisitsClick && onVisitsClick(c)}
+                title="Visit details dekhein"
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
                   color: DS.primary,
                   background: DS.primaryDim,
-                  padding: "2px 8px",
+                  padding: "3px 9px",
                   borderRadius: 20,
                   flexShrink: 0,
                   whiteSpace: "nowrap",
-                  border: "1px solid rgba(0,200,180,0.2)",
+                  border: "1px solid rgba(0,200,180,0.35)",
+                  cursor: "pointer",
                 }}
               >
-                {c.visits}× visit{c.visits > 1 ? "s" : ""}
-              </span>
+                {c.visits}× visit{c.visits > 1 ? "s" : ""} ›
+              </button>
             </div>
           ))}
         </div>
@@ -2727,7 +2990,8 @@ const CustomerModal = ({
   useEffect(() => {
     setName(editName || "");
     setData(initialData || EMPTY_CUSTOMER);
-  }, [editName, initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editName, mode]);
   const handleChange = (e) => {
     const { name: f, value } = e.target;
     setData((p) => ({ ...p, [f]: value }));
@@ -3387,10 +3651,24 @@ const DailySalesReport = () => {
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
   const [expandedAnalysisMonths, setExpandedAnalysisMonths] = useState({});
-  const showToast = (msg, type = "success") => {
+  const [visitsModal, setVisitsModal] = useState(null);
+
+  const toastTimer = useRef(null);
+  const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast({ msg: "", type: "" }), 3000);
-  };
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(
+      () => setToast({ msg: "", type: "" }),
+      3000,
+    );
+  }, []);
+  useEffect(
+    () => () => toastTimer.current && clearTimeout(toastTimer.current),
+    [],
+  );
+
+  const closeVisitsModal = useCallback(() => setVisitsModal(null), []);
+
   const loadRecords = useCallback(async () => {
     try {
       setLoading(true);
@@ -3401,7 +3679,7 @@ const DailySalesReport = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
   const loadCustomers = useCallback(async () => {
     try {
       const res = await apiFetch("/api/dsr/customers");
@@ -3409,7 +3687,7 @@ const DailySalesReport = () => {
     } catch (err) {
       showToast(err.message, "error");
     }
-  }, []);
+  }, [showToast]);
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
@@ -3453,10 +3731,16 @@ const DailySalesReport = () => {
         });
         const customerRows = Object.entries(bc)
           .map(([name, recs]) => {
+            // latest visit first
             const sorted = [...recs].sort(
               (a, b) => new Date(b.date) - new Date(a.date),
             );
-            return { name, visits: recs.length, latest: sorted[0] };
+            return {
+              name,
+              visits: recs.length,
+              latest: sorted[0],
+              records: sorted,
+            };
           })
           .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name));
         const totalPot = customerRows.reduce(
@@ -3513,9 +3797,9 @@ const DailySalesReport = () => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      r.customer.toLowerCase().includes(q) ||
-      r.area.toLowerCase().includes(q) ||
-      r.distributor.toLowerCase().includes(q) ||
+      (r.customer || "").toLowerCase().includes(q) ||
+      (r.area || "").toLowerCase().includes(q) ||
+      (r.distributor || "").toLowerCase().includes(q) ||
       (r.objective && r.objective.toLowerCase().includes(q))
     );
   });
@@ -3526,13 +3810,13 @@ const DailySalesReport = () => {
       ).toFixed(1)
     : "0.0";
 
-    const totalPot = uniqueLatestRecords
-      .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
-      .toFixed(1);
+  const totalPot = uniqueLatestRecords
+    .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
+    .toFixed(1);
 
-const totalYTD = uniqueLatestRecords
-  .reduce((s, r) => s + toNum(r.ytd), 0)
-  .toFixed(1);
+  const totalYTD = uniqueLatestRecords
+    .reduce((s, r) => s + toNum(r.ytd), 0)
+    .toFixed(1);
 
   const today = new Date().toLocaleDateString("en-IN", {
     day: "numeric",
@@ -3626,7 +3910,9 @@ const totalYTD = uniqueLatestRecords
               ...p,
               [customer]: { ...p[customer], stage: cr.data.stage },
             }));
-          } catch {}
+          } catch {
+            /* stage sync on customer master is best-effort */
+          }
         }
       }
       setNewRecord({ ...EMPTY_RECORD });
@@ -3746,11 +4032,11 @@ const totalYTD = uniqueLatestRecords
     ed.forEach((row, ri) => {
       ck.forEach((k, C) => {
         const v = row[k];
-        const in_ = ns.has(k);
+        const isNum = ns.has(k);
         ws[XLSX.utils.encode_cell({ r: ri + 1, c: C })] = {
-          v,
-          t: in_ ? "n" : "s",
-          s: in_ ? NS : TS,
+          v: isNum ? v : (v ?? ""),
+          t: isNum ? "n" : "s",
+          s: isNum ? NS : TS,
         };
       });
     });
@@ -3858,7 +4144,7 @@ const totalYTD = uniqueLatestRecords
     try {
       setModalSaving(true);
       if (modalMode === "edit") {
-        const nc = name !== editingCustomer;
+        const nameChanged = name !== editingCustomer;
         const oid = customers[editingCustomer]?._id;
         if (!oid) {
           showToast("Customer ID nahi mila.", "error");
@@ -3871,7 +4157,7 @@ const totalYTD = uniqueLatestRecords
         const up = res.data;
         setCustomers((p) => {
           const n = { ...p };
-          if (nc) delete n[editingCustomer];
+          if (nameChanged) delete n[editingCustomer];
           n[up.name] = {
             _id: up._id,
             area: up.area,
@@ -3886,7 +4172,7 @@ const totalYTD = uniqueLatestRecords
           return n;
         });
         showToast(
-          nc
+          nameChanged
             ? `Naam update: ${editingCustomer} → ${up.name}`
             : `${name} update ho gaya!`,
         );
@@ -3895,9 +4181,9 @@ const totalYTD = uniqueLatestRecords
           method: "POST",
           body: JSON.stringify(payload),
         });
-        const nc2 = res.data;
-        setCustomers((p) => ({ ...p, ...nc2 }));
-        const cd = nc2[name];
+        const created = res.data;
+        setCustomers((p) => ({ ...p, ...created }));
+        const cd = created[name];
         if (cd)
           setNewRecord((p) => ({
             ...p,
@@ -4067,6 +4353,7 @@ const totalYTD = uniqueLatestRecords
           <button
             className="dsr-topbar-btn"
             onClick={() => setActiveTab("records")}
+            aria-label="Home"
             style={{
               width: 36,
               height: 36,
@@ -4817,6 +5104,7 @@ const totalYTD = uniqueLatestRecords
                       <button
                         className="dsr-btn-edit"
                         onClick={() => openEditCustomer(name)}
+                        aria-label={`Edit ${name}`}
                         style={{
                           height: 30,
                           width: 30,
@@ -4835,6 +5123,7 @@ const totalYTD = uniqueLatestRecords
                       <button
                         className="dsr-btn-danger"
                         onClick={() => handleDeleteCustomer(name)}
+                        aria-label={`Delete ${name}`}
                         style={{
                           height: 30,
                           width: 30,
@@ -4937,6 +5226,13 @@ const totalYTD = uniqueLatestRecords
                       delta={delta}
                       expanded={isExp}
                       onToggle={() => toggleAnalysisMonth(m.key)}
+                      onVisitsClick={(c) =>
+                        setVisitsModal({
+                          name: c.name,
+                          month: m.label,
+                          records: c.records,
+                        })
+                      }
                     />
                   );
                 })}
@@ -4996,6 +5292,9 @@ const totalYTD = uniqueLatestRecords
           onClose={() => setEditingRecord(null)}
           saving={recordSaving}
         />
+      )}
+      {visitsModal && (
+        <VisitsModal data={visitsModal} onClose={closeVisitsModal} />
       )}
     </div>
   );
