@@ -234,7 +234,7 @@ const Login = () => {
           {/* Register */}
           <div className="mt-7 pt-6 border-t border-white/10 text-center">
             <p className="text-sm text-slate-500">
-              Don't have an account?
+              Don&apos;t have an account?
               <Link
                 to="/register"
                 className="ml-1.5 font-semibold text-violet-400 hover:text-violet-300 transition"

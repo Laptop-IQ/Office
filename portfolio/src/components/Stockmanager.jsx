@@ -1,9 +1,10 @@
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
   API_BASE,
   apiHeaders,
+  getToken,
+  getUserIdFromToken,
   CATEGORIES,
   getCategory,
   TABS,
@@ -47,11 +48,15 @@ const isPkgTracked = (row) =>
   !!row && computePkgQty(row.packageSize, row.packageCount) !== null;
 
 /* ── Permanent localStorage storage ─────────────────────────────────────────── */
-const LS_KEY = "chem_stock_app_v1";
+// FIX: pehle key sabke liye ek hi thi ("chem_stock_app_v1"). Ek hi browser
+// me user A logout karke user B login kare to B ko A ka data dikhta, aur
+// agla PUT /stock B ke server workspace ko A ke data se overwrite kar deta.
+// Ab key me token ki user id shamil hai.
+const lsKey = () => `chem_stock_app_v1_${getUserIdFromToken() || "anon"}`;
 
 const lsLoad = () => {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(lsKey());
     if (!raw) return null;
     const d = JSON.parse(raw);
     return d?.stocks ? d : null;
@@ -62,7 +67,7 @@ const lsLoad = () => {
 
 const lsSave = (d) => {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(d));
+    localStorage.setItem(lsKey(), JSON.stringify(d));
     return true;
   } catch (e) {
     console.warn("localStorage full?", e);
@@ -72,22 +77,44 @@ const lsSave = (d) => {
 
 const lsClear = () => {
   try {
-    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(lsKey());
   } catch {}
 };
 
-/* ── Backend API (optional, secondary) ──────────────────────────────────────── */
+/* ── Backend API ───────────────────────────────────────────────────────────── */
+// FIX (poora loadData rewrite): purana version local mil jaaye to server
+// se kabhi poochta hi nahi tha (doosre device ka data kabhi nahi milta),
+// aur `!res.ok`/network error dono ko `null` treat karta tha — jiski wajah
+// se agar server se load fail ho (401 expire, server down) to state SEED
+// (demo data) ban jaati aur 800ms baad ka PUT SEED se server ka asli data
+// OVERWRITE kar deta. Ab teeno case alag handle hote hain:
+//   - authError: true   → token invalid/expired, login page par bhejo
+//   - loadFailed: true  → server se baat nahi ho payi, kuch bhi save mat karo
+//   - warna          → local aur remote me se jo zyada naya hai wo use karo
 const loadData = async () => {
   const local = lsLoad();
-  if (local) return local;
+  const token = getToken();
+  if (!token) return { authError: true };
+
   try {
     const res = await fetch(API_BASE, { headers: apiHeaders() });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data?.stocks) lsSave(data);
-    return data;
+    if (res.status === 401) return { authError: true };
+    if (!res.ok)
+      return local ? { ...local, offline: true } : { loadFailed: true };
+
+    const remote = await res.json();
+    if (!remote?.stocks)
+      return local ? { ...local, offline: true } : { loadFailed: true };
+
+    if (local?.savedAt && remote.updatedAt) {
+      return local.savedAt > new Date(remote.updatedAt).getTime()
+        ? local
+        : remote;
+    }
+    return remote;
   } catch {
-    return null;
+    // Network error — local data hai to usse chalao, save agli baar retry hogi
+    return local ? { ...local, offline: true } : { loadFailed: true };
   }
 };
 
@@ -223,15 +250,28 @@ export default function ChemicalStockManager() {
   useEffect(() => {
     (async () => {
       const saved = await loadData();
-      if (saved) {
-        setStocksRaw(saved.stocks || SEED);
-        setChangeLog(saved.changeLog || []);
-        setLastUpdated(saved.lastUpdated || {});
-        setCompanyName(saved.companyName || "My Chemical Store");
-        setDispatches(saved.dispatches || []);
-      } else {
-        toast("No saved data found — demo data load ho gayi", "error");
+
+      // FIX: authError/loadFailed par SEED load karke isLoaded=true set
+      // karna band kiya — warna persist effect turant PUT bhejkar SEED se
+      // server ka asli data overwrite kar deta.
+      if (saved?.authError) {
+        toast("Session expired — please login again", "error");
+        window.location.href = "/login";
+        return;
       }
+      if (saved?.loadFailed) {
+        toast("Server se connect nahi ho paya — retry karein", "error");
+        setSyncState("load-error");
+        return; // isLoaded false hi rehta hai, koi save nahi hoga
+      }
+
+      setStocksRaw(saved.stocks || SEED);
+      setChangeLog(saved.changeLog || []);
+      setLastUpdated(saved.lastUpdated || {});
+      setCompanyName(saved.companyName || "My Chemical Store");
+      setDispatches(saved.dispatches || []);
+      if (saved.offline)
+        toast("⚠ Offline — local data se chal rahe hain", "error");
       setIsLoaded(true);
     })();
   }, [toast]);
@@ -239,17 +279,36 @@ export default function ChemicalStockManager() {
   /* ── Persist on every change ────────────────────────────────────────────── */
   useEffect(() => {
     if (!isLoaded) return;
-    const payload = { stocks, changeLog, lastUpdated, companyName, dispatches };
+    const payload = {
+      stocks,
+      changeLog,
+      lastUpdated,
+      companyName,
+      dispatches,
+      savedAt: Date.now(),
+    };
     const ok = lsSave(payload);
-    setSyncState(ok ? "saved" : "error");
-    const t = setTimeout(() => {
+    setSyncState(ok ? "saving" : "error");
+
+    const t = setTimeout(async () => {
       try {
-        fetch(API_BASE, {
+        const res = await fetch(API_BASE, {
           method: "PUT",
           headers: apiHeaders(),
           body: JSON.stringify(payload),
         });
-      } catch {}
+        if (res.status === 401) {
+          setSyncState("auth-error");
+          return;
+        }
+        // FIX: pehle res.ok kabhi check nahi hota tha, isliye server-side
+        // validation fail (400/500) chup-chaap ignore ho jaata aur UI
+        // hamesha "saved ✓" dikhata rehta, chahe server par kuch bhi na
+        // save hua ho.
+        setSyncState(res.ok ? "synced" : "remote-error");
+      } catch {
+        setSyncState("remote-error");
+      }
     }, 800);
     return () => clearTimeout(t);
   }, [stocks, changeLog, lastUpdated, companyName, dispatches, isLoaded]);
@@ -541,9 +600,28 @@ export default function ChemicalStockManager() {
       >
         <div style={{ textAlign: "center", color: "#64748B" }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>⚗</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>
-            Loading stock data…
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+            {syncState === "load-error"
+              ? "Server se connect nahi ho paya"
+              : "Loading stock data…"}
           </div>
+          {syncState === "load-error" && (
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "9px 20px",
+                borderRadius: 9,
+                border: "none",
+                background: "#2563EB",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              ↻ Retry
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1367,9 +1445,20 @@ export default function ChemicalStockManager() {
               </div>
               <div style={{ fontSize: 10, color: "#64748B" }}>
                 Chemical Stock Manager ·{" "}
+                {/* FIX: pehle sirf localStorage ka status dikhta tha, isliye
+                   server save fail hone par bhi hamesha green tick dikhta
+                   tha. Ab dono states clearly alag dikhte hain. */}
                 {syncState === "error"
-                  ? "⚠ Save failed"
-                  : "💾 Browser mein save ✓"}
+                  ? "⚠ Local save failed"
+                  : syncState === "auth-error"
+                    ? "⚠ Session expired — please login again"
+                    : syncState === "remote-error"
+                      ? "⚠ Server save failed (local safe)"
+                      : syncState === "synced"
+                        ? "☁ Synced ✓"
+                        : syncState === "saving"
+                          ? "💾 Saving…"
+                          : "💾 Browser mein save ✓"}
               </div>
             </div>
           </div>

@@ -291,8 +291,16 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (new Set(pIds).size !== pIds.length)
       return toast("Ek product dobara select hua hai", "error");
 
+    // FIX: pehle `res.json()` bhi isी try/catch ke andar tha — agar server
+    // ne valid JSON na bheja ho (500 HTML error page, proxy error) to yahan
+    // throw hota aur "offline" fallback chal jaata, jisse ek dispatch server
+    // par ho chuka hone ke bawajood local me dobara create ho sakta tha
+    // (duplicate). Ab sirf fetch() ka network-level fail hi "offline" maana
+    // jaata hai; server se mila response (chahe non-JSON ho) offline
+    // fallback ko trigger nahi karta.
+    let res;
     try {
-      const res = await fetch(DISPATCH_API_BASE, {
+      res = await fetch(DISPATCH_API_BASE, {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -308,7 +316,12 @@ const DispatchTab = forwardRef(function DispatchTab(
           })),
         }),
       });
-      const data = await res.json();
+    } catch {
+      res = null; // network fail — neeche offline branch chalega
+    }
+
+    if (res) {
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) return toast(data.message || "Dispatch failed", "error");
       setStocksRaw(data.stocks);
       setDispatches(data.dispatches);
@@ -324,7 +337,12 @@ const DispatchTab = forwardRef(function DispatchTab(
       toast(
         `✓ Invoice ${invoiceNo} issued — ${toProcess.length} chemical${toProcess.length > 1 ? "s" : ""} dispatched`,
       );
-    } catch {
+      return;
+    }
+
+    {
+      // Offline fallback — sirf tab chalta hai jab fetch() khud fail hui
+      // (res === null), server-response error par nahi.
       const deductMap = {};
       toProcess.forEach((i) => {
         deductMap[String(i.productId)] = i.qty;
@@ -376,19 +394,27 @@ const DispatchTab = forwardRef(function DispatchTab(
   // ── Undo Dispatch ─────────────────────────────────────────────────────────
   const handleUndoDispatch = async () => {
     const d = confirmUndoDispatch;
+    // FIX: same pattern — sirf fetch() ka network fail offline fallback
+    // trigger kare, res.json() parse error nahi.
+    let res;
     try {
-      const res = await fetch(`${DISPATCH_API_BASE}/${d.id}/undo`, {
+      res = await fetch(`${DISPATCH_API_BASE}/${d.id}/undo`, {
         method: "POST",
         headers: apiHeaders(),
       });
-      const data = await res.json();
+    } catch {
+      res = null;
+    }
+
+    if (res) {
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) return toast(data.message || "Undo failed", "error");
       setStocksRaw(data.stocks);
       setDispatches(data.dispatches);
       setChangeLog(data.changeLog);
       setLastUpdated(data.lastUpdated);
       toast(`🚫 Invoice ${getInvNo(d)} voided — stock restored`);
-    } catch {
+    } else {
       const items = normD(d).items;
       const addMap = {};
       items.forEach((i) => {
@@ -444,8 +470,13 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (new Set(pIds).size !== pIds.length)
       return toast("Ek product dobara select hua hai", "error");
 
+    // FIX: same pattern — sirf fetch() ka network fail offline fallback
+    // trigger kare. Yeh route pehle backend me missing hi tha (ab
+    // dispatchController.updateDispatch + dispatchRoutes.js me PUT /:id
+    // add kar diya gaya hai), isliye pehle ye hamesha "offline" chalta tha.
+    let res;
     try {
-      const res = await fetch(`${DISPATCH_API_BASE}/${d.id}`, {
+      res = await fetch(`${DISPATCH_API_BASE}/${d.id}`, {
         method: "PUT",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -459,14 +490,19 @@ const DispatchTab = forwardRef(function DispatchTab(
           })),
         }),
       });
-      const data = await res.json();
+    } catch {
+      res = null;
+    }
+
+    if (res) {
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) return toast(data.message || "Update failed", "error");
       setStocksRaw(data.stocks);
       setDispatches(data.dispatches);
       setChangeLog(data.changeLog);
       setLastUpdated(data.lastUpdated);
       toast(`✓ Invoice ${getInvNo(d)} updated`);
-    } catch {
+    } else {
       // Offline: restore what this invoice originally took, then deduct the
       // edited quantities — so stock stays correct however items changed.
       setStocksRaw((s) => {

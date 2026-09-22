@@ -12,6 +12,11 @@ const productSchema = new mongoose.Schema(
     expiry: { type: String, default: "" },
     supplier: { type: String, default: "" },
     reorderNote: { type: String, default: "" },
+    // FIX: ye do fields schema me nahi thi, isliye Mongoose (strict mode)
+    // har save par chup-chaap hata deta tha — package-tracked products ka
+    // packageSize/packageCount server par kabhi save hi nahi hota tha.
+    packageSize: { type: Number, default: null },
+    packageCount: { type: Number, default: null },
   },
   { _id: false },
 );
@@ -54,6 +59,11 @@ const dispatchEntrySchema = new mongoose.Schema(
     date: { type: String, default: "" },
     time: { type: String, default: "" },
     totalQty: { type: Number, default: 0 },
+    // FIX: frontend invoiceNo bhejta tha aur edited/editedAt set karta tha,
+    // lekin schema me fields hi nahi thi — dono chup-chaap drop ho rahe the.
+    invoiceNo: { type: String, default: "" },
+    edited: { type: Boolean, default: false },
+    editedAt: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -66,7 +76,9 @@ const stockWorkspaceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
+      unique: true, // FIX: pehle sirf index:true tha — concurrent requests
+      // (e.g. React StrictMode double-effect) se ek user ke do workspace
+      // ban sakte the, aur data "randomly gayab" hota dikhta.
     },
     companyName: { type: String, default: "My Chemical Store" },
     stocks: {

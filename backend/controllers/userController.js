@@ -3,7 +3,9 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import User from "../models/userModel.js";
+import StockWorkspace from "../models/stockModel.js";
 
 // ────────────────────────────────────────────
 // EMAIL TRANSPORTER
@@ -18,8 +20,9 @@ const transporter = nodemailer.createTransport({
 // ────────────────────────────────────────────
 // HELPERS
 // ────────────────────────────────────────────
-const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+// SECURITY FIX: Math.random() cryptographically predictable hai, OTP jaise
+// security-sensitive values ke liye crypto.randomInt use karo.
+const generateOTP = () => crypto.randomInt(100000, 1000000).toString();
 
 const sendOTPEmail = async (email, otp, subject = "Your OTP Code") => {
   await transporter.sendMail({
@@ -103,14 +106,20 @@ export const verifySignupOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user)
+    // SECURITY FIX: otp aur email dono non-empty strings honi chahiye.
+    // Pehle yahan check nahi tha — agar otp khaali/undefined bheja jaaye to
+    // `user.otp !== otp` dono undefined hone par pass ho jaata tha (kyunki
+    // verify hone ke baad user.otp = undefined set hota hai), aur koi bhi
+    // already-verified account ka token bina OTP ke le sakta tha.
+    if (typeof email !== "string" || typeof otp !== "string" || !otp.trim())
       return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    if (user.otp !== otp)
+        .status(400)
+        .json({ success: false, message: "Email and OTP required" });
+
+    const user = await User.findOne({ email });
+    if (!user || user.isVerified || !user.otp || user.otp !== otp)
       return res.status(400).json({ success: false, message: "Invalid OTP" });
-    if (new Date() > user.otpExpiry)
+    if (!user.otpExpiry || new Date() > user.otpExpiry)
       return res
         .status(400)
         .json({ success: false, message: "OTP expired. Request a new one." });
@@ -261,22 +270,16 @@ export const resetPassword = async (req, res) => {
         .json({ success: false, message: "All fields required" });
 
     const user = await User.findOne({ email });
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    if (user.resetOtp !== otp)
+    if (!user || !user.resetOtp || user.resetOtp !== otp)
       return res.status(400).json({ success: false, message: "Invalid OTP" });
-    if (new Date() > user.resetOtpExpiry)
+    if (!user.resetOtpExpiry || new Date() > user.resetOtpExpiry)
       return res.status(400).json({ success: false, message: "OTP expired" });
 
     if (newPassword.length < 8)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Password must be at least 8 characters",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
 
     user.password = await bcrypt.hash(newPassword, 12);
     user.resetOtp = undefined;
@@ -375,6 +378,8 @@ export const deleteAccount = async (req, res) => {
     }
 
     await User.findByIdAndDelete(req.user.id);
+    // FIX: user delete hone par uska stock workspace orphan reh jaata tha.
+    await StockWorkspace.findOneAndDelete({ owner: req.user.id });
     res.json({ success: true, message: "Account deleted successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

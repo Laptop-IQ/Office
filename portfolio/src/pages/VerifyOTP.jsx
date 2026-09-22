@@ -478,7 +478,7 @@ const VerifyOTP = () => {
                   <div className="text-center">
                     {timer > 0 ? (
                       <p className="text-xs text-white/35">
-                        Didn't receive the code? Resend in{" "}
+                        Didn&apos;t receive the code? Resend in{" "}
                         <span className="font-semibold text-white/60 tabular-nums">
                           {formatTime(timer)}
                         </span>

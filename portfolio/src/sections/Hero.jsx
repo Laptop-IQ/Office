@@ -979,7 +979,7 @@ export default function HeroSection() {
                   <span className="hq-card-text">
                     <span className="hq-card-title">Open sales report</span>
                     <span className="hq-card-sub">
-                      Today's billing and sales at a glance
+                      Today&apos;s billing and sales at a glance
                     </span>
                   </span>
                   <ChevronRight className="hq-chevron" size={22} />

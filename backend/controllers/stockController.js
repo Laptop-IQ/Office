@@ -4,13 +4,15 @@ import StockWorkspace from "../models/stockModel.js";
 /* Har user ka apna ek workspace hota hai. Agar exist nahi karta to
    create kar dete hain (first load pe), taaki frontend ko alag se
    "setup" call na karna pade. */
-const getOrCreateWorkspace = async (userId) => {
-  let ws = await StockWorkspace.findOne({ owner: userId });
-  if (!ws) {
-    ws = await StockWorkspace.create({ owner: userId });
-  }
-  return ws;
-};
+// FIX: findOne + create do alag steps the — do requests ek saath aayein
+// (jaise React StrictMode ka double-mount) to dono ko null milta aur dono
+// workspace create kar deti thi. Ab ek hi atomic upsert operation hai.
+const getOrCreateWorkspace = (userId) =>
+  StockWorkspace.findOneAndUpdate(
+    { owner: userId },
+    { $setOnInsert: { owner: userId } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
 
 // ── GET /api/stock ───────────────────────────
 // Pura state ek baar me return karta hai (stocks + changeLog + lastUpdated + companyName + dispatches)
@@ -70,9 +72,12 @@ export const saveStockData = async (req, res) => {
       updatedAt: ws.updatedAt,
     });
   } catch (err) {
+    // FIX: schema validation fail hone par (e.g. ek row ka required field
+    // missing) poora save fail hota hai aur error chhup jaata tha. Ab
+    // message frontend tak jaata hai taaki "save fail ho raha hai" pata chale.
     res
       .status(500)
-      .json({ message: "Failed to save stock data", error: err.message });
+      .json({ message: err.message || "Failed to save stock data" });
   }
 };
 
