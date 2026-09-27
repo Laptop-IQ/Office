@@ -896,6 +896,7 @@ export default function ChemicalStockManager() {
           .csm-toolbar > * { width:100% !important; }
           .csm-kpi-grid { display:none !important; }
           .csm-import-toggle, .csm-export-excel { display:none !important; }
+          .csm-pdf-report, .csm-low-pdf, .csm-cols-picker, .csm-settings-btn { display:none !important; }
         }
         @media (max-width: 380px) {
           .csm-kpi-grid { grid-template-columns:1fr; }
@@ -1740,6 +1741,7 @@ export default function ChemicalStockManager() {
                 📄 PDF Alert
               </button>
               <button
+                className="csm-pdf-report"
                 onClick={() =>
                   exportPDF(stocks, activeTab, tabLabel, false, catFilter)
                 }
@@ -1758,6 +1760,7 @@ export default function ChemicalStockManager() {
                 ⬇ PDF Report
               </button>
               <button
+                className="csm-settings-btn"
                 onClick={() => setShowSettings(true)}
                 style={{
                   padding: "8px 16px",
@@ -1999,6 +2002,7 @@ export default function ChemicalStockManager() {
                   Low only
                 </label>
                 <button
+                  className="csm-low-pdf"
                   onClick={() => {
                     const ld = filtered.filter((p) => p.qty <= p.minQty);
                     if (!ld.length) return toast("No low stock items", "error");
@@ -2079,7 +2083,11 @@ export default function ChemicalStockManager() {
                 </button>
 
                 {/* Column picker */}
-                <div style={{ position: "relative" }} ref={colPickerRef}>
+                <div
+                  className="csm-cols-picker"
+                  style={{ position: "relative" }}
+                  ref={colPickerRef}
+                >
                   <button
                     onClick={() => setShowColPicker((v) => !v)}
                     style={smBtn(

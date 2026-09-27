@@ -759,9 +759,10 @@ const DispatchTab = forwardRef(function DispatchTab(
           .dtx-line-cards { display:flex !important; flex-direction:column; gap:10px; padding:12px; }
           .dtx-ledger-table { display:none !important; }
           .dtx-ledger-cards { display:flex !important; flex-direction:column; gap:10px; padding:12px; }
-          .dtx-stats-grid { grid-template-columns:repeat(2,1fr); display:grid !important; gap:8px; }
+          .dtx-stats-grid { display:none !important; }
           .dtx-ledger-toolbar { flex-direction:column; align-items:stretch; }
           .dtx-ledger-toolbar > * { width:100% !important; }
+          .dtx-pdf-btn, .dtx-excel-btn { display:none !important; }
           .dtx-modal-card { max-width:100% !important; margin:0 8px; }
           .dtx-footer-actions { flex-direction:column; }
           .dtx-footer-actions button { width:100%; }
@@ -2907,12 +2908,14 @@ const DispatchTab = forwardRef(function DispatchTab(
             ))}
           </select>
           <button
+            className="dtx-pdf-btn"
             onClick={exportDispatchPDF}
             style={smBtn(T.gold, "#000", "none")}
           >
             📄 PDF
           </button>
           <button
+            className="dtx-excel-btn"
             onClick={exportDispatchExcel}
             style={smBtn(T.safeBg, T.safe, `1.5px solid rgba(16,185,129,0.3)`)}
           >
