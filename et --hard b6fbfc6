@@ -1,0 +1,41 @@
+[33m012a48f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m change in stockmage
+[33m2ac68f1[m stock UI change
+[33mb6fbfc6[m overdue maike mobile friendly
+[33m92a7c28[m fix all error
+[33mbadc88e[m change customers tab
+[33m454df14[m update analytics pop
+[33mf970726[m change heo
+[33m723679f[m only sf work place
+[33m18a2df4[m add air bills and hotels
+[33mab4e7d3[m change login UI
+[33m3508be9[m delete extra file
+[33ma6a5e6f[m remove food bills
+[33mf8f644d[m change
+[33m2d4bb09[m change navbar
+[33m26d5ca4[m change daily sales
+[33m5bef240[m change themes
+[33m9d07de6[m change dispatch and overdue payment
+[33mabe13e3[m change notepad fix title
+[33m5413879[m change login fix -auto logout
+[33m4e5627b[m change daily sales report
+[33m08e4093[m change login and daily visit
+[33m3ab63b5[m update and upgrade UI and UX mindmap
+[33m36da944[m changee export download file
+[33m2380136[m change mindmap url link
+[33mb852d19[m mind map backend update
+[33m4748771[m mind map
+[33m88f39d3[m change
+[33m5d43408[m update link in copy code
+[33ma07d05c[m Navbar change
+[33m456f9df[m add new page
+[33m62ab853[m link and font upadte
+[33m3508318[m link update
+[33m2cdeae4[m data save
+[33mee3cd9f[m update new features
+[33m0b93751[m update add new feature
+[33m4ab6d29[m link
+[33m996edfe[m .env
+[33m5a74994[m Update API_URL initialization in AuthContext
+[33m02a640a[m fix: add portfolio as normal folder
+[33m39a4ac7[m first-t
+[33m8d3d639[m first commit

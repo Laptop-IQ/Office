@@ -8,7 +8,6 @@ import {
   CATEGORIES,
   getCategory,
   TABS,
-  STOCK_TABS,
   ALL_COLUMNS,
   LOCKED_COLS,
   EMPTY_PRODUCT,
@@ -17,10 +16,135 @@ import {
   nowStr,
   todayStr,
   detectColumns,
-  S,
-  FormField,
 } from "./shared";
 import DispatchTab from "./DispatchTab";
+
+// ── Design tokens (matches SF Overdues theme) ───────────────────────────────
+const T = {
+  pageBg: "#06090F",
+  card: "#0B1120",
+  elevated: "#101828",
+  border: "#1A2640",
+  borderHi: "#2A3C60",
+  gold: "#D4A017",
+  goldDim: "#8A6A08",
+  goldGlow: "rgba(212,160,23,0.18)",
+  text1: "#E8EDF8",
+  text2: "#8895AE",
+  text3: "#475569",
+  critical: "#F43F5E",
+  urgent: "#F97316",
+  warning: "#EAB308",
+  info: "#3B82F6",
+  safe: "#10B981",
+  dangerBg: "rgba(244,63,94,0.08)",
+  urgentBg: "rgba(249,115,22,0.08)",
+  warnBg: "rgba(234,179,8,0.08)",
+  infoBg: "rgba(59,130,246,0.08)",
+  safeBg: "rgba(16,185,129,0.08)",
+};
+
+const card = {
+  background: T.card,
+  border: `1px solid ${T.border}`,
+  borderRadius: 12,
+};
+const inputStyle = (focusColor) => ({
+  background: T.elevated,
+  border: `1px solid ${T.border}`,
+  color: T.text1,
+  borderRadius: 8,
+  padding: "9px 14px",
+  fontSize: 13,
+  outline: "none",
+  width: "100%",
+});
+const smBtn = (bg, color, border) => ({
+  padding: "8px 14px",
+  borderRadius: 8,
+  border: border || "none",
+  background: bg,
+  color,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+});
+const rowBtn = (bg, color, border) => ({
+  padding: "4px 10px",
+  borderRadius: 6,
+  border: border || "none",
+  background: bg,
+  color,
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: "pointer",
+});
+const td = (align) => ({
+  padding: "11px 14px",
+  textAlign: align || "left",
+  verticalAlign: "top",
+});
+const badgePill = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "3px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.02em",
+};
+
+// status → badge style (urgency-scaled glow, consistent with overdues theme)
+const statusBadge = (isZero, isLow) => {
+  if (isZero)
+    return {
+      label: "OUT",
+      style: {
+        background: T.dangerBg,
+        color: T.critical,
+        border: "1px solid rgba(244,63,94,0.35)",
+        boxShadow: "0 0 10px rgba(244,63,94,0.35)",
+      },
+    };
+  if (isLow)
+    return {
+      label: "LOW",
+      style: {
+        background: T.warnBg,
+        color: T.warning,
+        border: "1px solid rgba(234,179,8,0.35)",
+        boxShadow: "0 0 8px rgba(234,179,8,0.20)",
+      },
+    };
+  return {
+    label: "OK",
+    style: {
+      background: T.safeBg,
+      color: T.safe,
+      border: "1px solid rgba(16,185,129,0.30)",
+    },
+  };
+};
+
+// ── Local FormField (replaces shared.js styling dependency) ─────────────────
+const FormField = ({ label, children }) => (
+  <div style={{ marginBottom: 4 }}>
+    <p
+      style={{
+        color: T.text2,
+        fontSize: 11,
+        fontWeight: 600,
+        marginBottom: 6,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+      }}
+    >
+      {label}
+    </p>
+    {children}
+  </div>
+);
 
 const EMPTY_PRODUCT_PKG = {
   ...EMPTY_PRODUCT,
@@ -43,17 +167,11 @@ const computePkgQty = (packageSize, packageCount) => {
   }
   return null;
 };
-
 const isPkgTracked = (row) =>
   !!row && computePkgQty(row.packageSize, row.packageCount) !== null;
 
-/* ── Permanent localStorage storage ─────────────────────────────────────────── */
-// FIX: pehle key sabke liye ek hi thi ("chem_stock_app_v1"). Ek hi browser
-// me user A logout karke user B login kare to B ko A ka data dikhta, aur
-// agla PUT /stock B ke server workspace ko A ke data se overwrite kar deta.
-// Ab key me token ki user id shamil hai.
+/* ── Permanent localStorage storage ──────────────────────────────────────── */
 const lsKey = () => `chem_stock_app_v1_${getUserIdFromToken() || "anon"}`;
-
 const lsLoad = () => {
   try {
     const raw = localStorage.getItem(lsKey());
@@ -64,7 +182,6 @@ const lsLoad = () => {
     return null;
   }
 };
-
 const lsSave = (d) => {
   try {
     localStorage.setItem(lsKey(), JSON.stringify(d));
@@ -74,38 +191,25 @@ const lsSave = (d) => {
     return false;
   }
 };
-
 const lsClear = () => {
   try {
     localStorage.removeItem(lsKey());
   } catch {}
 };
 
-/* ── Backend API ───────────────────────────────────────────────────────────── */
-// FIX (poora loadData rewrite): purana version local mil jaaye to server
-// se kabhi poochta hi nahi tha (doosre device ka data kabhi nahi milta),
-// aur `!res.ok`/network error dono ko `null` treat karta tha — jiski wajah
-// se agar server se load fail ho (401 expire, server down) to state SEED
-// (demo data) ban jaati aur 800ms baad ka PUT SEED se server ka asli data
-// OVERWRITE kar deta. Ab teeno case alag handle hote hain:
-//   - authError: true   → token invalid/expired, login page par bhejo
-//   - loadFailed: true  → server se baat nahi ho payi, kuch bhi save mat karo
-//   - warna          → local aur remote me se jo zyada naya hai wo use karo
+/* ── Backend API ──────────────────────────────────────────────────────────── */
 const loadData = async () => {
   const local = lsLoad();
   const token = getToken();
   if (!token) return { authError: true };
-
   try {
     const res = await fetch(API_BASE, { headers: apiHeaders() });
     if (res.status === 401) return { authError: true };
     if (!res.ok)
       return local ? { ...local, offline: true } : { loadFailed: true };
-
     const remote = await res.json();
     if (!remote?.stocks)
       return local ? { ...local, offline: true } : { loadFailed: true };
-
     if (local?.savedAt && remote.updatedAt) {
       return local.savedAt > new Date(remote.updatedAt).getTime()
         ? local
@@ -113,11 +217,9 @@ const loadData = async () => {
     }
     return remote;
   } catch {
-    // Network error — local data hai to usse chalao, save agli baar retry hogi
     return local ? { ...local, offline: true } : { loadFailed: true };
   }
 };
-
 const clearRemoteData = async () => {
   lsClear();
   try {
@@ -125,7 +227,7 @@ const clearRemoteData = async () => {
   } catch {}
 };
 
-/* ── PDF export (stock tabs) ─────────────────────────────────────────────────── */
+/* ── PDF export (kept print-white for readability, dark accents) ──────────── */
 const exportPDF = (
   stocks,
   tab,
@@ -203,11 +305,102 @@ const exportPDF = (
   w.document.close();
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════════
+/* ── Shared Confirm Modal ─────────────────────────────────────────────────── */
+const ConfirmModal = ({
+  icon,
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  danger = true,
+}) => (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 202,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(0,0,0,0.7)",
+      backdropFilter: "blur(4px)",
+      padding: 20,
+    }}
+  >
+    <div
+      style={{
+        ...card,
+        padding: 28,
+        maxWidth: 360,
+        width: "100%",
+        boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
+        <p style={{ color: T.text1, fontWeight: 700, fontSize: 15 }}>{title}</p>
+      </div>
+      <p
+        style={{
+          color: T.text2,
+          fontSize: 13,
+          lineHeight: 1.6,
+          marginBottom: 24,
+        }}
+      >
+        {message}
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button
+          onClick={onCancel}
+          style={{
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: `1px solid ${T.border}`,
+            background: "transparent",
+            color: T.text2,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          style={{
+            padding: "8px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: danger
+              ? "rgba(244,63,94,0.15)"
+              : "rgba(16,185,129,0.15)",
+            color: danger ? T.critical : T.safe,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            boxShadow: `inset 0 0 0 1px ${danger ? "rgba(244,63,94,0.4)" : "rgba(16,185,129,0.4)"}`,
+          }}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
-═══════════════════════════════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════════════════════ */
 export default function ChemicalStockManager() {
-  /* ── Global persisted state ─────────────────────────────────────────────── */
   const [stocks, setStocksRaw] = useState(SEED);
   const [dispatches, setDispatches] = useState([]);
   const [changeLog, setChangeLog] = useState([]);
@@ -216,7 +409,6 @@ export default function ChemicalStockManager() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [syncState, setSyncState] = useState("idle");
 
-  /* ── UI state ───────────────────────────────────────────────────────────── */
   const [activeTab, setActiveTab] = useState("sample");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("ALL");
@@ -234,26 +426,19 @@ export default function ChemicalStockManager() {
     ALL_COLUMNS.filter((c) => c.default).map((c) => c.id),
   );
 
-  /* ── Refs ───────────────────────────────────────────────────────────────── */
   const fileRef = useRef();
   const colPickerRef = useRef();
   const importJSONRef = useRef();
-  const dispatchTabRef = useRef(); // exposes exportPDF() from DispatchTab
+  const dispatchTabRef = useRef();
 
-  /* ── Toast helper ───────────────────────────────────────────────────────── */
   const toast = useCallback((msg, type = "success") => {
     setToastMsg({ msg, type });
     setTimeout(() => setToastMsg(null), 3200);
   }, []);
 
-  /* ── Load on mount ──────────────────────────────────────────────────────── */
   useEffect(() => {
     (async () => {
       const saved = await loadData();
-
-      // FIX: authError/loadFailed par SEED load karke isLoaded=true set
-      // karna band kiya — warna persist effect turant PUT bhejkar SEED se
-      // server ka asli data overwrite kar deta.
       if (saved?.authError) {
         toast("Session expired — please login again", "error");
         window.location.href = "/login";
@@ -262,9 +447,8 @@ export default function ChemicalStockManager() {
       if (saved?.loadFailed) {
         toast("Server se connect nahi ho paya — retry karein", "error");
         setSyncState("load-error");
-        return; // isLoaded false hi rehta hai, koi save nahi hoga
+        return;
       }
-
       setStocksRaw(saved.stocks || SEED);
       setChangeLog(saved.changeLog || []);
       setLastUpdated(saved.lastUpdated || {});
@@ -276,7 +460,6 @@ export default function ChemicalStockManager() {
     })();
   }, [toast]);
 
-  /* ── Persist on every change ────────────────────────────────────────────── */
   useEffect(() => {
     if (!isLoaded) return;
     const payload = {
@@ -289,7 +472,6 @@ export default function ChemicalStockManager() {
     };
     const ok = lsSave(payload);
     setSyncState(ok ? "saving" : "error");
-
     const t = setTimeout(async () => {
       try {
         const res = await fetch(API_BASE, {
@@ -301,10 +483,6 @@ export default function ChemicalStockManager() {
           setSyncState("auth-error");
           return;
         }
-        // FIX: pehle res.ok kabhi check nahi hota tha, isliye server-side
-        // validation fail (400/500) chup-chaap ignore ho jaata aur UI
-        // hamesha "saved ✓" dikhata rehta, chahe server par kuch bhi na
-        // save hua ho.
         setSyncState(res.ok ? "synced" : "remote-error");
       } catch {
         setSyncState("remote-error");
@@ -313,7 +491,6 @@ export default function ChemicalStockManager() {
     return () => clearTimeout(t);
   }, [stocks, changeLog, lastUpdated, companyName, dispatches, isLoaded]);
 
-  /* ── Close column picker on outside click ───────────────────────────────── */
   useEffect(() => {
     const h = (e) => {
       if (colPickerRef.current && !colPickerRef.current.contains(e.target))
@@ -328,14 +505,12 @@ export default function ChemicalStockManager() {
     [],
   );
 
-  /* ── Change log helper ──────────────────────────────────────────────────── */
   const logAction = (action, tab, details) => {
     const entry = { id: genId(), action, tab, details, time: nowStr() };
     setChangeLog((p) => [entry, ...p].slice(0, 200));
     setLastUpdated((p) => ({ ...p, [tab]: nowStr() }));
   };
 
-  /* ── JSON Backup / Restore ──────────────────────────────────────────────── */
   const exportDataJSON = () => {
     const payload = { stocks, changeLog, lastUpdated, companyName, dispatches };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -373,7 +548,6 @@ export default function ChemicalStockManager() {
     e.target.value = "";
   };
 
-  /* ── Derived values ─────────────────────────────────────────────────────── */
   const current = stocks[activeTab] || [];
   const tabLabel = TABS.find((t) => t.id === activeTab)?.label || "";
   const totalLow = Object.values(stocks)
@@ -401,7 +575,6 @@ export default function ChemicalStockManager() {
     return ms && ml && mc;
   });
 
-  /* ── Stock CRUD ─────────────────────────────────────────────────────────── */
   const handleAdd = () => {
     if (!newRow.name.trim()) return toast("Product name required", "error");
     const p = {
@@ -562,7 +735,6 @@ export default function ChemicalStockManager() {
     toast("Excel exported ✓");
   };
 
-  /* ── Tab switch ─────────────────────────────────────────────────────────── */
   const switchTab = (id) => {
     setActiveTab(id);
     setSearch("");
@@ -572,7 +744,6 @@ export default function ChemicalStockManager() {
     setAddMode(false);
   };
 
-  /* ── Column visibility ──────────────────────────────────────────────────── */
   const isColVisible = (id) => visibleCols.includes(id);
   const toggleCol = (id) => {
     if (LOCKED_COLS.includes(id)) return;
@@ -581,11 +752,30 @@ export default function ChemicalStockManager() {
     );
   };
 
-  /* ── Drawer data ────────────────────────────────────────────────────────── */
   const drawerData = editRow || (addMode ? newRow : null);
   const setDrawer = editRow ? setEditRow : setNewRow;
 
-  /* ── Loading screen ─────────────────────────────────────────────────────── */
+  const syncLabel =
+    syncState === "error"
+      ? "⚠ Local save failed"
+      : syncState === "auth-error"
+        ? "⚠ Session expired"
+        : syncState === "remote-error"
+          ? "⚠ Server save failed (local safe)"
+          : syncState === "synced"
+            ? "✓ Synced"
+            : syncState === "saving"
+              ? "🔄 Saving…"
+              : "✓ Saved";
+  const syncColor =
+    syncState === "synced"
+      ? T.safe
+      : syncState === "saving"
+        ? T.info
+        : syncState.includes("error")
+          ? T.warning
+          : T.safe;
+
   if (!isLoaded)
     return (
       <div
@@ -594,13 +784,20 @@ export default function ChemicalStockManager() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F1F5F9",
-          fontFamily: "'Inter',system-ui,sans-serif",
+          background: T.pageBg,
+          fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
         }}
       >
-        <div style={{ textAlign: "center", color: "#64748B" }}>
+        <div style={{ textAlign: "center", color: T.text2 }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>⚗</div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              marginBottom: 14,
+              color: T.text1,
+            }}
+          >
             {syncState === "load-error"
               ? "Server se connect nahi ho paya"
               : "Loading stock data…"}
@@ -612,8 +809,8 @@ export default function ChemicalStockManager() {
                 padding: "9px 20px",
                 borderRadius: 9,
                 border: "none",
-                background: "#2563EB",
-                color: "#fff",
+                background: T.gold,
+                color: "#000",
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -626,1922 +823,2110 @@ export default function ChemicalStockManager() {
       </div>
     );
 
-  /* ═══════════════════════════ RENDER ═══════════════════════════════════════ */
-  return (
-    <div style={S.wrap}>
-      {/* Toast */}
-      {toastMsg && (
-        <div
-          style={{
-            position: "fixed",
-            top: 16,
-            right: 16,
-            zIndex: 999,
-            background: toastMsg.type === "error" ? "#EF4444" : "#10B981",
-            color: "#fff",
-            padding: "10px 18px",
-            borderRadius: 10,
-            fontSize: 13,
-            fontWeight: 700,
-            boxShadow: "0 4px 20px rgba(0,0,0,.18)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          {toastMsg.type === "error" ? "✕" : "✓"} {toastMsg.msg}
-        </div>
-      )}
+  const kpis = [
+    {
+      lbl: "Products",
+      val: current.length,
+      sub: `in ${tabLabel}`,
+      color: T.gold,
+      icon: "📦",
+    },
+    {
+      lbl: "Total Qty",
+      val: current.reduce((s, p) => s + p.qty, 0),
+      sub: "units on hand",
+      color: T.info,
+      icon: "📊",
+    },
+    {
+      lbl: "Low Stock",
+      val: current.filter((p) => p.qty <= p.minQty).length,
+      sub: "below minimum",
+      color: T.warning,
+      icon: "⚠",
+    },
+    {
+      lbl: "Out of Stock",
+      val: current.filter((p) => p.qty === 0).length,
+      sub: "needs reorder",
+      color: T.critical,
+      icon: "🚫",
+    },
+  ];
 
-      {/* ── Edit / Add Drawer ─────────────────────────────────────────────── */}
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; }
+        html, body, #root { width: 100%; min-width: 0; margin: 0; }
+        button, input, select, textarea { font: inherit; }
+        input::placeholder { color: ${T.text3}; }
+        .csm-shell { width: 100%; overflow-x: hidden; }
+        .csm-container { width: min(1280px, 100%); margin: 0 auto; padding: 24px 24px 96px; }
+        .csm-header-inner { width: min(1280px, 100%); margin: 0 auto; padding: 14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+        .csm-header-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .csm-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:20px; }
+        .csm-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
+        .csm-toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+        .desktop-table { display:block; }
+        .mobile-list { display:none; }
+        select { color-scheme: dark; }
+        @media (max-width: 820px) {
+          .csm-container { padding:14px 12px 100px !important; }
+          .csm-header-inner { padding:12px; align-items:flex-start; }
+          .csm-header-inner h1 { font-size:17px !important; }
+          .csm-header-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+          .csm-header-actions button { width:100%; justify-content:center; }
+          .csm-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+          .csm-kpi-grid > div { min-width:0; padding:14px 12px !important; }
+          .csm-kpi-grid > div p:nth-child(3) { font-size:19px !important; }
+          .desktop-table { display:none !important; }
+          .mobile-list { display:flex; flex-direction:column; gap:10px; }
+          .mobile-card { background:${T.card}; border:1px solid ${T.border}; border-radius:12px; padding:13px; }
+          .mobile-card-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; min-width:0; }
+          .mobile-card-label { color:${T.text3}; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+          .mobile-card-value { color:${T.text1}; font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+          .mobile-card-name { font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+          .mobile-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:11px; }
+          .mobile-qty-stepper { display:flex; align-items:center; gap:8px; margin-top:11px; background:${T.elevated}; border:1px solid ${T.border}; border-radius:8px; padding:8px 10px; justify-content:space-between; }
+          .mobile-qty-stepper button { width:32px; height:32px; border-radius:7px; border:1px solid ${T.border}; background:${T.card}; color:${T.text1}; font-size:16px; cursor:pointer; }
+          .mobile-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:11px; }
+          .mobile-actions button { min-height:36px; border-radius:8px; border:1px solid ${T.border}; background:${T.elevated}; color:${T.text1}; font-weight:700; cursor:pointer; font-size:12px; }
+          .csm-toolbar { flex-direction:column; align-items:stretch; }
+          .csm-toolbar > * { width:100% !important; }
+        }
+        @media (max-width: 380px) {
+          .csm-kpi-grid { grid-template-columns:1fr; }
+          .csm-header-actions { grid-template-columns:1fr; }
+        }
+      `}</style>
       <div
+        className="csm-shell"
         style={{
-          display: editRow || addMode ? "flex" : "none",
-          position: "fixed",
-          inset: 0,
-          zIndex: 200,
-          background: "rgba(0,0,0,.5)",
-          alignItems: "flex-end",
-          justifyContent: "center",
-        }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setEditRow(null);
-            setAddMode(false);
-          }
+          minHeight: "100vh",
+          background: T.pageBg,
+          fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+          color: T.text1,
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+          backgroundSize: "28px 28px",
         }}
       >
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: "18px 18px 0 0",
-            width: "100%",
-            maxWidth: 580,
-            maxHeight: "92vh",
-            overflowY: "auto",
-            padding: 24,
-            boxSizing: "border-box",
-          }}
-        >
+        {/* Toast */}
+        {toastMsg && (
           <div
             style={{
+              position: "fixed",
+              top: 16,
+              right: 16,
+              left: 16,
+              zIndex: 999,
+              background:
+                toastMsg.type === "error"
+                  ? "rgba(244,63,94,0.95)"
+                  : "rgba(16,185,129,0.95)",
+              color: "#06090F",
+              padding: "11px 18px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 700,
+              boxShadow: "0 8px 30px rgba(0,0,0,.4)",
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 20,
+              gap: 6,
+              maxWidth: 380,
+              marginLeft: "auto",
             }}
           >
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 800,
-                color: "#0F172A",
-              }}
-            >
-              {editRow ? "✏ Edit Product" : "＋ Add Product"}
-            </h3>
-            <button
-              onClick={() => {
+            {toastMsg.type === "error" ? "✕" : "✓"} {toastMsg.msg}
+          </div>
+        )}
+
+        {/* ── Edit / Add Drawer ── */}
+        {(editRow || addMode) && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 200,
+              background: "rgba(0,0,0,.7)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
                 setEditRow(null);
                 setAddMode(false);
-              }}
-              style={{
-                background: "#F1F5F9",
-                border: "none",
-                borderRadius: 8,
-                width: 30,
-                height: 30,
-                cursor: "pointer",
-                fontSize: 18,
-                color: "#9CA3AF",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              ×
-            </button>
-          </div>
-          {drawerData && (
+              }
+            }}
+          >
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 12,
+                ...card,
+                borderRadius: "18px 18px 0 0",
+                width: "100%",
+                maxWidth: 580,
+                maxHeight: "92vh",
+                overflowY: "auto",
+                padding: 24,
+                borderBottom: "none",
               }}
             >
-              <div style={{ gridColumn: "1/-1" }}>
-                <FormField label="Product Name *">
-                  <input
-                    value={drawerData.name}
-                    onChange={(e) =>
-                      setDrawer((r) => ({ ...r, name: e.target.value }))
-                    }
-                    style={S.input("#2563EB")}
-                    placeholder="e.g. ECOFAST BLUE B"
-                  />
-                </FormField>
-              </div>
-              <FormField label="Package Size">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={String(drawerData.packageSize ?? "")}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d+$/.test(v))
-                      setDrawer((r) => {
-                        const q = computePkgQty(v, r.packageCount);
-                        return {
-                          ...r,
-                          packageSize: v,
-                          qty: q !== null ? String(q) : r.qty,
-                        };
-                      });
-                  }}
-                  style={S.input()}
-                  placeholder="e.g. 25"
-                />
-              </FormField>
-              <FormField label="No. of Packages">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={String(drawerData.packageCount ?? "")}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d+$/.test(v))
-                      setDrawer((r) => {
-                        const q = computePkgQty(r.packageSize, v);
-                        return {
-                          ...r,
-                          packageCount: v,
-                          qty: q !== null ? String(q) : r.qty,
-                        };
-                      });
-                  }}
-                  style={S.input()}
-                  placeholder="e.g. 10"
-                />
-              </FormField>
-              <FormField
-                label={
-                  isPkgTracked(drawerData)
-                    ? `Quantity (= ${drawerData.packageCount} × ${drawerData.packageSize}${drawerData.unit || ""})`
-                    : "Quantity *"
-                }
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
               >
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={String(drawerData.qty ?? "")}
-                  disabled={isPkgTracked(drawerData)}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d+$/.test(v))
-                      setDrawer((r) => ({ ...r, qty: v }));
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: T.text1,
+                  }}
+                >
+                  {editRow ? "✏ Edit Product" : "＋ Add Product"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setEditRow(null);
+                    setAddMode(false);
                   }}
                   style={{
-                    ...S.input(),
-                    ...(isPkgTracked(drawerData)
-                      ? {
-                          background: "#F1F5F9",
-                          opacity: 0.6,
-                          cursor: "not-allowed",
-                        }
-                      : {}),
+                    background: T.elevated,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    width: 30,
+                    height: 30,
+                    cursor: "pointer",
+                    fontSize: 18,
+                    color: T.text2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                  placeholder="0"
-                />
-              </FormField>
-              <FormField label="Min Quantity *">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={String(drawerData.minQty ?? "")}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d+$/.test(v))
-                      setDrawer((r) => ({ ...r, minQty: v }));
-                  }}
-                  style={S.input()}
-                  placeholder="0"
-                />
-              </FormField>
-              <FormField label="Unit">
-                <select
-                  value={drawerData.unit || "kg"}
-                  onChange={(e) =>
-                    setDrawer((r) => ({ ...r, unit: e.target.value }))
-                  }
-                  style={{ ...S.input(), appearance: "auto" }}
                 >
-                  {["kg", "g", "L", "ml", "pcs", "box", "drum", "bag"].map(
-                    (u) => (
-                      <option key={u}>{u}</option>
-                    ),
-                  )}
-                </select>
-              </FormField>
-              <FormField label="Category">
-                <select
-                  value={drawerData.category || "OTHER"}
-                  onChange={(e) =>
-                    setDrawer((r) => ({ ...r, category: e.target.value }))
-                  }
-                  style={{ ...S.input(), appearance: "auto" }}
-                >
-                  {Object.entries(CATEGORIES).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <div style={{ gridColumn: "1/-1" }}>
-                <FormField label="Batch No.">
-                  <input
-                    value={drawerData.batch || ""}
-                    onChange={(e) =>
-                      setDrawer((r) => ({ ...r, batch: e.target.value }))
-                    }
-                    style={S.input()}
-                    placeholder="e.g. BC-001"
-                  />
-                </FormField>
+                  ×
+                </button>
               </div>
-              <FormField label="Expiry Date">
-                <input
-                  type="date"
-                  value={drawerData.expiry || ""}
-                  onChange={(e) =>
-                    setDrawer((r) => ({ ...r, expiry: e.target.value }))
-                  }
-                  style={S.input()}
-                />
-              </FormField>
-              <FormField label="Supplier">
-                <input
-                  value={drawerData.supplier || ""}
-                  onChange={(e) =>
-                    setDrawer((r) => ({ ...r, supplier: e.target.value }))
-                  }
-                  style={S.input()}
-                  placeholder="Supplier name"
-                />
-              </FormField>
-              <div style={{ gridColumn: "1/-1" }}>
-                <FormField label="Reorder Note">
-                  <input
-                    value={drawerData.reorderNote || ""}
-                    onChange={(e) =>
-                      setDrawer((r) => ({ ...r, reorderNote: e.target.value }))
+              {drawerData && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <FormField label="Product Name *">
+                      <input
+                        value={drawerData.name}
+                        onChange={(e) =>
+                          setDrawer((r) => ({ ...r, name: e.target.value }))
+                        }
+                        style={inputStyle()}
+                        placeholder="e.g. ECOFAST BLUE B"
+                      />
+                    </FormField>
+                  </div>
+                  <FormField label="Package Size">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={String(drawerData.packageSize ?? "")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d+$/.test(v))
+                          setDrawer((r) => {
+                            const q = computePkgQty(v, r.packageCount);
+                            return {
+                              ...r,
+                              packageSize: v,
+                              qty: q !== null ? String(q) : r.qty,
+                            };
+                          });
+                      }}
+                      style={inputStyle()}
+                      placeholder="e.g. 25"
+                    />
+                  </FormField>
+                  <FormField label="No. of Packages">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={String(drawerData.packageCount ?? "")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d+$/.test(v))
+                          setDrawer((r) => {
+                            const q = computePkgQty(r.packageSize, v);
+                            return {
+                              ...r,
+                              packageCount: v,
+                              qty: q !== null ? String(q) : r.qty,
+                            };
+                          });
+                      }}
+                      style={inputStyle()}
+                      placeholder="e.g. 10"
+                    />
+                  </FormField>
+                  <FormField
+                    label={
+                      isPkgTracked(drawerData)
+                        ? `Quantity (= ${drawerData.packageCount} × ${drawerData.packageSize}${drawerData.unit || ""})`
+                        : "Quantity *"
                     }
-                    style={S.input()}
-                    placeholder="e.g. Min 5kg order"
-                  />
-                </FormField>
+                  >
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={String(drawerData.qty ?? "")}
+                      disabled={isPkgTracked(drawerData)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d+$/.test(v))
+                          setDrawer((r) => ({ ...r, qty: v }));
+                      }}
+                      style={{
+                        ...inputStyle(),
+                        ...(isPkgTracked(drawerData)
+                          ? { opacity: 0.5, cursor: "not-allowed" }
+                          : {}),
+                      }}
+                      placeholder="0"
+                    />
+                  </FormField>
+                  <FormField label="Min Quantity *">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={String(drawerData.minQty ?? "")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d+$/.test(v))
+                          setDrawer((r) => ({ ...r, minQty: v }));
+                      }}
+                      style={inputStyle()}
+                      placeholder="0"
+                    />
+                  </FormField>
+                  <FormField label="Unit">
+                    <select
+                      value={drawerData.unit || "kg"}
+                      onChange={(e) =>
+                        setDrawer((r) => ({ ...r, unit: e.target.value }))
+                      }
+                      style={{
+                        ...inputStyle(),
+                        appearance: "auto",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {["kg", "g", "L", "ml", "pcs", "box", "drum", "bag"].map(
+                        (u) => (
+                          <option key={u}>{u}</option>
+                        ),
+                      )}
+                    </select>
+                  </FormField>
+                  <FormField label="Category">
+                    <select
+                      value={drawerData.category || "OTHER"}
+                      onChange={(e) =>
+                        setDrawer((r) => ({ ...r, category: e.target.value }))
+                      }
+                      style={{
+                        ...inputStyle(),
+                        appearance: "auto",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {Object.entries(CATEGORIES).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <FormField label="Batch No.">
+                      <input
+                        value={drawerData.batch || ""}
+                        onChange={(e) =>
+                          setDrawer((r) => ({ ...r, batch: e.target.value }))
+                        }
+                        style={inputStyle()}
+                        placeholder="e.g. BC-001"
+                      />
+                    </FormField>
+                  </div>
+                  <FormField label="Expiry Date">
+                    <input
+                      type="date"
+                      value={drawerData.expiry || ""}
+                      onChange={(e) =>
+                        setDrawer((r) => ({ ...r, expiry: e.target.value }))
+                      }
+                      style={inputStyle()}
+                    />
+                  </FormField>
+                  <FormField label="Supplier">
+                    <input
+                      value={drawerData.supplier || ""}
+                      onChange={(e) =>
+                        setDrawer((r) => ({ ...r, supplier: e.target.value }))
+                      }
+                      style={inputStyle()}
+                      placeholder="Supplier name"
+                    />
+                  </FormField>
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <FormField label="Reorder Note">
+                      <input
+                        value={drawerData.reorderNote || ""}
+                        onChange={(e) =>
+                          setDrawer((r) => ({
+                            ...r,
+                            reorderNote: e.target.value,
+                          }))
+                        }
+                        style={inputStyle()}
+                        placeholder="e.g. Min 5kg order"
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+                <button
+                  onClick={editRow ? handleSaveEdit : handleAdd}
+                  style={{
+                    flex: 1,
+                    padding: 13,
+                    borderRadius: 10,
+                    border: "none",
+                    background: T.gold,
+                    color: "#000",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    boxShadow: `0 0 16px ${T.goldGlow}`,
+                  }}
+                >
+                  {editRow ? "💾 Save Changes" : "✚ Add Product"}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditRow(null);
+                    setAddMode(false);
+                  }}
+                  style={{
+                    padding: "13px 18px",
+                    borderRadius: 10,
+                    border: `1px solid ${T.border}`,
+                    background: "transparent",
+                    color: T.text2,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          )}
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button
-              onClick={editRow ? handleSaveEdit : handleAdd}
-              style={{
-                flex: 1,
-                padding: 13,
-                borderRadius: 10,
-                border: "none",
-                background: "#2563EB",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {editRow ? "💾 Save Changes" : "✚ Add Product"}
-            </button>
-            <button
-              onClick={() => {
-                setEditRow(null);
-                setAddMode(false);
-              }}
-              style={{
-                padding: "13px 18px",
-                borderRadius: 10,
-                border: "none",
-                background: "#F1F5F9",
-                color: "#374151",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* ── Detail Modal ──────────────────────────────────────────────────── */}
-      {detailRow && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 201,
-            background: "rgba(0,0,0,.5)",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDetailRow(null);
-          }}
-        >
+        {/* ── Detail Modal ── */}
+        {detailRow && (
           <div
             style={{
-              background: "#fff",
-              borderRadius: "18px 18px 0 0",
-              width: "100%",
-              maxWidth: 520,
-              maxHeight: "85vh",
-              overflowY: "auto",
-              padding: 24,
-              boxSizing: "border-box",
+              position: "fixed",
+              inset: 0,
+              zIndex: 201,
+              background: "rgba(0,0,0,.7)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDetailRow(null);
             }}
           >
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
+                ...card,
+                borderRadius: "18px 18px 0 0",
+                width: "100%",
+                maxWidth: 520,
+                maxHeight: "85vh",
+                overflowY: "auto",
+                padding: 24,
+                borderBottom: "none",
               }}
             >
-              <h3
+              <div
                 style={{
-                  margin: 0,
-                  fontSize: 15,
-                  fontWeight: 800,
-                  color: "#0F172A",
-                }}
-              >
-                {detailRow.name}
-              </h3>
-              <button
-                onClick={() => setDetailRow(null)}
-                style={{
-                  background: "#F1F5F9",
-                  border: "none",
-                  borderRadius: 8,
-                  width: 30,
-                  height: 30,
-                  cursor: "pointer",
-                  fontSize: 18,
-                  color: "#9CA3AF",
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  justifyContent: "center",
+                  marginBottom: 16,
                 }}
               >
-                ×
-              </button>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 15,
+                    fontWeight: 800,
+                    color: T.text1,
+                  }}
+                >
+                  {detailRow.name}
+                </h3>
+                <button
+                  onClick={() => setDetailRow(null)}
+                  style={{
+                    background: T.elevated,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    width: 30,
+                    height: 30,
+                    cursor: "pointer",
+                    fontSize: 18,
+                    color: T.text2,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              {(() => {
+                const cat =
+                  CATEGORIES[detailRow.category || getCategory(detailRow.name)];
+                const isLow = detailRow.qty <= detailRow.minQty,
+                  isZero = detailRow.qty === 0;
+                const badge = statusBadge(isZero, isLow);
+                const fields = [
+                  ["Quantity", `${detailRow.qty} ${detailRow.unit || ""}`],
+                  ...(isPkgTracked(detailRow)
+                    ? [
+                        [
+                          "Package Size",
+                          `${detailRow.packageCount} × ${detailRow.packageSize} ${detailRow.unit || ""}`,
+                        ],
+                      ]
+                    : []),
+                  [
+                    "Min Quantity",
+                    `${detailRow.minQty} ${detailRow.unit || ""}`,
+                  ],
+                  ["Category", cat?.label || detailRow.category],
+                  ...(detailRow.batch ? [["Batch", detailRow.batch]] : []),
+                  ...(detailRow.expiry ? [["Expiry", detailRow.expiry]] : []),
+                  ...(detailRow.supplier
+                    ? [["Supplier", detailRow.supplier]]
+                    : []),
+                  ["Reorder Note", detailRow.reorderNote || "None"],
+                ];
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        padding: "10px 0",
+                        borderBottom: `1px solid ${T.border}`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: T.text2,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Status
+                      </span>
+                      <span style={{ ...badgePill, ...badge.style }}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    {fields.map(([k, v]) => (
+                      <div
+                        key={k}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "10px 0",
+                          borderBottom: `1px solid ${T.border}`,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: T.text2,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {k}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: T.text1,
+                            fontWeight: 500,
+                            maxWidth: "60%",
+                            textAlign: "right",
+                          }}
+                        >
+                          {v}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button
+                  onClick={() => {
+                    setEditRow({ ...detailRow });
+                    setDetailRow(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "none",
+                    background: T.gold,
+                    color: "#000",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✏ Edit
+                </button>
+                <button
+                  onClick={() => {
+                    handleDelete(detailRow.id);
+                    setDetailRow(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 10,
+                    border: "none",
+                    background: "rgba(244,63,94,0.15)",
+                    color: T.critical,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "inset 0 0 0 1px rgba(244,63,94,0.4)",
+                  }}
+                >
+                  🗑 Delete
+                </button>
+              </div>
             </div>
-            {(() => {
-              const cat =
-                CATEGORIES[detailRow.category || getCategory(detailRow.name)];
-              const isLow = detailRow.qty <= detailRow.minQty,
-                isZero = detailRow.qty === 0;
-              const fields = [
-                ["Quantity", `${detailRow.qty} ${detailRow.unit || ""}`],
-                ...(isPkgTracked(detailRow)
-                  ? [
-                      [
-                        "Package Size",
-                        `${detailRow.packageCount} × ${detailRow.packageSize} ${detailRow.unit || ""}`,
-                      ],
-                    ]
-                  : []),
-                ["Min Quantity", `${detailRow.minQty} ${detailRow.unit || ""}`],
-                ["Category", cat?.label || detailRow.category],
-                [
-                  "Status",
-                  isZero ? "Out of Stock" : isLow ? "Low Stock" : "OK",
-                ],
-                ...(detailRow.batch ? [["Batch", detailRow.batch]] : []),
-                ...(detailRow.expiry ? [["Expiry", detailRow.expiry]] : []),
-                ...(detailRow.supplier
-                  ? [["Supplier", detailRow.supplier]]
-                  : []),
-                ["Reorder Note", detailRow.reorderNote || "None"],
-              ];
-              return fields.map(([k, v]) => (
+          </div>
+        )}
+
+        {confirmDel && (
+          <ConfirmModal
+            icon="🗑️"
+            title="Delete Product?"
+            message={`"${confirmDel.name}" permanently remove ho jaayega.`}
+            confirmLabel="Delete"
+            onConfirm={confirmDelete}
+            onCancel={() => setConfirmDel(null)}
+          />
+        )}
+
+        {/* ── Settings Modal ── */}
+        {showSettings && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 202,
+              background: "rgba(0,0,0,.7)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowSettings(false);
+            }}
+          >
+            <div
+              style={{
+                ...card,
+                padding: 28,
+                width: "100%",
+                maxWidth: 420,
+                maxHeight: "90vh",
+                overflowY: "auto",
+                boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontWeight: 800,
+                    fontSize: 15,
+                    color: T.text1,
+                  }}
+                >
+                  ⚙ Settings
+                </h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  style={{
+                    background: T.elevated,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    width: 30,
+                    height: 30,
+                    cursor: "pointer",
+                    fontSize: 18,
+                    color: T.text2,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <FormField label="Company / Store Name">
+                <input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  style={inputStyle()}
+                />
+              </FormField>
+              <div
+                style={{
+                  background: T.safeBg,
+                  border: `1px solid rgba(16,185,129,0.3)`,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  marginTop: 12,
+                  marginBottom: 16,
+                }}
+              >
                 <div
-                  key={k}
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    padding: "10px 0",
-                    borderBottom: "1px solid #F3F4F6",
+                    alignItems: "center",
+                    gap: 7,
+                    marginBottom: 6,
                   }}
                 >
+                  <span style={{ fontSize: 16 }}>💾</span>
                   <span
-                    style={{ fontSize: 12, color: "#6B7280", fontWeight: 600 }}
+                    style={{ fontSize: 12, fontWeight: 700, color: T.safe }}
                   >
-                    {k}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "#111",
-                      fontWeight: 500,
-                      maxWidth: "60%",
-                      textAlign: "right",
-                    }}
-                  >
-                    {v}
+                    Browser Storage — Permanent Save
                   </span>
                 </div>
-              ));
-            })()}
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-              <button
-                onClick={() => {
-                  setEditRow({ ...detailRow });
-                  setDetailRow(null);
-                }}
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: T.text2,
+                    margin: 0,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Aapka saara data browser ke{" "}
+                  <strong style={{ color: T.text1 }}>localStorage</strong> mein
+                  permanently save hota hai.
+                  <br />
+                  Page refresh, browser restart — sab ke baad bhi data safe
+                  rehta hai.
+                  <br />
+                  <span style={{ color: T.text3 }}>
+                    Sirf browser data clear karne se delete hoga.
+                  </span>
+                </p>
+              </div>
+              <div
                 style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#2563EB",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
+                  paddingBottom: 16,
+                  borderBottom: `1px solid ${T.border}`,
                 }}
               >
-                ✏ Edit
-              </button>
-              <button
-                onClick={() => {
-                  handleDelete(detailRow.id);
-                  setDetailRow(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#FEF2F2",
-                  color: "#DC2626",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                🗑 Delete
-              </button>
+                <p
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: T.text2,
+                    textTransform: "uppercase",
+                    letterSpacing: ".05em",
+                    marginBottom: 10,
+                  }}
+                >
+                  📁 Backup & Restore
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={exportDataJSON}
+                    style={{
+                      flex: 1,
+                      padding: 11,
+                      borderRadius: 9,
+                      border: `1.5px solid rgba(16,185,129,0.35)`,
+                      background: T.safeBg,
+                      color: T.safe,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⬇ Download Backup
+                  </button>
+                  <button
+                    onClick={() => importJSONRef.current.click()}
+                    style={{
+                      flex: 1,
+                      padding: 11,
+                      borderRadius: 9,
+                      border: `1.5px solid rgba(59,130,246,0.35)`,
+                      background: T.infoBg,
+                      color: T.info,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⬆ Restore Backup
+                  </button>
+                </div>
+                <input
+                  ref={importJSONRef}
+                  type="file"
+                  accept=".json"
+                  style={{ display: "none" }}
+                  onChange={importDataJSON}
+                />
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: T.text3,
+                    marginTop: 8,
+                    textAlign: "center",
+                  }}
+                >
+                  JSON file mein saara data (stocks + dispatches + history) save
+                  hota hai
+                </p>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <p style={{ fontSize: 12, color: T.text2, marginBottom: 10 }}>
+                  ⚠ Danger Zone
+                </p>
+                <button
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        "Browser storage + server ka saara data delete hoga! Sure?",
+                      )
+                    ) {
+                      await clearRemoteData();
+                      window.location.reload();
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: 11,
+                    borderRadius: 9,
+                    border: `1px solid rgba(244,63,94,0.3)`,
+                    background: T.dangerBg,
+                    color: T.critical,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  🗑 Clear All Data
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Confirm Delete ────────────────────────────────────────────────── */}
-      {confirmDel && (
-        <div
+        {/* ── HEADER ── */}
+        <header
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 202,
-            background: "rgba(0,0,0,.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            background: "rgba(6,9,15,0.92)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderBottom: `1px solid ${T.border}`,
           }}
         >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 16,
-              padding: 28,
-              width: "100%",
-              maxWidth: 340,
-              textAlign: "center",
-              boxShadow: "0 20px 60px rgba(0,0,0,.2)",
-            }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🗑</div>
-            <p
-              style={{
-                fontWeight: 800,
-                fontSize: 15,
-                marginBottom: 6,
-                color: "#0F172A",
-              }}
-            >
-              Delete Product?
-            </p>
-            <p
-              style={{
-                color: "#555",
-                fontSize: 13,
-                marginBottom: 24,
-                lineHeight: 1.5,
-              }}
-            >
-              "{confirmDel.name}" permanently remove ho jaayega.
-            </p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setConfirmDel(null)}
+          <div className="csm-header-inner">
+            <div>
+              <h1
                 style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 9,
-                  border: "none",
-                  background: "#F1F5F9",
-                  color: "#374151",
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  margin: 0,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>⚗</span>
+                <span style={{ color: T.gold }}>{companyName}</span>
+              </h1>
+              <p
+                style={{
+                  color: T.text3,
+                  fontSize: 11,
+                  marginTop: 3,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span style={{ color: T.text2 }}>Chemical Stock Manager</span>
+                <span>·</span>
+                {totalLow > 0 && (
+                  <>
+                    <span style={{ color: T.critical, fontWeight: 700 }}>
+                      ⚠ {totalLow} low
+                    </span>
+                    <span>·</span>
+                  </>
+                )}
+                <span style={{ color: syncColor }}>{syncLabel}</span>
+              </p>
+            </div>
+            <div className="csm-header-actions">
+              <button
+                onClick={() => exportPDF(stocks, activeTab, tabLabel, true)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: `1px solid rgba(244,63,94,0.3)`,
+                  background: "transparent",
+                  color: T.critical,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
               >
-                Cancel
+                📄 PDF Alert
               </button>
               <button
-                onClick={confirmDelete}
+                onClick={() =>
+                  exportPDF(stocks, activeTab, tabLabel, false, catFilter)
+                }
                 style={{
-                  flex: 1,
-                  padding: 12,
-                  borderRadius: 9,
+                  padding: "8px 16px",
+                  borderRadius: 8,
                   border: "none",
-                  background: "#EF4444",
-                  color: "#fff",
+                  background: T.gold,
+                  color: "#000",
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: "pointer",
+                  boxShadow: `0 0 16px ${T.goldGlow}`,
                 }}
               >
-                Delete
+                ⬇ PDF Report
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.text2,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                ⚙
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </header>
 
-      {/* ── Settings Modal ───────────────────────────────────────────────── */}
-      {showSettings && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 202,
-            background: "rgba(0,0,0,.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSettings(false);
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 16,
-              padding: 28,
-              width: "100%",
-              maxWidth: 420,
-              boxShadow: "0 20px 60px rgba(0,0,0,.2)",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
-              }}
-            >
-              <h3 style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-                ⚙ Settings
-              </h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                style={{
-                  background: "#F1F5F9",
-                  border: "none",
-                  borderRadius: 8,
-                  width: 30,
-                  height: 30,
-                  cursor: "pointer",
-                  fontSize: 18,
-                  color: "#9CA3AF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <FormField label="Company / Store Name">
-              <input
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                style={S.input("#2563EB")}
-              />
-            </FormField>
-            <div
-              style={{
-                background: "#F0FDF4",
-                border: "1.5px solid #A7F3D0",
-                borderRadius: 10,
-                padding: "12px 14px",
-                marginTop: 4,
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  marginBottom: 6,
-                }}
-              >
-                <span style={{ fontSize: 16 }}>💾</span>
-                <span
-                  style={{ fontSize: 12, fontWeight: 700, color: "#065F46" }}
-                >
-                  Browser Storage — Permanent Save
-                </span>
-              </div>
-              <p
-                style={{
-                  fontSize: 11,
-                  color: "#374151",
-                  margin: 0,
-                  lineHeight: 1.6,
-                }}
-              >
-                Aapka saara data browser ke <strong>localStorage</strong> mein
-                permanently save hota hai.
-                <br />
-                Page refresh, browser restart — sab ke baad bhi data safe rehta
-                hai.
-                <br />
-                <span style={{ color: "#6B7280" }}>
-                  Sirf browser data clear karne se delete hoga.
-                </span>
-              </p>
-            </div>
-            <div
-              style={{ paddingBottom: 16, borderBottom: "1px solid #F3F4F6" }}
-            >
-              <p
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#374151",
-                  textTransform: "uppercase",
-                  letterSpacing: ".05em",
-                  marginBottom: 10,
-                }}
-              >
-                📁 Backup & Restore
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
+        <div className="csm-container">
+          {/* Tab bar */}
+          <div className="csm-tabs">
+            {TABS.map((t) => {
+              const low =
+                t.id !== "dispatch"
+                  ? (stocks[t.id] || []).filter((p) => p.qty <= p.minQty).length
+                  : 0;
+              const dCount = t.id === "dispatch" ? dispatches.length : 0;
+              const act = activeTab === t.id;
+              return (
                 <button
-                  onClick={exportDataJSON}
+                  key={t.id}
+                  onClick={() => switchTab(t.id)}
                   style={{
-                    flex: 1,
-                    padding: 11,
+                    padding: "9px 16px",
                     borderRadius: 9,
-                    border: "1.5px solid #A7F3D0",
-                    background: "#ECFDF5",
-                    color: "#065F46",
-                    fontSize: 12,
-                    fontWeight: 700,
+                    border: "none",
                     cursor: "pointer",
+                    background: act ? T.gold : T.card,
+                    color: act ? "#000" : T.text2,
+                    fontWeight: act ? 800 : 600,
+                    fontSize: 13,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    gap: 5,
+                    gap: 6,
+                    boxShadow: act ? `0 0 14px ${T.goldGlow}` : "none",
                   }}
                 >
-                  ⬇ Download Backup
+                  {t.icon} {t.label}
+                  {low > 0 && (
+                    <span
+                      style={{
+                        background: act ? "rgba(0,0,0,0.2)" : T.dangerBg,
+                        color: act ? "#000" : T.critical,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: "1px 6px",
+                        borderRadius: 8,
+                      }}
+                    >
+                      {low}
+                    </span>
+                  )}
+                  {t.id === "dispatch" && dCount > 0 && (
+                    <span
+                      style={{
+                        background: act ? "rgba(0,0,0,0.2)" : T.infoBg,
+                        color: act ? "#000" : T.info,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: "1px 6px",
+                        borderRadius: 8,
+                      }}
+                    >
+                      {dCount}
+                    </span>
+                  )}
                 </button>
-                <button
-                  onClick={() => importJSONRef.current.click()}
-                  style={{
-                    flex: 1,
-                    padding: 11,
-                    borderRadius: 9,
-                    border: "1.5px solid #BFDBFE",
-                    background: "#EFF6FF",
-                    color: "#1D4ED8",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 5,
-                  }}
-                >
-                  ⬆ Restore Backup
-                </button>
-              </div>
-              <input
-                ref={importJSONRef}
-                type="file"
-                accept=".json"
-                style={{ display: "none" }}
-                onChange={importDataJSON}
-              />
-              <p
-                style={{
-                  fontSize: 10,
-                  color: "#94A3B8",
-                  marginTop: 8,
-                  textAlign: "center",
-                }}
-              >
-                JSON file mein saara data (stocks + dispatches + history) save
-                hota hai
-              </p>
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <p style={{ fontSize: 12, color: "#6B7280", marginBottom: 10 }}>
-                ⚠ Danger Zone
-              </p>
-              <button
-                onClick={async () => {
-                  if (
-                    window.confirm(
-                      "Browser storage + server ka saara data delete hoga! Sure?",
-                    )
-                  ) {
-                    await clearRemoteData();
-                    window.location.reload();
-                  }
-                }}
-                style={{
-                  width: "100%",
-                  padding: 11,
-                  borderRadius: 9,
-                  border: "none",
-                  background: "#FEF2F2",
-                  color: "#DC2626",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                🗑 Clear All Data
-              </button>
-            </div>
+              );
+            })}
           </div>
-        </div>
-      )}
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div style={S.header}>
-        <div style={S.hdrInner}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                background: "rgba(255,255,255,.1)",
-                borderRadius: 9,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 20,
-              }}
-            >
-              ⚗
-            </div>
-            <div>
-              <div
-                style={{
-                  fontWeight: 900,
-                  fontSize: 15,
-                  color: "#fff",
-                  letterSpacing: "-.3px",
-                }}
-              >
-                {companyName}
-              </div>
-              <div style={{ fontSize: 10, color: "#64748B" }}>
-                Chemical Stock Manager ·{" "}
-                {/* FIX: pehle sirf localStorage ka status dikhta tha, isliye
-                   server save fail hone par bhi hamesha green tick dikhta
-                   tha. Ab dono states clearly alag dikhte hain. */}
-                {syncState === "error"
-                  ? "⚠ Local save failed"
-                  : syncState === "auth-error"
-                    ? "⚠ Session expired — please login again"
-                    : syncState === "remote-error"
-                      ? "⚠ Server save failed (local safe)"
-                      : syncState === "synced"
-                        ? "☁ Synced ✓"
-                        : syncState === "saving"
-                          ? "💾 Saving…"
-                          : "💾 Browser mein save ✓"}
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            {totalLow > 0 && (
-              <span
-                style={{
-                  background: "#7f1d1d",
-                  color: "#fca5a5",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "4px 11px",
-                  borderRadius: 20,
-                  border: "1px solid #991b1b",
-                }}
-              >
-                ⚠ {totalLow} Low
-              </span>
-            )}
-            <button
-              onClick={() => exportPDF(stocks, activeTab, tabLabel, true)}
-              style={S.hdrBtn("#7f1d1d", "#fca5a5")}
-            >
-              📄 PDF Alert
-            </button>
-            <button
-              onClick={() =>
-                exportPDF(stocks, activeTab, tabLabel, false, catFilter)
-              }
-              style={S.hdrBtn("#78350f", "#fcd34d")}
-            >
-              📄 PDF Report
-            </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              style={S.hdrBtn("rgba(255,255,255,.08)", "#94A3B8")}
-            >
-              ⚙
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* ══ DISPATCH TAB ══ */}
+          {activeTab === "dispatch" && (
+            <DispatchTab
+              ref={dispatchTabRef}
+              stocks={stocks}
+              dispatches={dispatches}
+              setStocksRaw={setStocksRaw}
+              setDispatches={setDispatches}
+              setChangeLog={setChangeLog}
+              setLastUpdated={setLastUpdated}
+              toast={toast}
+              companyName={companyName}
+              theme={T}
+            />
+          )}
 
-      {/* ── Main ─────────────────────────────────────────────────────────── */}
-      <div style={S.main}>
-        {/* Tab bar */}
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            background: "#fff",
-            borderRadius: 12,
-            padding: 5,
-            boxShadow: "0 1px 4px rgba(0,0,0,.07)",
-            width: "fit-content",
-            flexWrap: "wrap",
-            marginBottom: 16,
-          }}
-        >
-          {TABS.map((t) => {
-            const low =
-              t.id !== "dispatch"
-                ? (stocks[t.id] || []).filter((p) => p.qty <= p.minQty).length
-                : 0;
-            const dCount = t.id === "dispatch" ? dispatches.length : 0;
-            const act = activeTab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => switchTab(t.id)}
-                style={{
-                  padding: "7px 14px",
-                  borderRadius: 9,
-                  border: "none",
-                  cursor: "pointer",
-                  background: act ? "#0F172A" : "transparent",
-                  color: act ? "#fff" : "#64748B",
-                  fontWeight: act ? 700 : 500,
-                  fontSize: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                {t.icon} {t.label}
-                {low > 0 && (
-                  <span
-                    style={{
-                      background: act ? "rgba(255,255,255,.2)" : "#FEE2E2",
-                      color: act ? "#fff" : "#DC2626",
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: "1px 5px",
-                      borderRadius: 8,
-                    }}
-                  >
-                    {low}
-                  </span>
-                )}
-                {t.id === "dispatch" && dCount > 0 && (
-                  <span
-                    style={{
-                      background: act ? "rgba(255,255,255,.2)" : "#DBEAFE",
-                      color: act ? "#fff" : "#1D4ED8",
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: "1px 5px",
-                      borderRadius: 8,
-                    }}
-                  >
-                    {dCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ══ DISPATCH TAB ══ */}
-        {activeTab === "dispatch" && (
-          <DispatchTab
-            ref={dispatchTabRef}
-            stocks={stocks}
-            dispatches={dispatches}
-            setStocksRaw={setStocksRaw}
-            setDispatches={setDispatches}
-            setChangeLog={setChangeLog}
-            setLastUpdated={setLastUpdated}
-            toast={toast}
-            companyName={companyName}
-          />
-        )}
-
-        {/* ══ STOCK TABS ══ */}
-        {activeTab !== "dispatch" && (
-          <>
-            {/* Stats */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginBottom: 16,
-                flexWrap: "wrap",
-              }}
-            >
-              {[
-                {
-                  l: "Products",
-                  v: current.length,
-                  bg: "#EFF6FF",
-                  col: "#1D4ED8",
-                  icon: "📦",
-                },
-                {
-                  l: "Total QT",
-                  v: current.reduce((s, p) => s + p.qty, 0),
-                  bg: "#ECFDF5",
-                  col: "#065F46",
-                  icon: "📊",
-                },
-                {
-                  l: "Low Stock",
-                  v: current.filter((p) => p.qty <= p.minQty).length,
-                  bg: "#FEF3C7",
-                  col: "#92400E",
-                  icon: "⚠",
-                },
-                {
-                  l: "Out of Stock",
-                  v: current.filter((p) => p.qty === 0).length,
-                  bg: "#FEE2E2",
-                  col: "#991B1B",
-                  icon: "🚫",
-                },
-              ].map((s) => (
-                <div
-                  key={s.l}
-                  style={{
-                    background: s.bg,
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                    flex: "1 1 80px",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div style={{ fontSize: 22, fontWeight: 900, color: s.col }}>
-                    {s.v}
-                  </div>
+          {/* ══ STOCK TABS ══ */}
+          {activeTab !== "dispatch" && (
+            <>
+              {/* KPI cards */}
+              <div className="csm-kpi-grid">
+                {kpis.map(({ lbl, val, sub, color, icon }) => (
                   <div
+                    key={lbl}
                     style={{
-                      fontSize: 10,
-                      color: s.col + "99",
-                      fontWeight: 700,
-                      marginTop: 2,
-                      textTransform: "uppercase",
-                      letterSpacing: ".04em",
-                    }}
-                  >
-                    {s.l}
-                  </div>
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: 28,
-                      opacity: 0.12,
-                    }}
-                  >
-                    {s.icon}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Toolbar */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 12,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#94A3B8",
-                    fontSize: 14,
-                  }}
-                >
-                  🔍
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search name, batch, supplier…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ ...S.input(), paddingLeft: 32, fontSize: 12 }}
-                />
-              </div>
-              <select
-                value={catFilter}
-                onChange={(e) => setCatFilter(e.target.value)}
-                style={{
-                  ...S.input(),
-                  width: "auto",
-                  fontSize: 12,
-                  padding: "8px 10px",
-                  appearance: "auto",
-                  minWidth: 165,
-                  fontWeight: catFilter !== "ALL" ? 700 : 400,
-                  borderColor:
-                    catFilter !== "ALL"
-                      ? CATEGORIES[catFilter]?.color + "80"
-                      : "#E5E7EB",
-                  background:
-                    catFilter !== "ALL" ? CATEGORIES[catFilter]?.bg : "#fff",
-                }}
-              >
-                <option value="ALL">All Categories ({current.length})</option>
-                {Object.entries(CATEGORIES).map(([k, v]) => {
-                  const count = catCounts[k] || 0;
-                  if (!count) return null;
-                  const lc = catLowCounts[k] || 0;
-                  return (
-                    <option key={k} value={k}>
-                      {v.label} ({count}
-                      {lc > 0 ? ` ⚠${lc}` : ""})
-                    </option>
-                  );
-                })}
-              </select>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  color: "#555",
-                  cursor: "pointer",
-                  userSelect: "none",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <div
-                  onClick={() => setShowLowOnly((v) => !v)}
-                  style={{
-                    width: 34,
-                    height: 18,
-                    borderRadius: 9,
-                    background: showLowOnly ? "#EF4444" : "#D1D5DB",
-                    position: "relative",
-                    cursor: "pointer",
-                    transition: "background .2s",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 2,
-                      left: showLowOnly ? 17 : 2,
-                      width: 14,
-                      height: 14,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      transition: "left .2s",
-                      boxShadow: "0 1px 3px rgba(0,0,0,.2)",
-                    }}
-                  />
-                </div>
-                Low only
-              </label>
-              <button
-                onClick={() => {
-                  const ld = filtered.filter((p) => p.qty <= p.minQty);
-                  if (!ld.length) return toast("No low stock items", "error");
-                  const cl =
-                    catFilter !== "ALL"
-                      ? ` · ${CATEGORIES[catFilter]?.label || catFilter}`
-                      : "";
-                  exportPDF(
-                    { [activeTab]: ld },
-                    activeTab,
-                    tabLabel,
-                    false,
-                    "ALL",
-                    `Low Stock — ${tabLabel}${cl}`,
-                  );
-                }}
-                style={S.smBtn("#FEF2F2", "#DC2626", "1.5px solid #FECACA")}
-              >
-                📄 Low PDF
-              </button>
-              <div
-                style={{
-                  display: "flex",
-                  borderRadius: 8,
-                  border: "1.5px solid #E2E8F0",
-                  overflow: "hidden",
-                }}
-              >
-                {["manual", "excel"].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setImportMode(m)}
-                    style={{
-                      padding: "7px 12px",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: importMode === m ? "#0F172A" : "#fff",
-                      color: importMode === m ? "#fff" : "#64748B",
-                    }}
-                  >
-                    {m === "manual" ? "✏ Manual" : "📊 Excel"}
-                  </button>
-                ))}
-              </div>
-              {importMode === "excel" && (
-                <button
-                  onClick={() => fileRef.current.click()}
-                  style={S.smBtn("#0F172A", "#fff", "none")}
-                >
-                  ↑ Upload
-                </button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                style={{ display: "none" }}
-                onChange={handleFile}
-              />
-              <button
-                onClick={exportExcel}
-                style={S.smBtn("#065f46", "#6ee7b7", "none")}
-              >
-                ↓ Excel
-              </button>
-
-              {/* Column picker */}
-              <div style={{ position: "relative" }} ref={colPickerRef}>
-                <button
-                  onClick={() => setShowColPicker((v) => !v)}
-                  style={{
-                    ...S.smBtn(
-                      showColPicker ? "#0F172A" : "#F1F5F9",
-                      showColPicker ? "#fff" : "#374151",
-                      "1.5px solid #E2E8F0",
-                    ),
-                  }}
-                >
-                  ⊞ Cols{" "}
-                  <span
-                    style={{
-                      background: showColPicker
-                        ? "rgba(255,255,255,.2)"
-                        : "#E2E8F0",
-                      color: showColPicker ? "#fff" : "#374151",
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: "1px 5px",
-                      borderRadius: 6,
-                    }}
-                  >
-                    {visibleCols.length}
-                  </span>
-                </button>
-                {showColPicker && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 6px)",
-                      right: 0,
-                      zIndex: 150,
-                      background: "#fff",
-                      borderRadius: 12,
-                      boxShadow: "0 8px 32px rgba(0,0,0,.15)",
-                      padding: "10px 0",
-                      minWidth: 200,
-                      border: "1.5px solid #E2E8F0",
+                      ...card,
+                      padding: "18px 20px",
+                      borderTop: `2px solid ${color}`,
+                      position: "relative",
+                      overflow: "hidden",
                     }}
                   >
                     <div
                       style={{
-                        padding: "0 14px 8px",
-                        fontSize: 10,
-                        fontWeight: 800,
-                        color: "#94A3B8",
-                        textTransform: "uppercase",
-                        letterSpacing: ".06em",
+                        position: "absolute",
+                        top: 12,
+                        right: 14,
+                        fontSize: 18,
+                        opacity: 0.1,
                       }}
                     >
-                      Columns
+                      {icon}
                     </div>
-                    {ALL_COLUMNS.map((col) => {
-                      const locked = LOCKED_COLS.includes(col.id);
-                      const checked = isColVisible(col.id);
-                      return (
-                        <div
-                          key={col.id}
-                          onClick={() => !locked && toggleCol(col.id)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            padding: "7px 14px",
-                            cursor: locked ? "not-allowed" : "pointer",
-                            userSelect: "none",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!locked)
-                              e.currentTarget.style.background = "#F8FAFC";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 4,
-                              border: `2px solid ${checked ? "#2563EB" : "#D1D5DB"}`,
-                              background: checked ? "#2563EB" : "#fff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
-                              opacity: locked ? 0.4 : 1,
-                            }}
-                          >
-                            {checked && (
-                              <span
-                                style={{
-                                  color: "#fff",
-                                  fontSize: 10,
-                                  fontWeight: 900,
-                                  lineHeight: 1,
-                                }}
-                              >
-                                ✓
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: locked ? "#94A3B8" : "#374151",
-                              fontWeight: checked ? 600 : 400,
-                            }}
-                          >
-                            {col.label}
-                            {locked && (
-                              <span style={{ fontSize: 9, color: "#CBD5E1" }}>
-                                {" "}
-                                (fixed)
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <p
+                      style={{
+                        color: T.text3,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {lbl}
+                    </p>
+                    <p
+                      style={{
+                        color,
+                        fontSize: 22,
+                        fontWeight: 800,
+                        marginTop: 6,
+                        fontVariantNumeric: "tabular-nums",
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
+                      {val}
+                    </p>
+                    <p style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
+                      {sub}
+                    </p>
                   </div>
-                )}
+                ))}
               </div>
-              <button
-                onClick={() => {
-                  setAddMode(true);
-                  setNewRow(EMPTY_PRODUCT_PKG);
-                }}
-                style={S.smBtn("#2563EB", "#fff", "none")}
-              >
-                ＋ Add
-              </button>
-            </div>
 
-            {lastUpdated[activeTab] && (
-              <p style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10 }}>
-                💾 {syncState === "saving" ? "Syncing…" : "Saved"} · Last:{" "}
-                <strong style={{ color: "#64748B" }}>
-                  {lastUpdated[activeTab]}
-                </strong>
-                {catFilter !== "ALL" && (
+              {/* Toolbar */}
+              <div className="csm-toolbar">
+                <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
                   <span
                     style={{
-                      marginLeft: 10,
-                      background: CATEGORIES[catFilter]?.bg,
-                      color: CATEGORIES[catFilter]?.color,
-                      padding: "2px 8px",
-                      borderRadius: 8,
-                      fontSize: 10,
-                      fontWeight: 700,
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: T.text3,
+                      fontSize: 14,
                     }}
                   >
-                    {CATEGORIES[catFilter]?.label} · {catCounts[catFilter] || 0}{" "}
-                    products
-                    {catLowCounts[catFilter]
-                      ? ` · ⚠ ${catLowCounts[catFilter]} low`
-                      : ""}
+                    🔍
                   </span>
-                )}
-              </p>
-            )}
-
-            {/* Stock table */}
-            <div style={{ ...S.card, display: "block", overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: 12,
-                  minWidth: 420,
-                }}
-              >
-                <thead>
-                  <tr style={{ background: "#0F172A" }}>
-                    {ALL_COLUMNS.filter((c) => isColVisible(c.id)).map(
-                      (col) => (
-                        <th
-                          key={col.id}
-                          style={{
-                            padding: "10px 12px",
-                            color: "#94A3B8",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: ".06em",
-                            whiteSpace: "nowrap",
-                            textAlign: ["qty", "minQty", "status"].includes(
-                              col.id,
-                            )
-                              ? "center"
-                              : col.id === "actions"
-                                ? "right"
-                                : "left",
-                          }}
-                        >
-                          {col.label}
-                        </th>
-                      ),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={visibleCols.length}
-                        style={{
-                          padding: "48px 12px",
-                          textAlign: "center",
-                          color: "#94A3B8",
-                          fontSize: 13,
-                        }}
-                      >
-                        {showLowOnly
-                          ? "✅ No low-stock items here"
-                          : "No products found"}
-                      </td>
-                    </tr>
-                  )}
-                  {filtered.map((p, idx) => {
-                    const isLow = p.qty <= p.minQty,
-                      isZero = p.qty === 0;
-                    const cat = CATEGORIES[p.category || getCategory(p.name)];
-                    const rowBg = isZero
-                      ? "#FFF5F5"
-                      : isLow
-                        ? "#FFFBEB"
-                        : "#fff";
-                    const qtyCol = isZero
-                      ? "#DC2626"
-                      : isLow
-                        ? "#D97706"
-                        : "#0F172A";
+                  <input
+                    type="text"
+                    placeholder="Search name, batch, supplier…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ ...inputStyle(), paddingLeft: 36 }}
+                  />
+                </div>
+                <select
+                  value={catFilter}
+                  onChange={(e) => setCatFilter(e.target.value)}
+                  style={{
+                    ...inputStyle(),
+                    width: "auto",
+                    minWidth: 165,
+                    cursor: "pointer",
+                    fontWeight: catFilter !== "ALL" ? 700 : 400,
+                  }}
+                >
+                  <option value="ALL">All Categories ({current.length})</option>
+                  {Object.entries(CATEGORIES).map(([k, v]) => {
+                    const count = catCounts[k] || 0;
+                    if (!count) return null;
+                    const lc = catLowCounts[k] || 0;
                     return (
-                      <tr
-                        key={p.id}
-                        style={{
-                          background: rowBg,
-                          borderTop: "1px solid #F1F5F9",
-                          cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = "#F8FAFC")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = rowBg)
-                        }
-                        onClick={() => setDetailRow(p)}
-                      >
-                        {isColVisible("idx") && (
-                          <td style={S.td()}>
-                            <span style={{ color: "#94A3B8", fontSize: 11 }}>
-                              {idx + 1}
-                            </span>
-                          </td>
-                        )}
-                        {isColVisible("name") && (
-                          <td style={S.td()}>
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color: "#0F172A",
-                                fontSize: 12,
-                              }}
-                            >
-                              {p.name}
-                            </div>
-                            {p.reorderNote && !isColVisible("reorderNote") && (
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "#D97706",
-                                  marginTop: 2,
-                                }}
-                              >
-                                ↺ {p.reorderNote}
-                              </div>
-                            )}
-                          </td>
-                        )}
-                        {isColVisible("category") && (
-                          <td style={S.td("center")}>
-                            <span
-                              style={{
-                                background: cat?.bg || "#F3F4F6",
-                                color: cat?.color || "#555",
-                                padding: "2px 8px",
-                                borderRadius: 10,
-                                fontSize: 10,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {cat?.label || p.category}
-                            </span>
-                          </td>
-                        )}
-                        {isColVisible("batch") && (
-                          <td
-                            style={{
-                              ...S.td(),
-                              fontSize: 11,
-                              color: "#64748B",
-                            }}
-                          >
-                            {p.batch || (
-                              <span style={{ color: "#CBD5E1" }}>—</span>
-                            )}
-                          </td>
-                        )}
-                        {isColVisible("expiry") && (
-                          <td
-                            style={{
-                              ...S.td(),
-                              fontSize: 11,
-                              color:
-                                p.expiry && new Date(p.expiry) < new Date()
-                                  ? "#DC2626"
-                                  : "#64748B",
-                            }}
-                          >
-                            {p.expiry || (
-                              <span style={{ color: "#CBD5E1" }}>—</span>
-                            )}
-                          </td>
-                        )}
-                        {isColVisible("supplier") && (
-                          <td
-                            style={{
-                              ...S.td(),
-                              fontSize: 11,
-                              color: "#64748B",
-                            }}
-                          >
-                            {p.supplier || (
-                              <span style={{ color: "#CBD5E1" }}>—</span>
-                            )}
-                          </td>
-                        )}
-                        {isColVisible("qty") && (
-                          <td
-                            style={S.td("center")}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 4,
-                              }}
-                            >
-                              <button
-                                onClick={() => nudgeQty(p.id, -1)}
-                                title={
-                                  isPkgTracked(p)
-                                    ? `−1 package (${p.packageSize}${p.unit})`
-                                    : "−1"
-                                }
-                                style={{
-                                  width: 22,
-                                  height: 22,
-                                  borderRadius: 5,
-                                  border: "1px solid #E2E8F0",
-                                  background: "#F8FAFC",
-                                  cursor: "pointer",
-                                  fontSize: 14,
-                                  color: "#555",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                −
-                              </button>
-                              <span
-                                style={{
-                                  fontWeight: 800,
-                                  fontSize: 13,
-                                  color: qtyCol,
-                                  minWidth: 30,
-                                  textAlign: "center",
-                                }}
-                              >
-                                {p.qty}
-                              </span>
-                              <button
-                                onClick={() => nudgeQty(p.id, +1)}
-                                title={
-                                  isPkgTracked(p)
-                                    ? `+1 package (${p.packageSize}${p.unit})`
-                                    : "+1"
-                                }
-                                style={{
-                                  width: 22,
-                                  height: 22,
-                                  borderRadius: 5,
-                                  border: "1px solid #E2E8F0",
-                                  background: "#F8FAFC",
-                                  cursor: "pointer",
-                                  fontSize: 14,
-                                  color: "#555",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                +
-                              </button>
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 9,
-                                color: "#94A3B8",
-                                textAlign: "center",
-                              }}
-                            >
-                              {p.unit}
-                            </div>
-                            {isPkgTracked(p) && (
-                              <div
-                                style={{
-                                  fontSize: 9,
-                                  color: "#94A3B8",
-                                  textAlign: "center",
-                                }}
-                              >
-                                {p.packageCount} × {p.packageSize}
-                                {p.unit}
-                              </div>
-                            )}
-                          </td>
-                        )}
-                        {isColVisible("minQty") && (
-                          <td
-                            style={{
-                              ...S.td("center"),
-                              color: "#64748B",
-                              fontSize: 12,
-                            }}
-                          >
-                            {p.minQty} {p.unit}
-                          </td>
-                        )}
-                        {isColVisible("status") && (
-                          <td style={S.td("center")}>
-                            <span
-                              style={{
-                                background: isZero
-                                  ? "#FEE2E2"
-                                  : isLow
-                                    ? "#FEF3C7"
-                                    : "#D1FAE5",
-                                color: isZero
-                                  ? "#991B1B"
-                                  : isLow
-                                    ? "#92400E"
-                                    : "#065F46",
-                                padding: "3px 8px",
-                                borderRadius: 10,
-                                fontSize: 10,
-                                fontWeight: 800,
-                              }}
-                            >
-                              {isZero ? "✕ Out" : isLow ? "⚠ Low" : "✓ OK"}
-                            </span>
-                          </td>
-                        )}
-                        {isColVisible("reorderNote") && (
-                          <td
-                            style={{
-                              ...S.td(),
-                              fontSize: 11,
-                              color: "#D97706",
-                              maxWidth: 160,
-                            }}
-                          >
-                            {p.reorderNote || ""}
-                          </td>
-                        )}
-                        {isColVisible("actions") && (
-                          <td
-                            style={S.td("right")}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 5,
-                                justifyContent: "flex-end",
-                              }}
-                            >
-                              <button
-                                onClick={() => setEditRow({ ...p })}
-                                style={S.rowBtn(
-                                  "#EFF6FF",
-                                  "#1D4ED8",
-                                  "1.5px solid #BFDBFE",
-                                )}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(p.id)}
-                                style={S.rowBtn(
-                                  "#FEF2F2",
-                                  "#DC2626",
-                                  "1.5px solid #FECACA",
-                                )}
-                              >
-                                Del
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
+                      <option key={k} value={k}>
+                        {v.label} ({count}
+                        {lc > 0 ? ` ⚠${lc}` : ""})
+                      </option>
                     );
                   })}
-                </tbody>
-              </table>
-              <div
-                style={{
-                  padding: "10px 14px",
-                  background: "#F8FAFC",
-                  borderTop: "1px solid #E5E7EB",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 6,
-                }}
-              >
-                <span style={{ fontSize: 11, color: "#64748B" }}>
-                  {filtered.length} of {current.length} products
-                  {search && (
-                    <span style={{ color: "#2563EB" }}> · "{search}"</span>
+                </select>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    color: T.text2,
+                    cursor: "pointer",
+                    userSelect: "none",
+                    whiteSpace: "nowrap",
+                    padding: "0 4px",
+                  }}
+                >
+                  <div
+                    onClick={() => setShowLowOnly((v) => !v)}
+                    style={{
+                      width: 34,
+                      height: 18,
+                      borderRadius: 9,
+                      background: showLowOnly ? T.critical : T.border,
+                      position: "relative",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        left: showLowOnly ? 17 : 2,
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        transition: "left .2s",
+                      }}
+                    />
+                  </div>
+                  Low only
+                </label>
+                <button
+                  onClick={() => {
+                    const ld = filtered.filter((p) => p.qty <= p.minQty);
+                    if (!ld.length) return toast("No low stock items", "error");
+                    const cl =
+                      catFilter !== "ALL"
+                        ? ` · ${CATEGORIES[catFilter]?.label || catFilter}`
+                        : "";
+                    exportPDF(
+                      { [activeTab]: ld },
+                      activeTab,
+                      tabLabel,
+                      false,
+                      "ALL",
+                      `Low Stock — ${tabLabel}${cl}`,
+                    );
+                  }}
+                  style={smBtn(
+                    T.dangerBg,
+                    T.critical,
+                    "1.5px solid rgba(244,63,94,0.3)",
                   )}
-                  {catFilter !== "ALL" && (
-                    <span style={{ color: CATEGORIES[catFilter]?.color }}>
-                      {" "}
-                      · {CATEGORIES[catFilter]?.label}
-                    </span>
-                  )}
-                </span>
+                >
+                  📄 Low PDF
+                </button>
                 <div
                   style={{
                     display: "flex",
-                    gap: 14,
-                    fontSize: 11,
-                    color: "#64748B",
+                    borderRadius: 8,
+                    border: `1.5px solid ${T.border}`,
+                    overflow: "hidden",
                   }}
                 >
-                  <span>
-                    QT:{" "}
-                    <strong style={{ color: "#0F172A" }}>
-                      {filtered.reduce((s, p) => s + p.qty, 0)}
-                    </strong>
-                  </span>
-                  <span style={{ color: "#DC2626" }}>
-                    Low:{" "}
-                    <strong>
-                      {filtered.filter((p) => p.qty <= p.minQty).length}
-                    </strong>
-                  </span>
-                  <span style={{ color: "#7C3AED" }}>
-                    Out:{" "}
-                    <strong>
-                      {filtered.filter((p) => p.qty === 0).length}
-                    </strong>
-                  </span>
+                  {["manual", "excel"].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setImportMode(m)}
+                      style={{
+                        padding: "8px 12px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: importMode === m ? T.gold : "transparent",
+                        color: importMode === m ? "#000" : T.text2,
+                      }}
+                    >
+                      {m === "manual" ? "✏ Manual" : "📊 Excel"}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            </div>
+                {importMode === "excel" && (
+                  <button
+                    onClick={() => fileRef.current.click()}
+                    style={smBtn(T.info, "#fff", "none")}
+                  >
+                    ↑ Upload
+                  </button>
+                )}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  style={{ display: "none" }}
+                  onChange={handleFile}
+                />
+                <button
+                  onClick={exportExcel}
+                  style={smBtn(
+                    T.safeBg,
+                    T.safe,
+                    "1.5px solid rgba(16,185,129,0.3)",
+                  )}
+                >
+                  ↓ Excel
+                </button>
 
-            {importMode === "excel" && (
+                {/* Column picker */}
+                <div style={{ position: "relative" }} ref={colPickerRef}>
+                  <button
+                    onClick={() => setShowColPicker((v) => !v)}
+                    style={smBtn(
+                      showColPicker ? T.gold : T.elevated,
+                      showColPicker ? "#000" : T.text2,
+                      `1.5px solid ${T.border}`,
+                    )}
+                  >
+                    ⊞ Cols{" "}
+                    <span
+                      style={{
+                        background: showColPicker
+                          ? "rgba(0,0,0,0.15)"
+                          : T.border,
+                        color: showColPicker ? "#000" : T.text2,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: "1px 5px",
+                        borderRadius: 6,
+                        marginLeft: 4,
+                      }}
+                    >
+                      {visibleCols.length}
+                    </span>
+                  </button>
+                  {showColPicker && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        right: 0,
+                        zIndex: 150,
+                        ...card,
+                        boxShadow: "0 12px 32px rgba(0,0,0,.5)",
+                        padding: "10px 0",
+                        minWidth: 200,
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "0 14px 8px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: T.text3,
+                          textTransform: "uppercase",
+                          letterSpacing: ".06em",
+                        }}
+                      >
+                        Columns
+                      </div>
+                      {ALL_COLUMNS.map((col) => {
+                        const locked = LOCKED_COLS.includes(col.id);
+                        const checked = isColVisible(col.id);
+                        return (
+                          <div
+                            key={col.id}
+                            onClick={() => !locked && toggleCol(col.id)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              padding: "7px 14px",
+                              cursor: locked ? "not-allowed" : "pointer",
+                              userSelect: "none",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 4,
+                                border: `2px solid ${checked ? T.gold : T.border}`,
+                                background: checked ? T.gold : "transparent",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                opacity: locked ? 0.4 : 1,
+                              }}
+                            >
+                              {checked && (
+                                <span
+                                  style={{
+                                    color: "#000",
+                                    fontSize: 10,
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              style={{
+                                fontSize: 12,
+                                color: locked ? T.text3 : T.text2,
+                                fontWeight: checked ? 600 : 400,
+                              }}
+                            >
+                              {col.label}
+                              {locked && (
+                                <span style={{ fontSize: 9, color: T.text3 }}>
+                                  {" "}
+                                  (fixed)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setAddMode(true);
+                    setNewRow(EMPTY_PRODUCT_PKG);
+                  }}
+                  style={smBtn(T.gold, "#000", "none")}
+                >
+                  ＋ Add
+                </button>
+              </div>
+
+              {lastUpdated[activeTab] && (
+                <p style={{ fontSize: 11, color: T.text3, marginBottom: 10 }}>
+                  💾 {syncState === "saving" ? "Syncing…" : "Saved"} · Last:{" "}
+                  <strong style={{ color: T.text2 }}>
+                    {lastUpdated[activeTab]}
+                  </strong>
+                  {catFilter !== "ALL" && (
+                    <span
+                      style={{
+                        marginLeft: 10,
+                        background: T.elevated,
+                        color: T.gold,
+                        padding: "2px 8px",
+                        borderRadius: 8,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        border: `1px solid ${T.border}`,
+                      }}
+                    >
+                      {CATEGORIES[catFilter]?.label} ·{" "}
+                      {catCounts[catFilter] || 0} products
+                      {catLowCounts[catFilter]
+                        ? ` · ⚠ ${catLowCounts[catFilter]} low`
+                        : ""}
+                    </span>
+                  )}
+                </p>
+              )}
+
+              {/* Mobile card list */}
+              <div className="mobile-list">
+                {filtered.length === 0 && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "48px 0",
+                      color: T.text3,
+                    }}
+                  >
+                    <p style={{ fontSize: 34, marginBottom: 10 }}>
+                      {showLowOnly ? "✅" : "🔍"}
+                    </p>
+                    <p
+                      style={{ fontWeight: 600, fontSize: 14, color: T.text2 }}
+                    >
+                      {showLowOnly
+                        ? "No low-stock items here"
+                        : "No products found"}
+                    </p>
+                  </div>
+                )}
+                {filtered.map((p) => {
+                  const isLow = p.qty <= p.minQty,
+                    isZero = p.qty === 0;
+                  const cat = CATEGORIES[p.category || getCategory(p.name)];
+                  const badge = statusBadge(isZero, isLow);
+                  return (
+                    <div
+                      className="mobile-card"
+                      key={p.id}
+                      onClick={() => setDetailRow(p)}
+                    >
+                      <div className="mobile-card-row">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="mobile-card-name">{p.name}</div>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              marginTop: 5,
+                              background: cat?.bg ? undefined : T.elevated,
+                              color: cat?.color || T.text2,
+                              background: T.elevated,
+                              border: `1px solid ${T.border}`,
+                              padding: "2px 8px",
+                              borderRadius: 8,
+                              fontSize: 10,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {cat?.label || p.category}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            ...badgePill,
+                            ...badge.style,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="mobile-grid2">
+                        <div>
+                          <div className="mobile-card-label">Quantity</div>
+                          <div
+                            className="mobile-card-value"
+                            style={{
+                              color: isZero
+                                ? T.critical
+                                : isLow
+                                  ? T.warning
+                                  : T.text1,
+                            }}
+                          >
+                            {p.qty} {p.unit}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="mobile-card-label">Min Qty</div>
+                          <div className="mobile-card-value">
+                            {p.minQty} {p.unit}
+                          </div>
+                        </div>
+                        {p.batch && (
+                          <div>
+                            <div className="mobile-card-label">Batch</div>
+                            <div className="mobile-card-value">{p.batch}</div>
+                          </div>
+                        )}
+                        {isPkgTracked(p) && (
+                          <div>
+                            <div className="mobile-card-label">Package</div>
+                            <div className="mobile-card-value">
+                              {p.packageCount} × {p.packageSize}
+                              {p.unit}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        className="mobile-qty-stepper"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button onClick={() => nudgeQty(p.id, -1)}>−</button>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            fontSize: 15,
+                            color: T.text1,
+                          }}
+                        >
+                          {p.qty}{" "}
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: T.text3,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {p.unit}
+                          </span>
+                        </span>
+                        <button onClick={() => nudgeQty(p.id, +1)}>+</button>
+                      </div>
+                      <div
+                        className="mobile-actions"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button onClick={() => setEditRow({ ...p })}>
+                          ✏ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          style={{
+                            color: T.critical,
+                            borderColor: "rgba(244,63,94,.3)",
+                          }}
+                        >
+                          🗑 Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filtered.length > 0 && (
+                  <div
+                    style={{
+                      ...card,
+                      padding: "13px 16px",
+                      background: T.elevated,
+                      border: `1px solid ${T.gold}40`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: T.text2,
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {filtered.length} of {current.length} products
+                      </span>
+                      <span
+                        style={{ color: T.gold, fontWeight: 800, fontSize: 15 }}
+                      >
+                        {filtered.reduce((s, p) => s + p.qty, 0)} total qty
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop table */}
               <div
-                style={{
-                  marginTop: 12,
-                  padding: "12px 16px",
-                  background: "#EFF6FF",
-                  borderRadius: 10,
-                  border: "1.5px solid #BFDBFE",
-                  fontSize: 11,
-                  color: "#1E40AF",
-                }}
+                className="desktop-table"
+                style={{ ...card, overflow: "hidden" }}
               >
-                <strong>📊 Excel Format:</strong> S.N | Product Name | QT
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: 13,
+                      minWidth: 640,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: T.elevated }}>
+                        {ALL_COLUMNS.filter((c) => isColVisible(c.id)).map(
+                          (col) => (
+                            <th
+                              key={col.id}
+                              style={{
+                                padding: "11px 14px",
+                                color: T.text3,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                                borderBottom: `1px solid ${T.border}`,
+                                whiteSpace: "nowrap",
+                                textAlign: [
+                                  "qty",
+                                  "minQty",
+                                  "status",
+                                  "category",
+                                ].includes(col.id)
+                                  ? "center"
+                                  : col.id === "actions"
+                                    ? "right"
+                                    : "left",
+                              }}
+                            >
+                              {col.label}
+                            </th>
+                          ),
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td
+                            colSpan={visibleCols.length}
+                            style={{
+                              padding: "48px 12px",
+                              textAlign: "center",
+                              color: T.text3,
+                              fontSize: 13,
+                            }}
+                          >
+                            {showLowOnly
+                              ? "✅ No low-stock items here"
+                              : "No products found"}
+                          </td>
+                        </tr>
+                      )}
+                      {filtered.map((p, idx) => {
+                        const isLow = p.qty <= p.minQty,
+                          isZero = p.qty === 0;
+                        const cat =
+                          CATEGORIES[p.category || getCategory(p.name)];
+                        const badge = statusBadge(isZero, isLow);
+                        const qtyColor = isZero
+                          ? T.critical
+                          : isLow
+                            ? T.warning
+                            : T.text1;
+                        return (
+                          <tr
+                            key={p.id}
+                            style={{
+                              borderBottom: `1px solid ${T.border}`,
+                              cursor: "pointer",
+                              background:
+                                idx % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.012)",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = T.elevated)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background =
+                                idx % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.012)")
+                            }
+                            onClick={() => setDetailRow(p)}
+                          >
+                            {isColVisible("idx") && (
+                              <td style={td()}>
+                                <span style={{ color: T.text3, fontSize: 11 }}>
+                                  {idx + 1}
+                                </span>
+                              </td>
+                            )}
+                            {isColVisible("name") && (
+                              <td style={td()}>
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    color: T.text1,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {p.name}
+                                </div>
+                                {p.reorderNote &&
+                                  !isColVisible("reorderNote") && (
+                                    <div
+                                      style={{
+                                        fontSize: 10,
+                                        color: T.warning,
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      ↺ {p.reorderNote}
+                                    </div>
+                                  )}
+                              </td>
+                            )}
+                            {isColVisible("category") && (
+                              <td style={td("center")}>
+                                <span
+                                  style={{
+                                    background: T.elevated,
+                                    border: `1px solid ${T.border}`,
+                                    color: T.text2,
+                                    padding: "2px 8px",
+                                    borderRadius: 10,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {cat?.label || p.category}
+                                </span>
+                              </td>
+                            )}
+                            {isColVisible("batch") && (
+                              <td
+                                style={{
+                                  ...td(),
+                                  fontSize: 11,
+                                  color: T.text2,
+                                }}
+                              >
+                                {p.batch || (
+                                  <span style={{ color: T.text3 }}>—</span>
+                                )}
+                              </td>
+                            )}
+                            {isColVisible("expiry") && (
+                              <td
+                                style={{
+                                  ...td(),
+                                  fontSize: 11,
+                                  color:
+                                    p.expiry && new Date(p.expiry) < new Date()
+                                      ? T.critical
+                                      : T.text2,
+                                }}
+                              >
+                                {p.expiry || (
+                                  <span style={{ color: T.text3 }}>—</span>
+                                )}
+                              </td>
+                            )}
+                            {isColVisible("supplier") && (
+                              <td
+                                style={{
+                                  ...td(),
+                                  fontSize: 11,
+                                  color: T.text2,
+                                }}
+                              >
+                                {p.supplier || (
+                                  <span style={{ color: T.text3 }}>—</span>
+                                )}
+                              </td>
+                            )}
+                            {isColVisible("qty") && (
+                              <td
+                                style={td("center")}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 4,
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => nudgeQty(p.id, -1)}
+                                    title={
+                                      isPkgTracked(p)
+                                        ? `−1 package (${p.packageSize}${p.unit})`
+                                        : "−1"
+                                    }
+                                    style={{
+                                      width: 22,
+                                      height: 22,
+                                      borderRadius: 5,
+                                      border: `1px solid ${T.border}`,
+                                      background: T.elevated,
+                                      cursor: "pointer",
+                                      fontSize: 14,
+                                      color: T.text2,
+                                    }}
+                                  >
+                                    −
+                                  </button>
+                                  <span
+                                    style={{
+                                      fontWeight: 800,
+                                      fontSize: 13,
+                                      color: qtyColor,
+                                      minWidth: 30,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {p.qty}
+                                  </span>
+                                  <button
+                                    onClick={() => nudgeQty(p.id, +1)}
+                                    title={
+                                      isPkgTracked(p)
+                                        ? `+1 package (${p.packageSize}${p.unit})`
+                                        : "+1"
+                                    }
+                                    style={{
+                                      width: 22,
+                                      height: 22,
+                                      borderRadius: 5,
+                                      border: `1px solid ${T.border}`,
+                                      background: T.elevated,
+                                      cursor: "pointer",
+                                      fontSize: 14,
+                                      color: T.text2,
+                                    }}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 9,
+                                    color: T.text3,
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  {p.unit}
+                                </div>
+                                {isPkgTracked(p) && (
+                                  <div
+                                    style={{
+                                      fontSize: 9,
+                                      color: T.text3,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {p.packageCount} × {p.packageSize}
+                                    {p.unit}
+                                  </div>
+                                )}
+                              </td>
+                            )}
+                            {isColVisible("minQty") && (
+                              <td
+                                style={{
+                                  ...td("center"),
+                                  color: T.text2,
+                                  fontSize: 12,
+                                }}
+                              >
+                                {p.minQty} {p.unit}
+                              </td>
+                            )}
+                            {isColVisible("status") && (
+                              <td style={td("center")}>
+                                <span style={{ ...badgePill, ...badge.style }}>
+                                  {badge.label}
+                                </span>
+                              </td>
+                            )}
+                            {isColVisible("reorderNote") && (
+                              <td
+                                style={{
+                                  ...td(),
+                                  fontSize: 11,
+                                  color: T.warning,
+                                  maxWidth: 160,
+                                }}
+                              >
+                                {p.reorderNote || ""}
+                              </td>
+                            )}
+                            {isColVisible("actions") && (
+                              <td
+                                style={td("right")}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: 5,
+                                    justifyContent: "flex-end",
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => setEditRow({ ...p })}
+                                    style={rowBtn(
+                                      T.infoBg,
+                                      T.info,
+                                      "1.5px solid rgba(59,130,246,0.3)",
+                                    )}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(p.id)}
+                                    style={rowBtn(
+                                      T.dangerBg,
+                                      T.critical,
+                                      "1.5px solid rgba(244,63,94,0.3)",
+                                    )}
+                                  >
+                                    Del
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {filtered.length > 0 && (
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      background: `rgba(212,160,23,0.05)`,
+                      borderTop: `1px solid ${T.gold}40`,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: T.text2 }}>
+                      {filtered.length} of {current.length} products
+                      {search && (
+                        <span style={{ color: T.gold }}> · "{search}"</span>
+                      )}
+                      {catFilter !== "ALL" && (
+                        <span style={{ color: T.text2 }}>
+                          {" "}
+                          · {CATEGORIES[catFilter]?.label}
+                        </span>
+                      )}
+                    </span>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 16,
+                        fontSize: 11,
+                        color: T.text2,
+                      }}
+                    >
+                      <span>
+                        QT:{" "}
+                        <strong style={{ color: T.gold }}>
+                          {filtered.reduce((s, p) => s + p.qty, 0)}
+                        </strong>
+                      </span>
+                      <span>
+                        Low:{" "}
+                        <strong style={{ color: T.warning }}>
+                          {filtered.filter((p) => p.qty <= p.minQty).length}
+                        </strong>
+                      </span>
+                      <span>
+                        Out:{" "}
+                        <strong style={{ color: T.critical }}>
+                          {filtered.filter((p) => p.qty === 0).length}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      {/* ── Mobile bottom bar ────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "#0F172A",
-          display: "flex",
-          borderTop: "1px solid #1E293B",
-          zIndex: 100,
-        }}
-      >
-        {[
-          { id: "stock", icon: "📦", label: "Stock" },
-          {
-            id: "alerts",
-            icon: "⚠",
-            label: totalLow > 0 ? `Alerts(${totalLow})` : "Alerts",
-          },
-          {
-            id: "add",
-            icon: "＋",
-            label: activeTab === "dispatch" ? "Dispatch" : "Add",
-          },
-          { id: "pdf", icon: "📄", label: "PDF" },
-          { id: "log", icon: "📋", label: "Log" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => {
-              if (item.id === "add") {
-                if (activeTab === "dispatch")
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                else {
-                  setAddMode(true);
-                  setNewRow(EMPTY_PRODUCT_PKG);
-                }
-              } else if (item.id === "pdf") {
-                if (activeTab === "dispatch")
-                  dispatchTabRef.current?.exportPDF();
-                else exportPDF(stocks, activeTab, tabLabel, false, catFilter);
-              } else if (item.id === "log") {
-                if (!changeLog.length) {
-                  toast("No changes yet", "error");
-                  return;
-                }
-                const rows = changeLog
-                  .slice(0, 50)
-                  .map((e) => {
-                    const cols = {
-                      ADD: ["#D1FAE5", "#065F46"],
-                      DELETE: ["#FEE2E2", "#991B1B"],
-                      IMPORT: ["#DBEAFE", "#1E40AF"],
-                      EDIT: ["#FEF3C7", "#92400E"],
-                      QTY: ["#F0FDF4", "#166534"],
-                      DISPATCH: ["#F3E8FF", "#6D28D9"],
-                      UNDO_DISPATCH: ["#FEF3C7", "#92400E"],
-                    };
-                    const [bg, col] = cols[e.action] || ["#F3F4F6", "#374151"];
-                    return `<tr><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6"><span style="background:${bg};color:${col};font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">${e.action}</span></td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${TABS.find((t) => t.id === e.tab)?.label || e.tab}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${e.details}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#94a3b8;white-space:nowrap">${e.time}</td></tr>`;
-                  })
-                  .join("");
-                const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Log</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th{padding:8px 10px;background:#0F172A;color:#fff;font-size:10px;text-transform:uppercase;text-align:left}</style></head><body><h2 style="color:#0F172A">📋 Change Log</h2><table><thead><tr><th>Action</th><th>Location</th><th>Details</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
-                const w = window.open("", "_blank", "width=900,height=700");
-                w.document.write(html);
-                w.document.close();
-              } else if (item.id === "alerts") {
-                exportPDF(stocks, activeTab, tabLabel, true);
-              }
-            }}
-            style={{
-              flex: 1,
-              background: "none",
-              border: "none",
-              color: "#64748B",
-              cursor: "pointer",
-              padding: "10px 4px 8px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 3,
-            }}
-          >
-            <span style={{ fontSize: 18 }}>{item.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: "#64748B" }}>
-              {item.label}
-            </span>
-          </button>
-        ))}
-      </div>
+              {importMode === "excel" && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "12px 16px",
+                    background: T.infoBg,
+                    borderRadius: 10,
+                    border: `1.5px solid rgba(59,130,246,0.3)`,
+                    fontSize: 11,
+                    color: T.info,
+                  }}
+                >
+                  <strong>📊 Excel Format:</strong> S.N | Product Name | QT
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-      <style>{`*{box-sizing:border-box;}::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:#F1F5F9;}::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px;}input,select,textarea{color:#000!important;}`}</style>
-    </div>
+        {/* ── Mobile bottom bar ── */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "rgba(6,9,15,0.94)",
+            backdropFilter: "blur(16px)",
+            display: "flex",
+            borderTop: `1px solid ${T.border}`,
+            zIndex: 100,
+          }}
+        >
+          {[
+            { id: "stock", icon: "📦", label: "Stock" },
+            {
+              id: "alerts",
+              icon: "⚠",
+              label: totalLow > 0 ? `Alerts(${totalLow})` : "Alerts",
+            },
+            {
+              id: "add",
+              icon: "＋",
+              label: activeTab === "dispatch" ? "Dispatch" : "Add",
+            },
+            { id: "pdf", icon: "📄", label: "PDF" },
+            { id: "log", icon: "📋", label: "Log" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === "add") {
+                  if (activeTab === "dispatch")
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  else {
+                    setAddMode(true);
+                    setNewRow(EMPTY_PRODUCT_PKG);
+                  }
+                } else if (item.id === "pdf") {
+                  if (activeTab === "dispatch")
+                    dispatchTabRef.current?.exportPDF();
+                  else exportPDF(stocks, activeTab, tabLabel, false, catFilter);
+                } else if (item.id === "log") {
+                  if (!changeLog.length) {
+                    toast("No changes yet", "error");
+                    return;
+                  }
+                  const rows = changeLog
+                    .slice(0, 50)
+                    .map((e) => {
+                      const cols = {
+                        ADD: ["#D1FAE5", "#065F46"],
+                        DELETE: ["#FEE2E2", "#991B1B"],
+                        IMPORT: ["#DBEAFE", "#1E40AF"],
+                        EDIT: ["#FEF3C7", "#92400E"],
+                        QTY: ["#F0FDF4", "#166534"],
+                        DISPATCH: ["#F3E8FF", "#6D28D9"],
+                        UNDO_DISPATCH: ["#FEF3C7", "#92400E"],
+                      };
+                      const [bg, col] = cols[e.action] || [
+                        "#F3F4F6",
+                        "#374151",
+                      ];
+                      return `<tr><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6"><span style="background:${bg};color:${col};font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">${e.action}</span></td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${TABS.find((t) => t.id === e.tab)?.label || e.tab}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:11px">${e.details}</td><td style="padding:8px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#94a3b8;white-space:nowrap">${e.time}</td></tr>`;
+                    })
+                    .join("");
+                  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Log</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th{padding:8px 10px;background:#0F172A;color:#fff;font-size:10px;text-transform:uppercase;text-align:left}</style></head><body><h2 style="color:#0F172A">📋 Change Log</h2><table><thead><tr><th>Action</th><th>Location</th><th>Details</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+                  const w = window.open("", "_blank", "width=900,height=700");
+                  w.document.write(html);
+                  w.document.close();
+                } else if (item.id === "alerts") {
+                  exportPDF(stocks, activeTab, tabLabel, true);
+                }
+              }}
+              style={{
+                flex: 1,
+                background: "none",
+                border: "none",
+                color: T.text2,
+                cursor: "pointer",
+                padding: "10px 4px 8px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: T.text2 }}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
