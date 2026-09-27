@@ -1,6 +1,6 @@
-// DispatchTab.jsx — Invoice-style dispatch UI
+// DispatchTab.jsx — Invoice-style dispatch UI (dark/gold premium theme)
 // Props: stocks, dispatches, setStocksRaw, setDispatches,
-//        setChangeLog, setLastUpdated, toast, companyName
+//        setChangeLog, setLastUpdated, toast, companyName, theme
 // Ref:   exposes exportPDF() for the parent bottom-bar
 
 import { useState, forwardRef, useImperativeHandle } from "react";
@@ -15,10 +15,33 @@ import {
   todayStr,
   newItem,
   normD,
-  S,
 } from "./shared";
 
-// ── Invoice number helpers ────────────────────────────────────────────────────
+// ── Design tokens (falls back to the same palette if no theme prop passed) ──
+const DEFAULT_T = {
+  pageBg: "#06090F",
+  card: "#0B1120",
+  elevated: "#101828",
+  border: "#1A2640",
+  borderHi: "#2A3C60",
+  gold: "#D4A017",
+  goldGlow: "rgba(212,160,23,0.18)",
+  text1: "#E8EDF8",
+  text2: "#8895AE",
+  text3: "#475569",
+  critical: "#F43F5E",
+  urgent: "#F97316",
+  warning: "#EAB308",
+  info: "#3B82F6",
+  safe: "#10B981",
+  dangerBg: "rgba(244,63,94,0.08)",
+  urgentBg: "rgba(249,115,22,0.08)",
+  warnBg: "rgba(234,179,8,0.08)",
+  infoBg: "rgba(59,130,246,0.08)",
+  safeBg: "rgba(16,185,129,0.08)",
+};
+
+// ── Invoice number helpers ────────────────────────────────────────────────
 const generateInvNo = () => {
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
@@ -27,35 +50,6 @@ const generateInvNo = () => {
 };
 const getInvNo = (d) =>
   d.invoiceNo || `DIS-${String(d.id).slice(-8).toUpperCase()}`;
-
-// ── Shared cell style ─────────────────────────────────────────────────────────
-const TH = (extra = {}) => ({
-  padding: "9px 12px",
-  fontSize: 9,
-  color: "#94A3B8",
-  fontWeight: 800,
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  background: "#F8FAFC",
-  borderBottom: "2px solid #E2E8F0",
-  whiteSpace: "nowrap",
-  ...extra,
-});
-const TD = (extra = {}) => ({
-  padding: "10px 12px",
-  fontSize: 12,
-  borderBottom: "1px solid #F1F5F9",
-  verticalAlign: "middle",
-  ...extra,
-});
-const labelStyle = {
-  fontSize: 9,
-  color: "#94A3B8",
-  fontWeight: 800,
-  textTransform: "uppercase",
-  letterSpacing: ".1em",
-  marginBottom: 6,
-};
 
 const DispatchTab = forwardRef(function DispatchTab(
   {
@@ -67,9 +61,76 @@ const DispatchTab = forwardRef(function DispatchTab(
     setLastUpdated,
     toast,
     companyName = "My Chemical Store",
+    theme,
   },
   ref,
 ) {
+  const T = theme || DEFAULT_T;
+
+  // ── Local style helpers (built against T) ────────────────────────────────
+  const card = {
+    background: T.card,
+    border: `1px solid ${T.border}`,
+    borderRadius: 12,
+  };
+  const input = (focusColor) => ({
+    background: T.elevated,
+    border: `1px solid ${T.border}`,
+    color: T.text1,
+    borderRadius: 8,
+    padding: "9px 12px",
+    fontSize: 13,
+    outline: "none",
+    width: "100%",
+  });
+  const smBtn = (bg, color, border) => ({
+    padding: "8px 14px",
+    borderRadius: 8,
+    border: border || "none",
+    background: bg,
+    color,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  });
+  const TH = (extra = {}) => ({
+    padding: "9px 12px",
+    fontSize: 9,
+    color: T.text3,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: ".08em",
+    background: T.elevated,
+    borderBottom: `2px solid ${T.border}`,
+    whiteSpace: "nowrap",
+    ...extra,
+  });
+  const TD = (extra = {}) => ({
+    padding: "10px 12px",
+    fontSize: 12,
+    borderBottom: `1px solid ${T.border}`,
+    verticalAlign: "middle",
+    color: T.text1,
+    ...extra,
+  });
+  const labelStyle = {
+    fontSize: 9,
+    color: T.text3,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: ".1em",
+    marginBottom: 6,
+  };
+  const statusTone = (overLimit, willBeZero, willBeLow) => {
+    if (overLimit)
+      return { color: T.critical, bg: T.dangerBg, label: "✕ OVER" };
+    if (willBeZero)
+      return { color: T.critical, bg: T.dangerBg, label: "🚫 OUT" };
+    if (willBeLow) return { color: T.warning, bg: T.warnBg, label: "⚠ LOW" };
+    return { color: T.safe, bg: T.safeBg, label: "✓ OK" };
+  };
+
   // ── State ─────────────────────────────────────────────────────────────────
   const [invoiceNo, setInvoiceNo] = useState(generateInvNo);
   const [dispatchForm, setDispatchForm] = useState({
@@ -159,9 +220,6 @@ const DispatchTab = forwardRef(function DispatchTab(
     ? normD(editOriginalDispatch).items
     : [];
 
-  // Stock "as if this dispatch never happened" — original qtyDispatched added
-  // back to whatever is currently in stock, so availability shown while
-  // editing is correct instead of already looking short by this invoice.
   const virtualStock = editForm
     ? (() => {
         const base = stocks[editForm.location] || [];
@@ -291,13 +349,6 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (new Set(pIds).size !== pIds.length)
       return toast("Ek product dobara select hua hai", "error");
 
-    // FIX: pehle `res.json()` bhi isी try/catch ke andar tha — agar server
-    // ne valid JSON na bheja ho (500 HTML error page, proxy error) to yahan
-    // throw hota aur "offline" fallback chal jaata, jisse ek dispatch server
-    // par ho chuka hone ke bawajood local me dobara create ho sakta tha
-    // (duplicate). Ab sirf fetch() ka network-level fail hi "offline" maana
-    // jaata hai; server se mila response (chahe non-JSON ho) offline
-    // fallback ko trigger nahi karta.
     let res;
     try {
       res = await fetch(DISPATCH_API_BASE, {
@@ -317,7 +368,7 @@ const DispatchTab = forwardRef(function DispatchTab(
         }),
       });
     } catch {
-      res = null; // network fail — neeche offline branch chalega
+      res = null;
     }
 
     if (res) {
@@ -341,8 +392,6 @@ const DispatchTab = forwardRef(function DispatchTab(
     }
 
     {
-      // Offline fallback — sirf tab chalta hai jab fetch() khud fail hui
-      // (res === null), server-response error par nahi.
       const deductMap = {};
       toProcess.forEach((i) => {
         deductMap[String(i.productId)] = i.qty;
@@ -394,8 +443,6 @@ const DispatchTab = forwardRef(function DispatchTab(
   // ── Undo Dispatch ─────────────────────────────────────────────────────────
   const handleUndoDispatch = async () => {
     const d = confirmUndoDispatch;
-    // FIX: same pattern — sirf fetch() ka network fail offline fallback
-    // trigger kare, res.json() parse error nahi.
     let res;
     try {
       res = await fetch(`${DISPATCH_API_BASE}/${d.id}/undo`, {
@@ -470,10 +517,6 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (new Set(pIds).size !== pIds.length)
       return toast("Ek product dobara select hua hai", "error");
 
-    // FIX: same pattern — sirf fetch() ka network fail offline fallback
-    // trigger kare. Yeh route pehle backend me missing hi tha (ab
-    // dispatchController.updateDispatch + dispatchRoutes.js me PUT /:id
-    // add kar diya gaya hai), isliye pehle ye hamesha "offline" chalta tha.
     let res;
     try {
       res = await fetch(`${DISPATCH_API_BASE}/${d.id}`, {
@@ -503,8 +546,6 @@ const DispatchTab = forwardRef(function DispatchTab(
       setLastUpdated(data.lastUpdated);
       toast(`✓ Invoice ${getInvNo(d)} updated`);
     } else {
-      // Offline: restore what this invoice originally took, then deduct the
-      // edited quantities — so stock stays correct however items changed.
       setStocksRaw((s) => {
         const tab = s[editForm.location] || [];
         const restored = tab.map((p) => {
@@ -552,18 +593,14 @@ const DispatchTab = forwardRef(function DispatchTab(
       logAction(
         "EDIT_DISPATCH",
         editForm.location,
-        `${getInvNo(d)} updated${
-          d.customerName !== editForm.customerName.trim()
-            ? ` — ${d.customerName} → ${editForm.customerName.trim()}`
-            : ""
-        }`,
+        `${getInvNo(d)} updated${d.customerName !== editForm.customerName.trim() ? ` — ${d.customerName} → ${editForm.customerName.trim()}` : ""}`,
       );
       toast(`✓ Invoice ${getInvNo(d)} updated (offline)`);
     }
     closeEditDispatch();
   };
 
-  // ── Export Invoice PDF ────────────────────────────────────────────────────
+  // ── Export Invoice PDF (kept print-white for readability) ────────────────
   const buildInvoicesPDF = (list) => {
     const invoicePages = list
       .map((d, di) => {
@@ -657,9 +694,6 @@ const DispatchTab = forwardRef(function DispatchTab(
       return toast("Koi dispatch record nahi", "error");
     buildInvoicesPDF(filteredDispatches);
   };
-
-  // Single-invoice PDF — used by the View Invoice modal's PDF button so a
-  // customer copy can be printed straight from that invoice's own view.
   const exportSingleInvoicePDF = (d) => {
     if (!d) return;
     buildInvoicesPDF([d]);
@@ -706,7 +740,6 @@ const DispatchTab = forwardRef(function DispatchTab(
 
   useImperativeHandle(ref, () => ({ exportPDF: exportDispatchPDF }));
 
-  // ── View Invoice Modal ────────────────────────────────────────────────────
   const viewInvoice = viewInvoiceId
     ? dispatches.find((d) => d.id === viewInvoiceId)
     : null;
@@ -714,6 +747,27 @@ const DispatchTab = forwardRef(function DispatchTab(
   // ═══════════════════════════════ JSX ════════════════════════════════════
   return (
     <div>
+      <style>{`
+        .dtx-line-table { display:table; }
+        .dtx-line-cards { display:none; }
+        .dtx-ledger-table { display:block; }
+        .dtx-ledger-cards { display:none; }
+        .dtx-stats-grid { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+        .dtx-ledger-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        @media (max-width: 820px) {
+          .dtx-line-table { display:none !important; }
+          .dtx-line-cards { display:flex !important; flex-direction:column; gap:10px; padding:12px; }
+          .dtx-ledger-table { display:none !important; }
+          .dtx-ledger-cards { display:flex !important; flex-direction:column; gap:10px; padding:12px; }
+          .dtx-stats-grid { grid-template-columns:repeat(2,1fr); display:grid !important; gap:8px; }
+          .dtx-ledger-toolbar { flex-direction:column; align-items:stretch; }
+          .dtx-ledger-toolbar > * { width:100% !important; }
+          .dtx-modal-card { max-width:100% !important; margin:0 8px; }
+          .dtx-footer-actions { flex-direction:column; }
+          .dtx-footer-actions button { width:100%; }
+        }
+      `}</style>
+
       {/* ── Void Invoice Confirmation ──────────────────────────────────── */}
       {confirmUndoDispatch &&
         (() => {
@@ -724,7 +778,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                 position: "fixed",
                 inset: 0,
                 zIndex: 202,
-                background: "rgba(0,0,0,.6)",
+                background: "rgba(0,0,0,.75)",
+                backdropFilter: "blur(4px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -732,19 +787,25 @@ const DispatchTab = forwardRef(function DispatchTab(
               }}
             >
               <div
+                className="dtx-modal-card"
                 style={{
-                  background: "#fff",
-                  borderRadius: 16,
+                  ...card,
                   width: "100%",
                   maxWidth: 420,
-                  boxShadow: "0 24px 64px rgba(0,0,0,.25)",
+                  boxShadow: `0 24px 64px rgba(0,0,0,.6), 0 0 0 1px ${T.borderHi}`,
                   overflow: "hidden",
                 }}
               >
-                <div style={{ background: "#7F1D1D", padding: "18px 24px" }}>
+                <div
+                  style={{
+                    background: T.dangerBg,
+                    borderBottom: `1px solid rgba(244,63,94,0.3)`,
+                    padding: "18px 24px",
+                  }}
+                >
                   <div
                     style={{
-                      color: "#FEE2E2",
+                      color: T.critical,
                       fontSize: 13,
                       fontWeight: 900,
                       letterSpacing: "-.2px",
@@ -754,7 +815,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                   </div>
                   <div
                     style={{
-                      color: "#FCA5A5",
+                      color: T.text2,
                       fontSize: 11,
                       marginTop: 3,
                       fontFamily: "monospace",
@@ -764,23 +825,19 @@ const DispatchTab = forwardRef(function DispatchTab(
                   </div>
                 </div>
                 <div style={{ padding: "20px 24px" }}>
-                  <p
-                    style={{ color: "#374151", fontSize: 13, marginBottom: 4 }}
-                  >
+                  <p style={{ color: T.text1, fontSize: 13, marginBottom: 4 }}>
                     <strong>{confirmUndoDispatch.customerName}</strong> ke
                     dispatch ko void karna chahte hain?
                   </p>
-                  <p
-                    style={{ color: "#64748B", fontSize: 12, marginBottom: 16 }}
-                  >
+                  <p style={{ color: T.text2, fontSize: 12, marginBottom: 16 }}>
                     {nd.items.length} item{nd.items.length > 1 ? "s" : ""} ka
                     stock wapas restore ho jayega.
                   </p>
                   <div
                     style={{
-                      background: "#F8FAFC",
+                      background: T.elevated,
                       borderRadius: 10,
-                      border: "1px solid #E2E8F0",
+                      border: `1px solid ${T.border}`,
                       overflow: "hidden",
                       marginBottom: 18,
                     }}
@@ -795,14 +852,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                           padding: "8px 14px",
                           borderBottom:
                             i < nd.items.length - 1
-                              ? "1px solid #E5E7EB"
+                              ? `1px solid ${T.border}`
                               : "none",
                         }}
                       >
                         <span
                           style={{
                             fontSize: 12,
-                            color: "#0F172A",
+                            color: T.text1,
                             fontWeight: 600,
                           }}
                         >
@@ -811,9 +868,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                         <span
                           style={{
                             fontSize: 12,
-                            color: "#059669",
+                            color: T.safe,
                             fontWeight: 800,
-                            background: "#D1FAE5",
+                            background: T.safeBg,
                             padding: "2px 8px",
                             borderRadius: 6,
                           }}
@@ -827,24 +884,20 @@ const DispatchTab = forwardRef(function DispatchTab(
                         display: "flex",
                         justifyContent: "space-between",
                         padding: "8px 14px",
-                        background: "#0F172A",
+                        background: T.pageBg,
                       }}
                     >
                       <span
                         style={{
                           fontSize: 11,
-                          color: "#64748B",
+                          color: T.text3,
                           fontWeight: 700,
                         }}
                       >
                         Total Restored
                       </span>
                       <span
-                        style={{
-                          fontSize: 12,
-                          color: "#6EE7B7",
-                          fontWeight: 800,
-                        }}
+                        style={{ fontSize: 12, color: T.safe, fontWeight: 800 }}
                       >
                         +{nd.items.reduce((s, i) => s + i.qtyDispatched, 0)}{" "}
                         units
@@ -858,9 +911,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                         flex: 1,
                         padding: 12,
                         borderRadius: 9,
-                        border: "1.5px solid #E2E8F0",
-                        background: "#fff",
-                        color: "#374151",
+                        border: `1.5px solid ${T.border}`,
+                        background: "transparent",
+                        color: T.text2,
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
@@ -875,11 +928,12 @@ const DispatchTab = forwardRef(function DispatchTab(
                         padding: 12,
                         borderRadius: 9,
                         border: "none",
-                        background: "#DC2626",
-                        color: "#fff",
+                        background: "rgba(244,63,94,0.15)",
+                        color: T.critical,
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: "pointer",
+                        boxShadow: "inset 0 0 0 1px rgba(244,63,94,0.4)",
                       }}
                     >
                       🚫 Void Invoice
@@ -903,7 +957,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                 position: "fixed",
                 inset: 0,
                 zIndex: 202,
-                background: "rgba(0,0,0,.6)",
+                background: "rgba(0,0,0,.75)",
+                backdropFilter: "blur(4px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -914,40 +969,33 @@ const DispatchTab = forwardRef(function DispatchTab(
               }}
             >
               <div
+                className="dtx-modal-card"
                 style={{
-                  background: "#fff",
-                  borderRadius: 14,
+                  ...card,
                   width: "100%",
                   maxWidth: 560,
                   maxHeight: "90vh",
                   overflowY: "auto",
-                  boxShadow: "0 24px 64px rgba(0,0,0,.25)",
-                  overflow: "hidden",
+                  boxShadow: `0 24px 64px rgba(0,0,0,.6), 0 0 0 1px ${T.borderHi}`,
                 }}
               >
-                {/* Invoice header */}
                 <div
                   style={{
-                    background: "#0F172A",
+                    background: T.pageBg,
                     padding: "18px 24px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <div>
                     <div
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 15,
-                        fontWeight: 900,
-                      }}
+                      style={{ color: T.text1, fontSize: 15, fontWeight: 900 }}
                     >
                       ⚗ DISPATCH INVOICE
                     </div>
-                    <div
-                      style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
-                    >
+                    <div style={{ color: T.text3, fontSize: 10, marginTop: 2 }}>
                       Chemical Stock Outward Record
                     </div>
                   </div>
@@ -957,7 +1005,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <div style={{ textAlign: "right" }}>
                       <div
                         style={{
-                          color: "#64748B",
+                          color: T.text3,
                           fontSize: 9,
                           letterSpacing: ".1em",
                           textTransform: "uppercase",
@@ -967,7 +1015,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       </div>
                       <div
                         style={{
-                          color: "#F1F5F9",
+                          color: T.gold,
                           fontSize: 13,
                           fontWeight: 800,
                           fontFamily: "monospace",
@@ -995,13 +1043,13 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <button
                       onClick={() => setViewInvoiceId(null)}
                       style={{
-                        background: "rgba(255,255,255,.1)",
-                        border: "none",
+                        background: T.elevated,
+                        border: `1px solid ${T.border}`,
                         borderRadius: 7,
                         width: 28,
                         height: 28,
                         cursor: "pointer",
-                        color: "#94A3B8",
+                        color: T.text2,
                         fontSize: 18,
                         display: "flex",
                         alignItems: "center",
@@ -1012,50 +1060,39 @@ const DispatchTab = forwardRef(function DispatchTab(
                     </button>
                   </div>
                 </div>
-                {/* From / To */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    borderBottom: "1px solid #E5E7EB",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <div
                     style={{
                       padding: "14px 20px",
-                      borderRight: "1px solid #E5E7EB",
+                      borderRight: `1px solid ${T.border}`,
                     }}
                   >
                     <div style={labelStyle}>From</div>
                     <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: "#0F172A",
-                      }}
+                      style={{ fontSize: 13, fontWeight: 800, color: T.text1 }}
                     >
                       {companyName}
                     </div>
-                    <div
-                      style={{ fontSize: 11, color: "#64748B", marginTop: 3 }}
-                    >
+                    <div style={{ fontSize: 11, color: T.text2, marginTop: 3 }}>
                       {tabInfo?.icon} {tabInfo?.label || viewInvoice.location}
                     </div>
                   </div>
                   <div style={{ padding: "14px 20px" }}>
                     <div style={labelStyle}>Dispatch To</div>
                     <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: "#0F172A",
-                      }}
+                      style={{ fontSize: 13, fontWeight: 800, color: T.text1 }}
                     >
                       {viewInvoice.customerName}
                     </div>
                     {viewInvoice.note && (
                       <div
-                        style={{ fontSize: 11, color: "#64748B", marginTop: 3 }}
+                        style={{ fontSize: 11, color: T.text2, marginTop: 3 }}
                       >
                         Ref: {viewInvoice.note}
                       </div>
@@ -1066,28 +1103,27 @@ const DispatchTab = forwardRef(function DispatchTab(
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    borderBottom: "1px solid #E5E7EB",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <div
                     style={{
                       padding: "10px 20px",
-                      borderRight: "1px solid #E5E7EB",
+                      borderRight: `1px solid ${T.border}`,
                     }}
                   >
                     <div style={labelStyle}>Date</div>
-                    <div style={{ fontSize: 12, color: "#374151" }}>
+                    <div style={{ fontSize: 12, color: T.text2 }}>
                       {viewInvoice.date}
                     </div>
                   </div>
                   <div style={{ padding: "10px 20px" }}>
                     <div style={labelStyle}>Time</div>
-                    <div style={{ fontSize: 12, color: "#374151" }}>
+                    <div style={{ fontSize: 12, color: T.text2 }}>
                       {viewInvoice.time}
                     </div>
                   </div>
                 </div>
-                {/* Line items */}
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
@@ -1100,12 +1136,15 @@ const DispatchTab = forwardRef(function DispatchTab(
                     {nd.items.map((item, i) => (
                       <tr
                         key={i}
-                        style={{ background: i % 2 ? "#F9FAFB" : "#fff" }}
+                        style={{
+                          background:
+                            i % 2 ? "rgba(255,255,255,0.015)" : "transparent",
+                        }}
                       >
                         <td
                           style={TD({
                             textAlign: "center",
-                            color: "#94A3B8",
+                            color: T.text3,
                             fontSize: 11,
                           })}
                         >
@@ -1115,7 +1154,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           <div
                             style={{
                               fontWeight: 700,
-                              color: "#0F172A",
+                              color: T.text1,
                               fontSize: 12,
                             }}
                           >
@@ -1124,8 +1163,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                           {item.shade && (
                             <span
                               style={{
-                                background: "#F3E8FF",
-                                color: "#6D28D9",
+                                background: "rgba(124,58,237,0.15)",
+                                color: "#C4B5FD",
                                 padding: "1px 6px",
                                 borderRadius: 5,
                                 fontSize: 9,
@@ -1142,7 +1181,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           <span
                             style={{
                               fontWeight: 800,
-                              color: "#DC2626",
+                              color: T.critical,
                               fontSize: 13,
                             }}
                           >
@@ -1150,7 +1189,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           </span>
                           <span
                             style={{
-                              color: "#94A3B8",
+                              color: T.text3,
                               fontSize: 10,
                               marginLeft: 3,
                             }}
@@ -1162,12 +1201,12 @@ const DispatchTab = forwardRef(function DispatchTab(
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr style={{ background: "#0F172A" }}>
+                    <tr style={{ background: T.pageBg }}>
                       <td
                         colSpan={2}
                         style={{
                           padding: "12px 20px",
-                          color: "#64748B",
+                          color: T.text3,
                           fontSize: 11,
                         }}
                       >
@@ -1177,7 +1216,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       <td style={{ padding: "12px 12px", textAlign: "center" }}>
                         <span
                           style={{
-                            color: "#FCA5A5",
+                            color: T.critical,
                             fontWeight: 900,
                             fontSize: 15,
                           }}
@@ -1186,7 +1225,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                         </span>
                         <span
                           style={{
-                            color: "#6EE7B7",
+                            color: T.safe,
                             fontSize: 11,
                             fontWeight: 700,
                             marginLeft: 4,
@@ -1198,16 +1237,23 @@ const DispatchTab = forwardRef(function DispatchTab(
                     </tr>
                   </tfoot>
                 </table>
-                {/* Actions */}
-                <div style={{ padding: "14px 20px", display: "flex", gap: 10 }}>
+                <div
+                  className="dtx-footer-actions"
+                  style={{
+                    padding: "14px 20px",
+                    display: "flex",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
                     onClick={() => openEditDispatch(viewInvoice)}
                     style={{
                       padding: "10px 16px",
                       borderRadius: 9,
-                      border: "1.5px solid #DDD6FE",
-                      background: "#F5F3FF",
-                      color: "#6D28D9",
+                      border: `1.5px solid rgba(124,58,237,0.35)`,
+                      background: "rgba(124,58,237,0.12)",
+                      color: "#C4B5FD",
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -1220,9 +1266,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                     style={{
                       padding: "10px 16px",
                       borderRadius: 9,
-                      border: "1.5px solid #0F172A",
-                      background: "#0F172A",
-                      color: "#fff",
+                      border: "none",
+                      background: T.gold,
+                      color: "#000",
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -1238,15 +1284,15 @@ const DispatchTab = forwardRef(function DispatchTab(
                     style={{
                       padding: "10px 16px",
                       borderRadius: 9,
-                      border: "1.5px solid #FECACA",
-                      background: "#FEF2F2",
-                      color: "#DC2626",
+                      border: `1.5px solid rgba(244,63,94,0.35)`,
+                      background: T.dangerBg,
+                      color: T.critical,
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    🚫 Void Invoice
+                    🚫 Void
                   </button>
                   <button
                     onClick={() => setViewInvoiceId(null)}
@@ -1254,9 +1300,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                       flex: 1,
                       padding: "10px 16px",
                       borderRadius: 9,
-                      border: "1.5px solid #E2E8F0",
-                      background: "#fff",
-                      color: "#374151",
+                      border: `1.5px solid ${T.border}`,
+                      background: "transparent",
+                      color: T.text2,
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -1282,7 +1328,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                 position: "fixed",
                 inset: 0,
                 zIndex: 203,
-                background: "rgba(0,0,0,.6)",
+                background: "rgba(0,0,0,.75)",
+                backdropFilter: "blur(4px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1293,39 +1340,33 @@ const DispatchTab = forwardRef(function DispatchTab(
               }}
             >
               <div
+                className="dtx-modal-card"
                 style={{
-                  background: "#fff",
-                  borderRadius: 14,
+                  ...card,
                   width: "100%",
                   maxWidth: 640,
                   maxHeight: "92vh",
                   overflowY: "auto",
-                  boxShadow: "0 24px 64px rgba(0,0,0,.25)",
+                  boxShadow: `0 24px 64px rgba(0,0,0,.6), 0 0 0 1px ${T.borderHi}`,
                 }}
               >
-                {/* Header */}
                 <div
                   style={{
-                    background: "#0F172A",
+                    background: T.pageBg,
                     padding: "18px 24px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <div>
                     <div
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 15,
-                        fontWeight: 900,
-                      }}
+                      style={{ color: T.text1, fontSize: 15, fontWeight: 900 }}
                     >
                       ✏ EDIT INVOICE
                     </div>
-                    <div
-                      style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
-                    >
+                    <div style={{ color: T.text3, fontSize: 10, marginTop: 2 }}>
                       Chemical Stock Outward Record
                     </div>
                   </div>
@@ -1335,7 +1376,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <div style={{ textAlign: "right" }}>
                       <div
                         style={{
-                          color: "#64748B",
+                          color: T.text3,
                           fontSize: 9,
                           letterSpacing: ".1em",
                           textTransform: "uppercase",
@@ -1345,7 +1386,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       </div>
                       <div
                         style={{
-                          color: "#F1F5F9",
+                          color: T.gold,
                           fontSize: 13,
                           fontWeight: 800,
                           fontFamily: "monospace",
@@ -1358,13 +1399,13 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <button
                       onClick={closeEditDispatch}
                       style={{
-                        background: "rgba(255,255,255,.1)",
-                        border: "none",
+                        background: T.elevated,
+                        border: `1px solid ${T.border}`,
                         borderRadius: 7,
                         width: 28,
                         height: 28,
                         cursor: "pointer",
-                        color: "#94A3B8",
+                        color: T.text2,
                         fontSize: 18,
                         display: "flex",
                         alignItems: "center",
@@ -1376,35 +1417,28 @@ const DispatchTab = forwardRef(function DispatchTab(
                   </div>
                 </div>
 
-                {/* From / To */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    borderBottom: "1px solid #E5E7EB",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <div
                     style={{
                       padding: "14px 20px",
-                      borderRight: "1px solid #E5E7EB",
+                      borderRight: `1px solid ${T.border}`,
                     }}
                   >
                     <div style={labelStyle}>From</div>
                     <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 800,
-                        color: "#0F172A",
-                      }}
+                      style={{ fontSize: 13, fontWeight: 800, color: T.text1 }}
                     >
                       {companyName}
                     </div>
-                    <div
-                      style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}
-                    >
+                    <div style={{ fontSize: 11, color: T.text3, marginTop: 4 }}>
                       {tabInfo?.icon} {tabInfo?.label || editForm.location}{" "}
-                      <span style={{ color: "#CBD5E1" }}>(fixed)</span>
+                      <span style={{ color: T.text3 }}>(fixed)</span>
                     </div>
                   </div>
                   <div style={{ padding: "14px 20px" }}>
@@ -1418,29 +1452,29 @@ const DispatchTab = forwardRef(function DispatchTab(
                         }))
                       }
                       style={{
-                        ...S.input(
-                          editForm.customerName ? "#2563EB" : "#EF4444",
-                        ),
+                        ...input(),
                         fontSize: 13,
                         fontWeight: 600,
+                        borderColor: editForm.customerName
+                          ? T.border
+                          : T.critical,
                       }}
                       placeholder="Customer / Party Name"
                     />
                   </div>
                 </div>
 
-                {/* Date / Note */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    borderBottom: "2px solid #E5E7EB",
+                    borderBottom: `2px solid ${T.border}`,
                   }}
                 >
                   <div
                     style={{
                       padding: "12px 20px",
-                      borderRight: "1px solid #E5E7EB",
+                      borderRight: `1px solid ${T.border}`,
                     }}
                   >
                     <div style={labelStyle}>Invoice Date</div>
@@ -1450,11 +1484,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       onChange={(e) =>
                         setEditForm((p) => ({ ...p, date: e.target.value }))
                       }
-                      style={{
-                        ...S.input(),
-                        fontSize: 12,
-                        padding: "7px 10px",
-                      }}
+                      style={{ ...input(), fontSize: 12, padding: "7px 10px" }}
                     />
                   </div>
                   <div style={{ padding: "12px 20px" }}>
@@ -1464,18 +1494,17 @@ const DispatchTab = forwardRef(function DispatchTab(
                       onChange={(e) =>
                         setEditForm((p) => ({ ...p, note: e.target.value }))
                       }
-                      style={{
-                        ...S.input(),
-                        fontSize: 12,
-                        padding: "7px 10px",
-                      }}
+                      style={{ ...input(), fontSize: 12, padding: "7px 10px" }}
                       placeholder="Order no., PO ref., batch…"
                     />
                   </div>
                 </div>
 
-                {/* Line Items Table */}
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                {/* Desktop line-item table */}
+                <table
+                  className="dtx-line-table"
+                  style={{ width: "100%", borderCollapse: "collapse" }}
+                >
                   <thead>
                     <tr>
                       <th style={TH({ textAlign: "center", width: 32 })}>#</th>
@@ -1494,8 +1523,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                       <th
                         style={{
                           width: 32,
-                          background: "#F8FAFC",
-                          borderBottom: "2px solid #E2E8F0",
+                          background: T.elevated,
+                          borderBottom: `2px solid ${T.border}`,
                         }}
                       ></th>
                     </tr>
@@ -1509,36 +1538,27 @@ const DispatchTab = forwardRef(function DispatchTab(
                           (i) => i.productId === item.productId,
                         ).length > 1;
                       const rowErr = item.overLimit || isDup;
-                      const sc = item.overLimit
-                        ? "#DC2626"
-                        : item.willBeZero
-                          ? "#DC2626"
-                          : item.willBeLow
-                            ? "#D97706"
-                            : "#059669";
-                      const stIcon = item.overLimit
-                        ? "✕ OVER"
-                        : item.willBeZero
-                          ? "🚫 OUT"
-                          : item.willBeLow
-                            ? "⚠ LOW"
-                            : "✓ OK";
+                      const tone = statusTone(
+                        item.overLimit,
+                        item.willBeZero,
+                        item.willBeLow,
+                      );
                       return (
                         <tr
                           key={item._id}
                           style={{
                             background: rowErr
-                              ? "#FFF5F5"
+                              ? T.dangerBg
                               : idx % 2
-                                ? "#FAFAFA"
-                                : "#fff",
-                            borderBottom: "1px solid #F1F5F9",
+                                ? "rgba(255,255,255,0.015)"
+                                : "transparent",
+                            borderBottom: `1px solid ${T.border}`,
                           }}
                         >
                           <td
                             style={TD({
                               textAlign: "center",
-                              color: "#94A3B8",
+                              color: T.text3,
                               fontSize: 11,
                             })}
                           >
@@ -1556,16 +1576,16 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 updateEditItem(item._id, "qty", "");
                               }}
                               style={{
-                                ...S.input(
-                                  rowErr
-                                    ? "#EF4444"
-                                    : item.productId
-                                      ? "#2563EB"
-                                      : undefined,
-                                ),
+                                ...input(),
                                 fontSize: 12,
                                 padding: "7px 9px",
                                 appearance: "auto",
+                                cursor: "pointer",
+                                borderColor: rowErr
+                                  ? T.critical
+                                  : item.productId
+                                    ? T.info
+                                    : T.border,
                               }}
                             >
                               <option value="">— Select Product —</option>
@@ -1578,14 +1598,6 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     key={p.id}
                                     value={p.id}
                                     disabled={isDisabledDup || p.qty === 0}
-                                    style={{
-                                      color:
-                                        p.qty === 0
-                                          ? "#DC2626"
-                                          : isDisabledDup
-                                            ? "#94A3B8"
-                                            : "inherit",
-                                    }}
                                   >
                                     {p.name}
                                     {p.qty === 0
@@ -1601,7 +1613,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                               <div
                                 style={{
                                   fontSize: 9,
-                                  color: "#DC2626",
+                                  color: T.critical,
                                   fontWeight: 700,
                                   marginTop: 3,
                                 }}
@@ -1617,10 +1629,10 @@ const DispatchTab = forwardRef(function DispatchTab(
                                   fontWeight: 700,
                                   color:
                                     avail === 0
-                                      ? "#DC2626"
+                                      ? T.critical
                                       : avail <= item.product.minQty
-                                        ? "#D97706"
-                                        : "#0F172A",
+                                        ? T.warning
+                                        : T.text1,
                                   fontSize: 13,
                                 }}
                               >
@@ -1628,7 +1640,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 <span
                                   style={{
                                     fontSize: 10,
-                                    color: "#94A3B8",
+                                    color: T.text3,
                                     marginLeft: 3,
                                   }}
                                 >
@@ -1636,7 +1648,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 </span>
                               </span>
                             ) : (
-                              <span style={{ color: "#CBD5E1" }}>—</span>
+                              <span style={{ color: T.text3 }}>—</span>
                             )}
                           </td>
                           <td style={TD({ textAlign: "center" })}>
@@ -1650,19 +1662,16 @@ const DispatchTab = forwardRef(function DispatchTab(
                                   updateEditItem(item._id, "qty", v);
                               }}
                               style={{
-                                ...S.input(
-                                  item.overLimit
-                                    ? "#EF4444"
-                                    : item.qty &&
-                                        item.product &&
-                                        !item.overLimit
-                                      ? "#059669"
-                                      : undefined,
-                                ),
+                                ...input(),
                                 fontSize: 13,
                                 fontWeight: 700,
                                 textAlign: "center",
                                 padding: "7px 10px",
+                                borderColor: item.overLimit
+                                  ? T.critical
+                                  : item.qty && item.product && !item.overLimit
+                                    ? T.safe
+                                    : T.border,
                               }}
                               placeholder="0"
                               disabled={!item.productId}
@@ -1671,7 +1680,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                               <div
                                 style={{
                                   fontSize: 9,
-                                  color: "#DC2626",
+                                  color: T.critical,
                                   fontWeight: 700,
                                   marginTop: 2,
                                 }}
@@ -1687,14 +1696,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                                   style={{
                                     fontWeight: 800,
                                     fontSize: 13,
-                                    color: sc,
+                                    color: tone.color,
                                   }}
                                 >
                                   {item.overLimit ? "—" : item.remaining}
                                   <span
                                     style={{
                                       fontSize: 10,
-                                      color: "#94A3B8",
+                                      color: T.text3,
                                       marginLeft: 2,
                                     }}
                                   >
@@ -1704,26 +1713,20 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 <div style={{ marginTop: 3 }}>
                                   <span
                                     style={{
-                                      background: item.overLimit
-                                        ? "#FEE2E2"
-                                        : item.willBeZero
-                                          ? "#FEE2E2"
-                                          : item.willBeLow
-                                            ? "#FEF3C7"
-                                            : "#D1FAE5",
-                                      color: sc,
+                                      background: tone.bg,
+                                      color: tone.color,
                                       padding: "1px 6px",
                                       borderRadius: 5,
                                       fontSize: 9,
                                       fontWeight: 800,
                                     }}
                                   >
-                                    {stIcon}
+                                    {tone.label}
                                   </span>
                                 </div>
                               </div>
                             ) : (
-                              <span style={{ color: "#CBD5E1", fontSize: 12 }}>
+                              <span style={{ color: T.text3, fontSize: 12 }}>
                                 —
                               </span>
                             )}
@@ -1735,9 +1738,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 width: 26,
                                 height: 26,
                                 borderRadius: 6,
-                                border: "1px solid #E2E8F0",
-                                background: "#F8FAFC",
-                                color: "#94A3B8",
+                                border: `1px solid ${T.border}`,
+                                background: T.elevated,
+                                color: T.text3,
                                 cursor: "pointer",
                                 fontSize: 15,
                                 display: "flex",
@@ -1753,7 +1756,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     })}
                   </tbody>
                   <tfoot>
-                    <tr style={{ borderTop: "1px dashed #E2E8F0" }}>
+                    <tr style={{ borderTop: `1px dashed ${T.border}` }}>
                       <td colSpan={6} style={{ padding: "8px 16px" }}>
                         <button
                           onClick={addEditItem}
@@ -1762,11 +1765,11 @@ const DispatchTab = forwardRef(function DispatchTab(
                             alignItems: "center",
                             gap: 6,
                             background: "none",
-                            border: "1.5px dashed #CBD5E1",
+                            border: `1.5px dashed ${T.borderHi}`,
                             borderRadius: 7,
                             padding: "6px 14px",
                             cursor: "pointer",
-                            color: "#64748B",
+                            color: T.text2,
                             fontSize: 12,
                             fontWeight: 600,
                           }}
@@ -1778,22 +1781,217 @@ const DispatchTab = forwardRef(function DispatchTab(
                   </tfoot>
                 </table>
 
-                {/* Footer: totals + actions */}
+                {/* Mobile line-item cards */}
+                <div className="dtx-line-cards">
+                  {editItemsEnriched.map((item, idx) => {
+                    const avail = item.product?.qty ?? null;
+                    const isDup =
+                      item.productId &&
+                      editForm.items.filter(
+                        (i) => i.productId === item.productId,
+                      ).length > 1;
+                    const rowErr = item.overLimit || isDup;
+                    const tone = statusTone(
+                      item.overLimit,
+                      item.willBeZero,
+                      item.willBeLow,
+                    );
+                    return (
+                      <div
+                        key={item._id}
+                        style={{
+                          ...card,
+                          padding: 13,
+                          background: rowErr ? T.dangerBg : T.card,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: T.text3,
+                              fontWeight: 700,
+                            }}
+                          >
+                            ITEM #{idx + 1}
+                          </span>
+                          <button
+                            onClick={() => removeEditItem(item._id)}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              border: `1px solid ${T.border}`,
+                              background: T.elevated,
+                              color: T.text3,
+                              cursor: "pointer",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <select
+                          value={item.productId}
+                          onChange={(e) => {
+                            updateEditItem(
+                              item._id,
+                              "productId",
+                              e.target.value,
+                            );
+                            updateEditItem(item._id, "qty", "");
+                          }}
+                          style={{
+                            ...input(),
+                            fontSize: 12,
+                            padding: "9px",
+                            appearance: "auto",
+                            marginBottom: 8,
+                            borderColor: rowErr ? T.critical : T.border,
+                          }}
+                        >
+                          <option value="">— Select Product —</option>
+                          {virtualStock.map((p) => {
+                            const isDisabledDup =
+                              editSelectedPIds.has(String(p.id)) &&
+                              String(p.id) !== String(item.productId);
+                            return (
+                              <option
+                                key={p.id}
+                                value={p.id}
+                                disabled={isDisabledDup || p.qty === 0}
+                              >
+                                {p.name}
+                                {p.qty === 0
+                                  ? " (OUT)"
+                                  : isDisabledDup
+                                    ? " ✓ added"
+                                    : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 8,
+                          }}
+                        >
+                          <div>
+                            <div style={labelStyle}>Available</div>
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 13,
+                                color: T.text1,
+                              }}
+                            >
+                              {item.product
+                                ? `${avail} ${item.product.unit}`
+                                : "—"}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={labelStyle}>Qty *</div>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={item.qty}
+                              disabled={!item.productId}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === "" || /^\d+$/.test(v))
+                                  updateEditItem(item._id, "qty", v);
+                              }}
+                              style={{
+                                ...input(),
+                                fontWeight: 700,
+                                textAlign: "center",
+                                borderColor: item.overLimit
+                                  ? T.critical
+                                  : T.border,
+                              }}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                        {item.product && item.qty > 0 && (
+                          <div
+                            style={{
+                              marginTop: 8,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <span style={{ fontSize: 11, color: T.text2 }}>
+                              After:{" "}
+                              <strong style={{ color: tone.color }}>
+                                {item.overLimit ? "—" : item.remaining}{" "}
+                                {item.product.unit}
+                              </strong>
+                            </span>
+                            <span
+                              style={{
+                                background: tone.bg,
+                                color: tone.color,
+                                padding: "2px 8px",
+                                borderRadius: 6,
+                                fontSize: 10,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {tone.label}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={addEditItem}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      background: "none",
+                      border: `1.5px dashed ${T.borderHi}`,
+                      borderRadius: 9,
+                      padding: "12px",
+                      cursor: "pointer",
+                      color: T.text2,
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ＋ Add Line Item
+                  </button>
+                </div>
+
                 <div
+                  className="dtx-footer-actions"
                   style={{
                     padding: "14px 20px",
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    borderTop: "1px solid #E5E7EB",
+                    borderTop: `1px solid ${T.border}`,
                     flexWrap: "wrap",
                   }}
                 >
-                  <div style={{ fontSize: 11, color: "#64748B", flex: 1 }}>
+                  <div style={{ fontSize: 11, color: T.text2, flex: 1 }}>
                     {editValidItemCount > 0 ? (
                       `${editValidItemCount} line item${editValidItemCount > 1 ? "s" : ""} · ${editTotalQty} units`
                     ) : (
-                      <span style={{ color: "#EF4444" }}>No valid items</span>
+                      <span style={{ color: T.critical }}>No valid items</span>
                     )}
                   </div>
                   <button
@@ -1801,9 +1999,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                     style={{
                       padding: "10px 16px",
                       borderRadius: 9,
-                      border: "1.5px solid #E2E8F0",
-                      background: "#fff",
-                      color: "#374151",
+                      border: `1.5px solid ${T.border}`,
+                      background: "transparent",
+                      color: T.text2,
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -1818,11 +2016,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                       padding: "10px 20px",
                       borderRadius: 9,
                       border: "none",
-                      background: canSaveEdit ? "#2563EB" : "#CBD5E1",
-                      color: canSaveEdit ? "#fff" : "#94A3B8",
+                      background: canSaveEdit ? T.gold : T.elevated,
+                      color: canSaveEdit ? "#000" : T.text3,
                       fontSize: 13,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       cursor: canSaveEdit ? "pointer" : "not-allowed",
+                      boxShadow: canSaveEdit
+                        ? `0 0 14px ${T.goldGlow}`
+                        : "none",
                     }}
                   >
                     💾 Save Changes
@@ -1834,57 +2035,51 @@ const DispatchTab = forwardRef(function DispatchTab(
         })()}
 
       {/* ── Stats Row ─────────────────────────────────────────────────── */}
-      <div
-        style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}
-      >
+      <div className="dtx-stats-grid">
         {[
           {
             l: "Total Invoices",
             v: dispatches.length,
-            bg: "#EFF6FF",
-            col: "#1D4ED8",
+            color: T.info,
             icon: "🧾",
           },
           {
             l: "Customers Served",
             v: new Set(dispatches.map((d) => d.customerName)).size,
-            bg: "#ECFDF5",
-            col: "#065F46",
+            color: T.safe,
             icon: "👥",
           },
           {
             l: "Items Dispatched",
             v: dispatches.reduce((s, d) => s + normD(d).items.length, 0),
-            bg: "#F3E8FF",
-            col: "#6D28D9",
+            color: "#A78BFA",
             icon: "📦",
           },
           {
             l: "Today",
             v: dispatches.filter((d) => d.date === todayStr()).length,
-            bg: "#FEF3C7",
-            col: "#92400E",
+            color: T.warning,
             icon: "📅",
           },
         ].map((s) => (
           <div
             key={s.l}
             style={{
-              background: s.bg,
-              borderRadius: 12,
+              ...card,
               padding: "12px 16px",
               flex: "1 1 80px",
               position: "relative",
               overflow: "hidden",
+              borderTop: `2px solid ${s.color}`,
             }}
           >
-            <div style={{ fontSize: 22, fontWeight: 900, color: s.col }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>
               {s.v}
             </div>
             <div
               style={{
                 fontSize: 10,
-                color: s.col + "99",
+                color: T.text3,
                 fontWeight: 700,
                 marginTop: 2,
                 textTransform: "uppercase",
@@ -1912,28 +2107,28 @@ const DispatchTab = forwardRef(function DispatchTab(
       {/* ════════════ INVOICE CREATION FORM ════════════ */}
       <div
         style={{
-          background: "#fff",
-          border: "1.5px solid #CBD5E1",
-          borderRadius: 14,
+          ...card,
           overflow: "hidden",
-          boxShadow: "0 4px 24px rgba(0,0,0,.08)",
+          boxShadow: "0 4px 24px rgba(0,0,0,.35)",
           marginBottom: 20,
         }}
       >
-        {/* Invoice header band */}
         <div
           style={{
-            background: "#0F172A",
+            background: T.pageBg,
             padding: "18px 24px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            borderBottom: `1px solid ${T.border}`,
+            flexWrap: "wrap",
+            gap: 10,
           }}
         >
           <div>
             <div
               style={{
-                color: "#F8FAFC",
+                color: T.text1,
                 fontSize: 16,
                 fontWeight: 900,
                 letterSpacing: "-.3px",
@@ -1941,14 +2136,14 @@ const DispatchTab = forwardRef(function DispatchTab(
             >
               ⚗ DISPATCH INVOICE
             </div>
-            <div style={{ color: "#475569", fontSize: 11, marginTop: 3 }}>
+            <div style={{ color: T.text3, fontSize: 11, marginTop: 3 }}>
               Chemical Stock Outward Entry
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div
               style={{
-                color: "#475569",
+                color: T.text3,
                 fontSize: 9,
                 textTransform: "uppercase",
                 letterSpacing: ".1em",
@@ -1959,15 +2154,15 @@ const DispatchTab = forwardRef(function DispatchTab(
             </div>
             <div
               style={{
-                color: "#F1F5F9",
+                color: T.gold,
                 fontSize: 13,
                 fontWeight: 800,
                 fontFamily: "monospace",
                 letterSpacing: ".05em",
-                background: "rgba(255,255,255,.07)",
+                background: "rgba(212,160,23,0.1)",
                 padding: "5px 12px",
                 borderRadius: 7,
-                border: "1px solid rgba(255,255,255,.1)",
+                border: `1px solid ${T.gold}40`,
                 display: "inline-block",
               }}
             >
@@ -1976,29 +2171,31 @@ const DispatchTab = forwardRef(function DispatchTab(
           </div>
         </div>
 
-        {/* FROM | TO */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: `1px solid ${T.border}`,
           }}
         >
           <div
-            style={{ padding: "16px 24px", borderRight: "1px solid #E5E7EB" }}
+            style={{
+              padding: "16px 24px",
+              borderRight: `1px solid ${T.border}`,
+            }}
           >
             <div style={labelStyle}>From</div>
             <div
               style={{
                 fontSize: 14,
                 fontWeight: 800,
-                color: "#0F172A",
+                color: T.text1,
                 marginBottom: 8,
               }}
             >
               {companyName}
             </div>
-            <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 5 }}>
+            <div style={{ fontSize: 11, color: T.text3, marginBottom: 5 }}>
               Stock Location
             </div>
             <select
@@ -2011,10 +2208,11 @@ const DispatchTab = forwardRef(function DispatchTab(
                 }))
               }
               style={{
-                ...S.input(),
+                ...input(),
                 fontSize: 12,
                 padding: "7px 10px",
                 appearance: "auto",
+                cursor: "pointer",
               }}
             >
               {STOCK_TABS.map((t) => (
@@ -2032,9 +2230,10 @@ const DispatchTab = forwardRef(function DispatchTab(
                 setDispatchForm((p) => ({ ...p, customerName: e.target.value }))
               }
               style={{
-                ...S.input(dispatchForm.customerName ? "#2563EB" : undefined),
+                ...input(),
                 fontSize: 13,
                 fontWeight: 600,
+                borderColor: dispatchForm.customerName ? T.info : T.border,
               }}
               placeholder="Customer / Party Name"
             />
@@ -2042,7 +2241,7 @@ const DispatchTab = forwardRef(function DispatchTab(
               <div
                 style={{
                   fontSize: 10,
-                  color: "#EF4444",
+                  color: T.critical,
                   marginTop: 4,
                   fontWeight: 600,
                 }}
@@ -2053,16 +2252,18 @@ const DispatchTab = forwardRef(function DispatchTab(
           </div>
         </div>
 
-        {/* Date | Note */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            borderBottom: "2px solid #E5E7EB",
+            borderBottom: `2px solid ${T.border}`,
           }}
         >
           <div
-            style={{ padding: "12px 24px", borderRight: "1px solid #E5E7EB" }}
+            style={{
+              padding: "12px 24px",
+              borderRight: `1px solid ${T.border}`,
+            }}
           >
             <div style={labelStyle}>Invoice Date</div>
             <input
@@ -2071,7 +2272,7 @@ const DispatchTab = forwardRef(function DispatchTab(
               onChange={(e) =>
                 setDispatchForm((p) => ({ ...p, date: e.target.value }))
               }
-              style={{ ...S.input(), fontSize: 12, padding: "7px 10px" }}
+              style={{ ...input(), fontSize: 12, padding: "7px 10px" }}
             />
           </div>
           <div style={{ padding: "12px 24px" }}>
@@ -2081,14 +2282,17 @@ const DispatchTab = forwardRef(function DispatchTab(
               onChange={(e) =>
                 setDispatchForm((p) => ({ ...p, note: e.target.value }))
               }
-              style={{ ...S.input(), fontSize: 12, padding: "7px 10px" }}
+              style={{ ...input(), fontSize: 12, padding: "7px 10px" }}
               placeholder="Order no., PO ref., batch…"
             />
           </div>
         </div>
 
-        {/* Line Items Table */}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        {/* Desktop line-item table */}
+        <table
+          className="dtx-line-table"
+          style={{ width: "100%", borderCollapse: "collapse" }}
+        >
           <thead>
             <tr>
               <th style={TH({ textAlign: "center", width: 36 })}>#</th>
@@ -2103,8 +2307,8 @@ const DispatchTab = forwardRef(function DispatchTab(
               <th
                 style={{
                   width: 36,
-                  background: "#F8FAFC",
-                  borderBottom: "2px solid #E2E8F0",
+                  background: T.elevated,
+                  borderBottom: `2px solid ${T.border}`,
                 }}
               ></th>
             </tr>
@@ -2117,36 +2321,27 @@ const DispatchTab = forwardRef(function DispatchTab(
                 dispatchForm.items.filter((i) => i.productId === item.productId)
                   .length > 1;
               const rowErr = item.overLimit || isDup;
-              const sc = item.overLimit
-                ? "#DC2626"
-                : item.willBeZero
-                  ? "#DC2626"
-                  : item.willBeLow
-                    ? "#D97706"
-                    : "#059669";
-              const stIcon = item.overLimit
-                ? "✕ OVER"
-                : item.willBeZero
-                  ? "🚫 OUT"
-                  : item.willBeLow
-                    ? "⚠ LOW"
-                    : "✓ OK";
+              const tone = statusTone(
+                item.overLimit,
+                item.willBeZero,
+                item.willBeLow,
+              );
               return (
                 <tr
                   key={item._id}
                   style={{
                     background: rowErr
-                      ? "#FFF5F5"
+                      ? T.dangerBg
                       : idx % 2
-                        ? "#FAFAFA"
-                        : "#fff",
-                    borderBottom: "1px solid #F1F5F9",
+                        ? "rgba(255,255,255,0.015)"
+                        : "transparent",
+                    borderBottom: `1px solid ${T.border}`,
                   }}
                 >
                   <td
                     style={TD({
                       textAlign: "center",
-                      color: "#94A3B8",
+                      color: T.text3,
                       fontSize: 11,
                       width: 36,
                     })}
@@ -2165,16 +2360,16 @@ const DispatchTab = forwardRef(function DispatchTab(
                         updateDispatchItem(item._id, "qty", "");
                       }}
                       style={{
-                        ...S.input(
-                          rowErr
-                            ? "#EF4444"
-                            : item.productId
-                              ? "#2563EB"
-                              : undefined,
-                        ),
+                        ...input(),
                         fontSize: 12,
                         padding: "7px 9px",
                         appearance: "auto",
+                        cursor: "pointer",
+                        borderColor: rowErr
+                          ? T.critical
+                          : item.productId
+                            ? T.info
+                            : T.border,
                       }}
                     >
                       <option value="">— Select Product —</option>
@@ -2187,14 +2382,6 @@ const DispatchTab = forwardRef(function DispatchTab(
                             key={p.id}
                             value={p.id}
                             disabled={isDisabledDup || p.qty === 0}
-                            style={{
-                              color:
-                                p.qty === 0
-                                  ? "#DC2626"
-                                  : isDisabledDup
-                                    ? "#94A3B8"
-                                    : "inherit",
-                            }}
                           >
                             {p.name}
                             {p.qty === 0
@@ -2210,7 +2397,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       <div
                         style={{
                           fontSize: 9,
-                          color: "#DC2626",
+                          color: T.critical,
                           fontWeight: 700,
                           marginTop: 3,
                         }}
@@ -2226,10 +2413,10 @@ const DispatchTab = forwardRef(function DispatchTab(
                           fontWeight: 700,
                           color:
                             avail === 0
-                              ? "#DC2626"
+                              ? T.critical
                               : avail <= item.product.minQty
-                                ? "#D97706"
-                                : "#0F172A",
+                                ? T.warning
+                                : T.text1,
                           fontSize: 13,
                         }}
                       >
@@ -2237,7 +2424,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                         <span
                           style={{
                             fontSize: 10,
-                            color: "#94A3B8",
+                            color: T.text3,
                             marginLeft: 3,
                           }}
                         >
@@ -2245,7 +2432,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                         </span>
                       </span>
                     ) : (
-                      <span style={{ color: "#CBD5E1" }}>—</span>
+                      <span style={{ color: T.text3 }}>—</span>
                     )}
                   </td>
                   <td style={TD({ textAlign: "center" })}>
@@ -2259,17 +2446,16 @@ const DispatchTab = forwardRef(function DispatchTab(
                           updateDispatchItem(item._id, "qty", v);
                       }}
                       style={{
-                        ...S.input(
-                          item.overLimit
-                            ? "#EF4444"
-                            : item.qty && item.product && !item.overLimit
-                              ? "#059669"
-                              : undefined,
-                        ),
+                        ...input(),
                         fontSize: 13,
                         fontWeight: 700,
                         textAlign: "center",
                         padding: "7px 10px",
+                        borderColor: item.overLimit
+                          ? T.critical
+                          : item.qty && item.product && !item.overLimit
+                            ? T.safe
+                            : T.border,
                       }}
                       placeholder="0"
                       disabled={!item.productId}
@@ -2278,7 +2464,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       <div
                         style={{
                           fontSize: 9,
-                          color: "#DC2626",
+                          color: T.critical,
                           fontWeight: 700,
                           marginTop: 2,
                         }}
@@ -2291,13 +2477,17 @@ const DispatchTab = forwardRef(function DispatchTab(
                     {item.product && item.qty > 0 ? (
                       <div>
                         <span
-                          style={{ fontWeight: 800, fontSize: 13, color: sc }}
+                          style={{
+                            fontWeight: 800,
+                            fontSize: 13,
+                            color: tone.color,
+                          }}
                         >
                           {item.overLimit ? "—" : item.remaining}
                           <span
                             style={{
                               fontSize: 10,
-                              color: "#94A3B8",
+                              color: T.text3,
                               marginLeft: 2,
                             }}
                           >
@@ -2307,26 +2497,20 @@ const DispatchTab = forwardRef(function DispatchTab(
                         <div style={{ marginTop: 3 }}>
                           <span
                             style={{
-                              background: item.overLimit
-                                ? "#FEE2E2"
-                                : item.willBeZero
-                                  ? "#FEE2E2"
-                                  : item.willBeLow
-                                    ? "#FEF3C7"
-                                    : "#D1FAE5",
-                              color: sc,
+                              background: tone.bg,
+                              color: tone.color,
                               padding: "1px 6px",
                               borderRadius: 5,
                               fontSize: 9,
                               fontWeight: 800,
                             }}
                           >
-                            {stIcon}
+                            {tone.label}
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: "#CBD5E1", fontSize: 12 }}>—</span>
+                      <span style={{ color: T.text3, fontSize: 12 }}>—</span>
                     )}
                   </td>
                   <td style={TD({ textAlign: "center", width: 36 })}>
@@ -2336,9 +2520,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                         width: 26,
                         height: 26,
                         borderRadius: 6,
-                        border: "1px solid #E2E8F0",
-                        background: "#F8FAFC",
-                        color: "#94A3B8",
+                        border: `1px solid ${T.border}`,
+                        background: T.elevated,
+                        color: T.text3,
                         cursor: "pointer",
                         fontSize: 15,
                         display: "flex",
@@ -2354,8 +2538,7 @@ const DispatchTab = forwardRef(function DispatchTab(
             })}
           </tbody>
           <tfoot>
-            {/* Add line item */}
-            <tr style={{ borderTop: "1px dashed #E2E8F0" }}>
+            <tr style={{ borderTop: `1px dashed ${T.border}` }}>
               <td colSpan={6} style={{ padding: "8px 16px" }}>
                 <button
                   onClick={addDispatchItem}
@@ -2364,11 +2547,11 @@ const DispatchTab = forwardRef(function DispatchTab(
                     alignItems: "center",
                     gap: 6,
                     background: "none",
-                    border: "1.5px dashed #CBD5E1",
+                    border: `1.5px dashed ${T.borderHi}`,
                     borderRadius: 7,
                     padding: "6px 14px",
                     cursor: "pointer",
-                    color: "#64748B",
+                    color: T.text2,
                     fontSize: 12,
                     fontWeight: 600,
                   }}
@@ -2377,23 +2560,25 @@ const DispatchTab = forwardRef(function DispatchTab(
                 </button>
               </td>
             </tr>
-            {/* Totals + dispatch button */}
             <tr
-              style={{ background: "#0F172A", borderTop: "2px solid #E2E8F0" }}
+              style={{
+                background: T.pageBg,
+                borderTop: `2px solid ${T.border}`,
+              }}
             >
               <td colSpan={2} style={{ padding: "14px 20px" }}>
-                <span style={{ color: "#475569", fontSize: 11 }}>
+                <span style={{ color: T.text3, fontSize: 11 }}>
                   {validItemCount > 0 ? (
                     `${validItemCount} line item${validItemCount > 1 ? "s" : ""} · ready to issue`
                   ) : (
-                    <span style={{ color: "#334155" }}>No valid items</span>
+                    <span style={{ color: T.text3 }}>No valid items</span>
                   )}
                 </span>
               </td>
               <td style={{ padding: "14px 12px", textAlign: "center" }}>
                 <span
                   style={{
-                    color: "#64748B",
+                    color: T.text3,
                     fontSize: 10,
                     display: "block",
                     textTransform: "uppercase",
@@ -2402,12 +2587,10 @@ const DispatchTab = forwardRef(function DispatchTab(
                 >
                   Total
                 </span>
-                <span
-                  style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 900 }}
-                >
+                <span style={{ color: T.text1, fontSize: 15, fontWeight: 900 }}>
                   {totalDispatchQty}
                 </span>
-                <span style={{ color: "#475569", fontSize: 10, marginLeft: 3 }}>
+                <span style={{ color: T.text3, fontSize: 10, marginLeft: 3 }}>
                   units
                 </span>
               </td>
@@ -2422,13 +2605,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                     padding: "11px 22px",
                     borderRadius: 10,
                     border: "none",
-                    background: canDispatch ? "#2563EB" : "#1E293B",
-                    color: canDispatch ? "#fff" : "#475569",
+                    background: canDispatch ? T.gold : T.elevated,
+                    color: canDispatch ? "#000" : T.text3,
                     fontSize: 13,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     cursor: canDispatch ? "pointer" : "not-allowed",
                     transition: "all .2s",
                     letterSpacing: "-.2px",
+                    boxShadow: canDispatch ? `0 0 14px ${T.goldGlow}` : "none",
                   }}
                 >
                   📤 Issue & Dispatch
@@ -2437,26 +2621,246 @@ const DispatchTab = forwardRef(function DispatchTab(
             </tr>
           </tfoot>
         </table>
+
+        {/* Mobile line-item cards */}
+        <div className="dtx-line-cards">
+          {dispatchItemsEnriched.map((item, idx) => {
+            const avail = item.product?.qty ?? null;
+            const isDup =
+              item.productId &&
+              dispatchForm.items.filter((i) => i.productId === item.productId)
+                .length > 1;
+            const rowErr = item.overLimit || isDup;
+            const tone = statusTone(
+              item.overLimit,
+              item.willBeZero,
+              item.willBeLow,
+            );
+            return (
+              <div
+                key={item._id}
+                style={{
+                  ...card,
+                  padding: 13,
+                  background: rowErr ? T.dangerBg : T.elevated,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 8,
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 10, color: T.text3, fontWeight: 700 }}
+                  >
+                    ITEM #{idx + 1}
+                  </span>
+                  <button
+                    onClick={() => removeDispatchItem(item._id)}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 6,
+                      border: `1px solid ${T.border}`,
+                      background: T.card,
+                      color: T.text3,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <select
+                  value={item.productId}
+                  onChange={(e) => {
+                    updateDispatchItem(item._id, "productId", e.target.value);
+                    updateDispatchItem(item._id, "qty", "");
+                  }}
+                  style={{
+                    ...input(),
+                    fontSize: 12,
+                    padding: "9px",
+                    appearance: "auto",
+                    marginBottom: 8,
+                    borderColor: rowErr ? T.critical : T.border,
+                  }}
+                >
+                  <option value="">— Select Product —</option>
+                  {(stocks[dispatchForm.location] || []).map((p) => {
+                    const isDisabledDup =
+                      selectedPIds.has(String(p.id)) &&
+                      String(p.id) !== String(item.productId);
+                    return (
+                      <option
+                        key={p.id}
+                        value={p.id}
+                        disabled={isDisabledDup || p.qty === 0}
+                      >
+                        {p.name}
+                        {p.qty === 0
+                          ? " (OUT)"
+                          : isDisabledDup
+                            ? " ✓ added"
+                            : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 8,
+                  }}
+                >
+                  <div>
+                    <div style={labelStyle}>Available</div>
+                    <div
+                      style={{ fontWeight: 700, fontSize: 13, color: T.text1 }}
+                    >
+                      {item.product ? `${avail} ${item.product.unit}` : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={labelStyle}>Qty *</div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={item.qty}
+                      disabled={!item.productId}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d+$/.test(v))
+                          updateDispatchItem(item._id, "qty", v);
+                      }}
+                      style={{
+                        ...input(),
+                        fontWeight: 700,
+                        textAlign: "center",
+                        borderColor: item.overLimit ? T.critical : T.border,
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                {item.product && item.qty > 0 && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: T.text2 }}>
+                      After:{" "}
+                      <strong style={{ color: tone.color }}>
+                        {item.overLimit ? "—" : item.remaining}{" "}
+                        {item.product.unit}
+                      </strong>
+                    </span>
+                    <span
+                      style={{
+                        background: tone.bg,
+                        color: tone.color,
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        fontSize: 10,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {tone.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <button
+            onClick={addDispatchItem}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              background: "none",
+              border: `1.5px dashed ${T.borderHi}`,
+              borderRadius: 9,
+              padding: "12px",
+              cursor: "pointer",
+              color: T.text2,
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            ＋ Add Line Item
+          </button>
+          <div
+            style={{
+              ...card,
+              padding: "13px 16px",
+              background: T.pageBg,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: T.text3,
+                  textTransform: "uppercase",
+                  letterSpacing: ".06em",
+                }}
+              >
+                Total
+              </div>
+              <div style={{ color: T.text1, fontSize: 16, fontWeight: 900 }}>
+                {totalDispatchQty}{" "}
+                <span style={{ fontSize: 11, color: T.text3, fontWeight: 600 }}>
+                  units
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleDispatch}
+              disabled={!canDispatch}
+              style={{
+                padding: "12px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: canDispatch ? T.gold : T.elevated,
+                color: canDispatch ? "#000" : T.text3,
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: canDispatch ? "pointer" : "not-allowed",
+                boxShadow: canDispatch ? `0 0 14px ${T.goldGlow}` : "none",
+              }}
+            >
+              📤 Issue & Dispatch
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ════════════ INVOICE LEDGER (History) ════════════ */}
-      <div style={S.card}>
-        {/* Ledger toolbar */}
+      <div style={{ ...card, overflow: "hidden" }}>
         <div
+          className="dtx-ledger-toolbar"
           style={{
             padding: "14px 18px",
-            borderBottom: "1px solid #E5E7EB",
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
+            borderBottom: `1px solid ${T.border}`,
           }}
         >
           <div>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#0F172A" }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: T.text1 }}>
               🧾 Invoice Ledger
             </div>
-            <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: T.text3, marginTop: 1 }}>
               {filteredDispatches.length} of {dispatches.length} invoices
             </div>
           </div>
@@ -2468,7 +2872,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                 left: 9,
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "#94A3B8",
+                color: T.text3,
                 fontSize: 12,
               }}
             >
@@ -2479,24 +2883,20 @@ const DispatchTab = forwardRef(function DispatchTab(
               placeholder="Invoice #, customer, product…"
               value={dispatchSearch}
               onChange={(e) => setDispatchSearch(e.target.value)}
-              style={{
-                ...S.input(),
-                paddingLeft: 30,
-                fontSize: 11,
-                width: 210,
-              }}
+              style={{ ...input(), paddingLeft: 30, fontSize: 11, width: 210 }}
             />
           </div>
           <select
             value={dispatchLocFilter}
             onChange={(e) => setDispatchLocFilter(e.target.value)}
             style={{
-              ...S.input(),
+              ...input(),
               width: "auto",
               fontSize: 11,
               padding: "8px 10px",
               appearance: "auto",
               minWidth: 130,
+              cursor: "pointer",
             }}
           >
             <option value="ALL">All Locations</option>
@@ -2508,20 +2908,20 @@ const DispatchTab = forwardRef(function DispatchTab(
           </select>
           <button
             onClick={exportDispatchPDF}
-            style={S.smBtn("#0F172A", "#fff", "none")}
+            style={smBtn(T.gold, "#000", "none")}
           >
             📄 PDF
           </button>
           <button
             onClick={exportDispatchExcel}
-            style={S.smBtn("#065f46", "#6ee7b7", "none")}
+            style={smBtn(T.safeBg, T.safe, `1.5px solid rgba(16,185,129,0.3)`)}
           >
             ↓ Excel
           </button>
         </div>
 
-        {/* Ledger table */}
-        <div style={{ overflowX: "auto" }}>
+        {/* Desktop ledger table */}
+        <div className="dtx-ledger-table" style={{ overflowX: "auto" }}>
           <table
             style={{
               width: "100%",
@@ -2531,7 +2931,7 @@ const DispatchTab = forwardRef(function DispatchTab(
             }}
           >
             <thead>
-              <tr style={{ background: "#0F172A" }}>
+              <tr style={{ background: T.pageBg }}>
                 {[
                   "Invoice No.",
                   "Date",
@@ -2545,7 +2945,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     key={i}
                     style={{
                       padding: "10px 14px",
-                      color: "#64748B",
+                      color: T.text3,
                       fontSize: 9,
                       fontWeight: 700,
                       textTransform: "uppercase",
@@ -2567,7 +2967,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     style={{
                       padding: "52px 20px",
                       textAlign: "center",
-                      color: "#94A3B8",
+                      color: T.text3,
                       fontSize: 13,
                     }}
                   >
@@ -2589,29 +2989,18 @@ const DispatchTab = forwardRef(function DispatchTab(
                     <tr
                       key={d.id}
                       style={{
-                        borderTop: "1px solid #F1F5F9",
+                        borderTop: `1px solid ${T.border}`,
                         cursor: "pointer",
                         background: isExpanded
-                          ? "#F0F9FF"
+                          ? T.infoBg
                           : idx % 2
-                            ? "#FAFAFA"
-                            : "#fff",
-                        transition: "background .1s",
+                            ? "rgba(255,255,255,0.012)"
+                            : "transparent",
                       }}
-                      onMouseEnter={(e) =>
-                        !isExpanded &&
-                        (e.currentTarget.style.background = "#F8FAFC")
-                      }
-                      onMouseLeave={(e) =>
-                        !isExpanded &&
-                        (e.currentTarget.style.background =
-                          idx % 2 ? "#FAFAFA" : "#fff")
-                      }
                       onClick={() =>
                         setExpandedDispatchId(isExpanded ? null : d.id)
                       }
                     >
-                      {/* Invoice number */}
                       <td
                         style={{
                           padding: "12px 14px",
@@ -2620,8 +3009,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                       >
                         <span
                           style={{
-                            background: "#0F172A",
-                            color: "#F1F5F9",
+                            background: T.elevated,
+                            border: `1px solid ${T.border}`,
+                            color: T.gold,
                             padding: "4px 10px",
                             borderRadius: 6,
                             fontSize: 11,
@@ -2638,18 +3028,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                         style={{
                           padding: "12px 14px",
                           fontSize: 12,
-                          color: "#374151",
+                          color: T.text2,
                           verticalAlign: "middle",
                           whiteSpace: "nowrap",
                         }}
                       >
                         <div>{d.date}</div>
                         <div
-                          style={{
-                            fontSize: 10,
-                            color: "#94A3B8",
-                            marginTop: 1,
-                          }}
+                          style={{ fontSize: 10, color: T.text3, marginTop: 1 }}
                         >
                           {d.time}
                         </div>
@@ -2660,14 +3046,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                           verticalAlign: "middle",
                         }}
                       >
-                        <div style={{ fontWeight: 700, color: "#0F172A" }}>
+                        <div style={{ fontWeight: 700, color: T.text1 }}>
                           {d.customerName}
                         </div>
                         {d.note && (
                           <div
                             style={{
                               fontSize: 10,
-                              color: "#94A3B8",
+                              color: T.text3,
                               marginTop: 1,
                             }}
                           >
@@ -2678,7 +3064,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           <div
                             style={{
                               fontSize: 9,
-                              color: "#7C3AED",
+                              color: "#C4B5FD",
                               marginTop: 1,
                               fontWeight: 700,
                             }}
@@ -2696,8 +3082,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                       >
                         <span
                           style={{
-                            background: "#EFF6FF",
-                            color: "#1D4ED8",
+                            background: T.infoBg,
+                            color: T.info,
                             padding: "3px 9px",
                             borderRadius: 20,
                             fontSize: 11,
@@ -2707,11 +3093,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           {nd.items.length} item{nd.items.length > 1 ? "s" : ""}
                         </span>
                         <div
-                          style={{
-                            fontSize: 9,
-                            color: "#94A3B8",
-                            marginTop: 3,
-                          }}
+                          style={{ fontSize: 9, color: T.text3, marginTop: 3 }}
                         >
                           {isExpanded ? "▲ collapse" : "▼ expand"}
                         </div>
@@ -2727,14 +3109,12 @@ const DispatchTab = forwardRef(function DispatchTab(
                           style={{
                             fontWeight: 900,
                             fontSize: 14,
-                            color: "#DC2626",
+                            color: T.critical,
                           }}
                         >
                           −{totalQty}
                         </span>
-                        <div style={{ fontSize: 9, color: "#94A3B8" }}>
-                          units
-                        </div>
+                        <div style={{ fontSize: 9, color: T.text3 }}>units</div>
                       </td>
                       <td
                         style={{
@@ -2744,8 +3124,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                       >
                         <span
                           style={{
-                            background: "#F1F5F9",
-                            color: "#374151",
+                            background: T.elevated,
+                            border: `1px solid ${T.border}`,
+                            color: T.text2,
                             padding: "3px 9px",
                             borderRadius: 7,
                             fontSize: 10,
@@ -2775,9 +3156,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                             style={{
                               padding: "5px 10px",
                               borderRadius: 7,
-                              border: "1.5px solid #BFDBFE",
-                              background: "#EFF6FF",
-                              color: "#1D4ED8",
+                              border: `1.5px solid rgba(59,130,246,0.35)`,
+                              background: T.infoBg,
+                              color: T.info,
                               cursor: "pointer",
                               fontSize: 11,
                               fontWeight: 700,
@@ -2790,9 +3171,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                             style={{
                               padding: "5px 10px",
                               borderRadius: 7,
-                              border: "1.5px solid #DDD6FE",
-                              background: "#F5F3FF",
-                              color: "#6D28D9",
+                              border: `1.5px solid rgba(124,58,237,0.35)`,
+                              background: "rgba(124,58,237,0.12)",
+                              color: "#C4B5FD",
                               cursor: "pointer",
                               fontSize: 11,
                               fontWeight: 700,
@@ -2805,9 +3186,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                             style={{
                               padding: "5px 10px",
                               borderRadius: 7,
-                              border: "1.5px solid #FECACA",
-                              background: "#FEF2F2",
-                              color: "#DC2626",
+                              border: `1.5px solid rgba(244,63,94,0.35)`,
+                              background: T.dangerBg,
+                              color: T.critical,
                               cursor: "pointer",
                               fontSize: 11,
                               fontWeight: 700,
@@ -2818,14 +3199,13 @@ const DispatchTab = forwardRef(function DispatchTab(
                         </div>
                       </td>
                     </tr>
-                    {/* Expanded line items */}
                     {isExpanded && (
-                      <tr key={`${d.id}-exp`} style={{ borderTop: "none" }}>
+                      <tr key={`${d.id}-exp`}>
                         <td
                           colSpan={7}
                           style={{
                             padding: "0 14px 10px 14px",
-                            background: "#F0F9FF",
+                            background: T.infoBg,
                           }}
                         >
                           <table
@@ -2834,16 +3214,16 @@ const DispatchTab = forwardRef(function DispatchTab(
                               borderCollapse: "collapse",
                               borderRadius: 8,
                               overflow: "hidden",
-                              border: "1px solid #BFDBFE",
+                              border: `1px solid rgba(59,130,246,0.25)`,
                             }}
                           >
                             <thead>
-                              <tr style={{ background: "#1E40AF" }}>
+                              <tr style={{ background: T.pageBg }}>
                                 <th
                                   style={{
                                     padding: "7px 12px",
                                     fontSize: 9,
-                                    color: "#BFDBFE",
+                                    color: T.text3,
                                     fontWeight: 700,
                                     textAlign: "center",
                                     width: 32,
@@ -2857,7 +3237,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                   style={{
                                     padding: "7px 12px",
                                     fontSize: 9,
-                                    color: "#BFDBFE",
+                                    color: T.text3,
                                     fontWeight: 700,
                                     textAlign: "left",
                                     textTransform: "uppercase",
@@ -2870,7 +3250,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                   style={{
                                     padding: "7px 12px",
                                     fontSize: 9,
-                                    color: "#BFDBFE",
+                                    color: T.text3,
                                     fontWeight: 700,
                                     textAlign: "center",
                                     textTransform: "uppercase",
@@ -2886,15 +3266,18 @@ const DispatchTab = forwardRef(function DispatchTab(
                                 <tr
                                   key={ii}
                                   style={{
-                                    background: ii % 2 ? "#EFF6FF" : "#fff",
-                                    borderBottom: "1px solid #DBEAFE",
+                                    background:
+                                      ii % 2
+                                        ? "rgba(59,130,246,0.05)"
+                                        : "transparent",
+                                    borderBottom: `1px solid rgba(59,130,246,0.15)`,
                                   }}
                                 >
                                   <td
                                     style={{
                                       padding: "8px 12px",
                                       textAlign: "center",
-                                      color: "#94A3B8",
+                                      color: T.text3,
                                       fontSize: 11,
                                     }}
                                   >
@@ -2904,7 +3287,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     <span
                                       style={{
                                         fontWeight: 700,
-                                        color: "#0F172A",
+                                        color: T.text1,
                                         fontSize: 12,
                                       }}
                                     >
@@ -2913,8 +3296,8 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     {item.shade && (
                                       <span
                                         style={{
-                                          background: "#F3E8FF",
-                                          color: "#6D28D9",
+                                          background: "rgba(124,58,237,0.15)",
+                                          color: "#C4B5FD",
                                           padding: "1px 6px",
                                           borderRadius: 5,
                                           fontSize: 9,
@@ -2935,14 +3318,14 @@ const DispatchTab = forwardRef(function DispatchTab(
                                     <span
                                       style={{
                                         fontWeight: 800,
-                                        color: "#DC2626",
+                                        color: T.critical,
                                       }}
                                     >
                                       {item.qtyDispatched}
                                     </span>
                                     <span
                                       style={{
-                                        color: "#94A3B8",
+                                        color: T.text3,
                                         fontSize: 10,
                                         marginLeft: 3,
                                       }}
@@ -2964,20 +3347,283 @@ const DispatchTab = forwardRef(function DispatchTab(
           </table>
         </div>
 
-        {/* Ledger footer */}
+        {/* Mobile ledger cards */}
+        <div className="dtx-ledger-cards">
+          {filteredDispatches.length === 0 && (
+            <div
+              style={{ textAlign: "center", padding: "40px 0", color: T.text3 }}
+            >
+              <p style={{ fontSize: 30, marginBottom: 8 }}>🧾</p>
+              <p style={{ fontWeight: 600, fontSize: 13, color: T.text2 }}>
+                Koi invoice nahi mili
+                {dispatchSearch && ` · "${dispatchSearch}"`}
+              </p>
+            </div>
+          )}
+          {filteredDispatches.map((d) => {
+            const nd = normD(d);
+            const tabInfo = TABS.find((t) => t.id === d.location);
+            const isExpanded = expandedDispatchId === d.id;
+            const totalQty = nd.items.reduce((s, i) => s + i.qtyDispatched, 0);
+            return (
+              <div key={d.id} style={card}>
+                <div
+                  style={{ padding: 13, cursor: "pointer" }}
+                  onClick={() =>
+                    setExpandedDispatchId(isExpanded ? null : d.id)
+                  }
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <span
+                        style={{
+                          background: T.elevated,
+                          border: `1px solid ${T.border}`,
+                          color: T.gold,
+                          padding: "3px 9px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {getInvNo(d)}
+                      </span>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 14,
+                          color: T.text1,
+                          marginTop: 6,
+                        }}
+                      >
+                        {d.customerName}
+                      </div>
+                      {d.note && (
+                        <div
+                          style={{ fontSize: 10, color: T.text3, marginTop: 1 }}
+                        >
+                          Ref: {d.note}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <span
+                        style={{
+                          fontWeight: 900,
+                          fontSize: 15,
+                          color: T.critical,
+                        }}
+                      >
+                        −{totalQty}
+                      </span>
+                      <div style={{ fontSize: 9, color: T.text3 }}>units</div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                      marginTop: 11,
+                    }}
+                  >
+                    <div>
+                      <div style={labelStyle}>Date</div>
+                      <div style={{ fontSize: 12, color: T.text2 }}>
+                        {d.date} · {d.time}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={labelStyle}>Location</div>
+                      <span
+                        style={{
+                          background: T.elevated,
+                          border: `1px solid ${T.border}`,
+                          color: T.text2,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {tabInfo?.icon} {tabInfo?.label || d.location}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 9, fontSize: 11, color: T.text3 }}>
+                    <span
+                      style={{
+                        background: T.infoBg,
+                        color: T.info,
+                        padding: "2px 8px",
+                        borderRadius: 20,
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {nd.items.length} item{nd.items.length > 1 ? "s" : ""}
+                    </span>
+                    {d.edited && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          color: "#C4B5FD",
+                          fontWeight: 700,
+                        }}
+                      >
+                        ✏ Edited
+                      </span>
+                    )}
+                    <span style={{ float: "right" }}>
+                      {isExpanded ? "▲ collapse" : "▼ expand"}
+                    </span>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div
+                    style={{
+                      borderTop: `1px solid ${T.border}`,
+                      padding: "10px 13px 13px",
+                      background: T.infoBg,
+                    }}
+                  >
+                    {nd.items.map((item, ii) => (
+                      <div
+                        key={ii}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "8px 0",
+                          borderBottom:
+                            ii < nd.items.length - 1
+                              ? `1px solid rgba(59,130,246,0.15)`
+                              : "none",
+                        }}
+                      >
+                        <div>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              color: T.text1,
+                              fontSize: 12,
+                            }}
+                          >
+                            {item.productName}
+                          </span>
+                          {item.shade && (
+                            <span
+                              style={{
+                                background: "rgba(124,58,237,0.15)",
+                                color: "#C4B5FD",
+                                padding: "1px 6px",
+                                borderRadius: 5,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                marginLeft: 6,
+                              }}
+                            >
+                              {item.shade}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 800, color: T.critical }}>
+                            {item.qtyDispatched}
+                          </span>
+                          <span
+                            style={{
+                              color: T.text3,
+                              fontSize: 10,
+                              marginLeft: 3,
+                            }}
+                          >
+                            {item.unit}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: 8,
+                    padding: "0 13px 13px",
+                  }}
+                >
+                  <button
+                    onClick={() => setViewInvoiceId(d.id)}
+                    style={{
+                      padding: "9px 6px",
+                      borderRadius: 8,
+                      border: `1.5px solid rgba(59,130,246,0.35)`,
+                      background: T.infoBg,
+                      color: T.info,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={() => openEditDispatch(d)}
+                    style={{
+                      padding: "9px 6px",
+                      borderRadius: 8,
+                      border: `1.5px solid rgba(124,58,237,0.35)`,
+                      background: "rgba(124,58,237,0.12)",
+                      color: "#C4B5FD",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setConfirmUndoDispatch(d)}
+                    style={{
+                      padding: "9px 6px",
+                      borderRadius: 8,
+                      border: `1.5px solid rgba(244,63,94,0.35)`,
+                      background: T.dangerBg,
+                      color: T.critical,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Void
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {filteredDispatches.length > 0 && (
           <div
             style={{
               padding: "10px 18px",
-              background: "#F8FAFC",
-              borderTop: "1px solid #E5E7EB",
+              background: `rgba(212,160,23,0.05)`,
+              borderTop: `1px solid ${T.gold}40`,
               display: "flex",
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: 6,
             }}
           >
-            <span style={{ fontSize: 11, color: "#64748B" }}>
+            <span style={{ fontSize: 11, color: T.text2 }}>
               {filteredDispatches.length} invoice
               {filteredDispatches.length > 1 ? "s" : ""} ·{" "}
               {filteredDispatches.reduce(
@@ -2987,7 +3633,7 @@ const DispatchTab = forwardRef(function DispatchTab(
               line items
             </span>
             <div style={{ display: "flex", gap: 16, fontSize: 11 }}>
-              <span style={{ color: "#DC2626", fontWeight: 700 }}>
+              <span style={{ color: T.critical, fontWeight: 700 }}>
                 Total Dispatched:{" "}
                 <strong>
                   {filteredDispatches.reduce(
@@ -2999,9 +3645,9 @@ const DispatchTab = forwardRef(function DispatchTab(
                   units
                 </strong>
               </span>
-              <span style={{ color: "#64748B" }}>
+              <span style={{ color: T.text2 }}>
                 Customers:{" "}
-                <strong style={{ color: "#0F172A" }}>
+                <strong style={{ color: T.gold }}>
                   {new Set(filteredDispatches.map((d) => d.customerName)).size}
                 </strong>
               </span>
