@@ -894,6 +894,8 @@ export default function ChemicalStockManager() {
           .mobile-actions button { min-height:36px; border-radius:8px; border:1px solid ${T.border}; background:${T.elevated}; color:${T.text1}; font-weight:700; cursor:pointer; font-size:12px; }
           .csm-toolbar { flex-direction:column; align-items:stretch; }
           .csm-toolbar > * { width:100% !important; }
+          .csm-kpi-grid { display:none !important; }
+          .csm-import-toggle, .csm-export-excel { display:none !important; }
         }
         @media (max-width: 380px) {
           .csm-kpi-grid { grid-template-columns:1fr; }
@@ -2022,6 +2024,7 @@ export default function ChemicalStockManager() {
                   📄 Low PDF
                 </button>
                 <div
+                  className="csm-import-toggle"
                   style={{
                     display: "flex",
                     borderRadius: 8,
@@ -2049,6 +2052,7 @@ export default function ChemicalStockManager() {
                 </div>
                 {importMode === "excel" && (
                   <button
+                    className="csm-import-toggle"
                     onClick={() => fileRef.current.click()}
                     style={smBtn(T.info, "#fff", "none")}
                   >
@@ -2063,6 +2067,7 @@ export default function ChemicalStockManager() {
                   onChange={handleFile}
                 />
                 <button
+                  className="csm-export-excel"
                   onClick={exportExcel}
                   style={smBtn(
                     T.safeBg,
