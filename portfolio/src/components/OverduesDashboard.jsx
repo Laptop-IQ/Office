@@ -915,396 +915,955 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: T.pageBg,
-        fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
-        color: T.text1,
-        backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
-        backgroundSize: "28px 28px",
-      }}
-    >
-      {confirmModal && (
-        <ConfirmModal
-          message={confirmModal.message}
-          onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal(null)}
-        />
-      )}
-      {paymentRow && (
-        <PaymentModal
-          row={paymentRow}
-          onConfirm={handleRecordPayment}
-          onCancel={() => setPaymentRow(null)}
-        />
-      )}
-
-      {/* ── HEADER ── */}
-      <header
+    <><style>{`
+      * { box-sizing: border-box; }
+      html, body, #root { width: 100%; min-width: 0; margin: 0; }
+      button, input, select { font: inherit; }
+      .sf-shell { width: 100%; overflow-x: hidden; }
+      .sf-container { width: min(1280px, 100%); margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+      .sf-header-inner { width: min(1280px, 100%); margin: 0 auto; padding: 14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+      .sf-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
+      .sf-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:20px; }
+      .sf-filters { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+      .sf-tabs { display:flex; gap:0; border-bottom:1px solid ${T.border}; margin-bottom:20px; overflow-x:auto; }
+      .sf-tabs button { flex:0 0 auto; }
+      .desktop-table { display:block; }
+      .mobile-list { display:none; }
+      .mobile-summary { display:none; }
+      .sf-upload { display:flex; align-items:center; gap:16px; }
+      .sf-upload-copy { flex:1; min-width:0; }
+      .sf-upload-copy p { overflow-wrap:anywhere; }
+      @media (max-width: 768px) {
+        .sf-container { padding:16px 12px 32px !important; }
+        .sf-header-inner { padding:12px; align-items:flex-start; }
+        .sf-header-inner h1 { font-size:18px !important; }
+        .sf-header-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .sf-header-actions button { width:100%; justify-content:center; }
+        .sf-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+        .sf-kpi-grid > div { min-width:0; padding:14px 12px !important; }
+        .sf-kpi-grid > div p:nth-child(3) { font-size:18px !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .sf-filters { display:grid; grid-template-columns:1fr; gap:8px; }
+        .sf-filters > div, .sf-filters select { width:100% !important; min-width:0 !important; }
+        .sf-tabs button { padding:10px 12px !important; font-size:12px !important; }
+        .desktop-table { display:none !important; }
+        .mobile-list { display:flex; flex-direction:column; gap:10px; }
+        .mobile-card { background:${T.card}; border:1px solid ${T.border}; border-radius:12px; padding:13px; width:100%; min-width:0; }
+        .mobile-card-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; min-width:0; }
+        .mobile-card-label { color:${T.text3}; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+        .mobile-card-value { color:${T.text1}; font-size:13px; font-weight:600; overflow-wrap:anywhere; min-width:0; }
+        .mobile-card-account { font-size:14px; font-weight:700; overflow-wrap:anywhere; min-width:0; }
+        .mobile-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+        .mobile-actions button { min-height:38px; border-radius:8px; border:1px solid ${T.border}; background:${T.elevated}; color:${T.text1}; font-weight:700; cursor:pointer; }
+        .sf-upload { padding:14px !important; align-items:flex-start !important; }
+        .sf-upload > span { flex:0 0 auto; }
+        .sf-upload-copy { min-width:0; }
+        .sf-upload-copy p { font-size:12px !important; }
+        .sf-upload-clear { align-self:center; }
+        .mobile-summary { display:flex; flex-direction:column; gap:10px; }
+        .mobile-summary-card { background:${T.card}; border:1px solid ${T.border}; border-radius:12px; overflow:hidden; }
+        .mobile-summary-main { padding:13px; cursor:pointer; }
+        .mobile-summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+        .mobile-summary-grid > div { min-width:0; }
+        .mobile-summary-expanded { border-top:1px solid ${T.border}; padding:10px 13px 13px; background:rgba(212,160,23,.025); }
+        .mobile-sub-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:10px 0; border-bottom:1px solid ${T.border}; }
+        .mobile-sub-row:last-child { border-bottom:0; }
+        .mobile-sub-actions { display:flex; gap:4px; justify-content:flex-end; }
+        .mobile-sub-actions button { width:34px; height:34px; border-radius:7px; border:1px solid ${T.border}; background:${T.elevated}; cursor:pointer; }
+        .mobile-summary-total { padding:13px; background:rgba(212,160,23,.05); border:1px solid ${T.gold}40; border-radius:12px; }
+      }
+      @media (max-width: 380px) {
+        .sf-kpi-grid { grid-template-columns:1fr; }
+        .sf-header-actions { grid-template-columns:1fr; }
+        .mobile-summary-grid { grid-template-columns:1fr 1fr; }
+      }
+    `}</style><div
+        className="sf-shell"
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "rgba(6,9,15,0.92)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderBottom: `1px solid ${T.border}`,
+          minHeight: "100vh",
+          background: T.pageBg,
+          fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+          color: T.text1,
+          backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+          backgroundSize: "28px 28px",
         }}
       >
-        <div
-          style={{
-            maxWidth: 1280,
-            margin: "0 auto",
-            padding: "14px 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                letterSpacing: "-0.02em",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <span style={{ fontSize: 18 }}>📊</span>
-              <span style={{ color: T.gold }}>SF</span>
-              <span style={{ color: T.text1 }}>&nbsp;Overdues</span>
-            </h1>
-            <p
-              style={{
-                color: T.text3,
-                fontSize: 11,
-                marginTop: 3,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                flexWrap: "wrap",
-              }}
-            >
-              <span style={{ color: T.text2 }}>
-                {fileName || "No file loaded"}
-              </span>
-              <span>·</span>
-              <span>{data.length} records</span>
-              <span>·</span>
-              <span>
-                {new Date().toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </span>
-              <span style={{ marginLeft: 4 }}>
-                {storageSaving ? (
-                  <span style={{ color: T.info }}>🔄 Saving…</span>
-                ) : storageError ? (
-                  <span style={{ color: T.warning }}>⚠ {storageError}</span>
-                ) : storageSavedAt ? (
-                  <span style={{ color: T.safe }}>
-                    ✓ Saved{" "}
-                    {storageSavedAt.toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                ) : data.length === 0 ? (
-                  <span style={{ color: T.text3 }}>
-                    Upload an Excel file to begin
-                  </span>
-                ) : null}
-              </span>
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              onClick={handleSaveToFile}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: `1px solid ${T.border}`,
-                background: "transparent",
-                color: T.text2,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              💾 <span>Excel</span>
-            </button>
-            <button
-              onClick={() => generatePDF(filtered, pdfTitle)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: T.gold,
-                color: "#000",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                boxShadow: `0 0 16px ${T.goldGlow}`,
-              }}
-            >
-              ⬇ <span>PDF</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div
-        style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 24px 48px" }}
-      >
-        {/* ── UPLOAD ZONE ── */}
-        <div
-          onDrop={onDrop}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onClick={() => fileRef.current.click()}
-          style={{
-            border: `2px dashed ${dragOver ? T.gold : T.border}`,
-            borderRadius: 12,
-            padding: "20px 24px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            cursor: "pointer",
-            background: dragOver ? `rgba(212,160,23,0.05)` : T.card,
-            transition: "all 0.2s",
-            marginBottom: 20,
-          }}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls"
-            style={{ display: "none" }}
-            onChange={(e) => handleFile(e.target.files[0])}
-          />
-          <span style={{ fontSize: 26, lineHeight: 1 }}>
-            {uploading ? "⏳" : "📂"}
-          </span>
-          <div style={{ flex: 1 }}>
-            <p style={{ color: T.text1, fontWeight: 600, fontSize: 14 }}>
-              {uploading ? "Processing…" : "Upload Excel File"}
-            </p>
-            <p style={{ color: T.text3, fontSize: 12, marginTop: 2 }}>
-              Click or drag & drop — data saves automatically to this browser
-            </p>
-          </div>
-          {data.length > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClearStorage();
-              }}
-              style={{
-                fontSize: 11,
-                color: T.critical,
-                background: "transparent",
-                border: `1px solid rgba(244,63,94,0.25)`,
-                borderRadius: 6,
-                padding: "5px 10px",
-                cursor: "pointer",
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
-              Clear data
-            </button>
-          )}
-        </div>
-
-        {parseErr && (
-          <div
-            style={{
-              background: "rgba(244,63,94,0.08)",
-              border: `1px solid rgba(244,63,94,0.25)`,
-              color: T.critical,
-              fontSize: 13,
-              borderRadius: 8,
-              padding: "10px 14px",
-              marginBottom: 16,
-            }}
-          >
-            {parseErr}
-          </div>
+        {confirmModal && (
+          <ConfirmModal
+            message={confirmModal.message}
+            onConfirm={confirmModal.onConfirm}
+            onCancel={() => setConfirmModal(null)} />
+        )}
+        {paymentRow && (
+          <PaymentModal
+            row={paymentRow}
+            onConfirm={handleRecordPayment}
+            onCancel={() => setPaymentRow(null)} />
         )}
 
-        {/* ── KPI CARDS ── */}
-        <div
+        {/* ── HEADER ── */}
+        <header
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
-            gap: 12,
-            marginBottom: 20,
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            background: "rgba(6,9,15,0.92)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderBottom: `1px solid ${T.border}`,
           }}
         >
-          {kpiCards.map(({ lbl, val, sub, color, icon }) => (
-            <div
-              key={lbl}
-              style={{
-                ...card,
-                padding: "18px 20px",
-                borderTop: `2px solid ${color}`,
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <div
+          <div
+            className="sf-header-inner"
+            style={{
+              maxWidth: 1280,
+              margin: "0 auto",
+              padding: "14px 24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h1
                 style={{
-                  position: "absolute",
-                  top: 12,
-                  right: 14,
-                  fontSize: 18,
-                  opacity: 0.08,
-                  fontWeight: 900,
-                  color,
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
                 }}
               >
-                {icon}
-              </div>
+                <span style={{ fontSize: 18 }}>📊</span>
+                <span style={{ color: T.gold }}>SF</span>
+                <span style={{ color: T.text1 }}>&nbsp;Overdues</span>
+              </h1>
               <p
                 style={{
                   color: T.text3,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
+                  fontSize: 11,
+                  marginTop: 3,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "wrap",
                 }}
               >
-                {lbl}
-              </p>
-              <p
-                style={{
-                  color,
-                  fontSize: 22,
-                  fontWeight: 800,
-                  marginTop: 6,
-                  fontVariantNumeric: "tabular-nums",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {val}
-              </p>
-              <p style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
-                {sub}
+                <span style={{ color: T.text2 }}>
+                  {fileName || "No file loaded"}
+                </span>
+                <span>·</span>
+                <span>{data.length} records</span>
+                <span>·</span>
+                <span>
+                  {new Date().toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+                <span style={{ marginLeft: 4 }}>
+                  {storageSaving ? (
+                    <span style={{ color: T.info }}>🔄 Saving…</span>
+                  ) : storageError ? (
+                    <span style={{ color: T.warning }}>⚠ {storageError}</span>
+                  ) : storageSavedAt ? (
+                    <span style={{ color: T.safe }}>
+                      ✓ Saved{" "}
+                      {storageSavedAt.toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  ) : data.length === 0 ? (
+                    <span style={{ color: T.text3 }}>
+                      Upload an Excel file to begin
+                    </span>
+                  ) : null}
+                </span>
               </p>
             </div>
-          ))}
-        </div>
+            <div className="sf-header-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleSaveToFile}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.text2,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                💾 <span>Excel</span>
+              </button>
+              <button
+                onClick={() => generatePDF(filtered, pdfTitle)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: T.gold,
+                  color: "#000",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: `0 0 16px ${T.goldGlow}`,
+                }}
+              >
+                ⬇ <span>PDF</span>
+              </button>
+            </div>
+          </div>
+        </header>
 
-        {/* ── TABS ── */}
         <div
-          style={{
-            display: "flex",
-            gap: 0,
-            borderBottom: `1px solid ${T.border}`,
-            marginBottom: 20,
-          }}
+          className="sf-container"
+          style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 24px 48px" }}
         >
-          {[
-            ["detail", "📋  Detail View"],
-            ["summary", "📊  Account Summary"],
-          ].map(([tab, label]) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: "10px 20px",
-                border: "none",
-                borderBottom:
-                  activeTab === tab
-                    ? `2px solid ${T.gold}`
-                    : "2px solid transparent",
-                background: "transparent",
-                color: activeTab === tab ? T.gold : T.text3,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                marginBottom: -1,
-                transition: "all 0.15s",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          {/* ── UPLOAD ZONE ── */}
+          <div
+            className="sf-upload"
+            onDrop={onDrop}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            } }
+            onDragLeave={() => setDragOver(false)}
+            onClick={() => fileRef.current.click()}
+            style={{
+              border: `2px dashed ${dragOver ? T.gold : T.border}`,
+              borderRadius: 12,
+              padding: "20px 24px",
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              cursor: "pointer",
+              background: dragOver ? `rgba(212,160,23,0.05)` : T.card,
+              transition: "all 0.2s",
+              marginBottom: 20,
+            }}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: "none" }}
+              onChange={(e) => handleFile(e.target.files[0])} />
+            <span style={{ fontSize: 26, lineHeight: 1 }}>
+              {uploading ? "⏳" : "📂"}
+            </span>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: T.text1, fontWeight: 600, fontSize: 14 }}>
+                {uploading ? "Processing…" : "Upload Excel File"}
+              </p>
+              <p style={{ color: T.text3, fontSize: 12, marginTop: 2 }}>
+                Click or drag & drop — data saves automatically to this browser
+              </p>
+            </div>
+            {data.length > 0 && (
+              <button
+                className="sf-upload-clear"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClearStorage();
+                } }
+                style={{
+                  fontSize: 11,
+                  color: T.critical,
+                  background: "transparent",
+                  border: `1px solid rgba(244,63,94,0.25)`,
+                  borderRadius: 6,
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                Clear data
+              </button>
+            )}
+          </div>
 
-        {/* ══ TAB 1: DETAIL VIEW ══ */}
-        {activeTab === "detail" && (
-          <>
-            {/* Filters */}
+          {parseErr && (
             <div
               style={{
-                display: "flex",
-                gap: 10,
+                background: "rgba(244,63,94,0.08)",
+                border: `1px solid rgba(244,63,94,0.25)`,
+                color: T.critical,
+                fontSize: 13,
+                borderRadius: 8,
+                padding: "10px 14px",
                 marginBottom: 16,
-                flexWrap: "wrap",
               }}
             >
-              <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-                <span
+              {parseErr}
+            </div>
+          )}
+
+          {/* ── KPI CARDS ── */}
+          <div
+            className="sf-kpi-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4,1fr)",
+              gap: 12,
+              marginBottom: 20,
+            }}
+          >
+            {kpiCards.map(({ lbl, val, sub, color, icon }) => (
+              <div
+                key={lbl}
+                style={{
+                  ...card,
+                  padding: "18px 20px",
+                  borderTop: `2px solid ${color}`,
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div
                   style={{
                     position: "absolute",
-                    left: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: T.text3,
-                    fontSize: 14,
+                    top: 12,
+                    right: 14,
+                    fontSize: 18,
+                    opacity: 0.08,
+                    fontWeight: 900,
+                    color,
                   }}
                 >
-                  🔍
-                </span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search account, ref no., salesman…"
-                  style={{ ...inputStyle, paddingLeft: 36 }}
-                />
+                  {icon}
+                </div>
+                <p
+                  style={{
+                    color: T.text3,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  {lbl}
+                </p>
+                <p
+                  style={{
+                    color,
+                    fontSize: 22,
+                    fontWeight: 800,
+                    marginTop: 6,
+                    fontVariantNumeric: "tabular-nums",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {val}
+                </p>
+                <p style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
+                  {sub}
+                </p>
               </div>
-              <select
-                value={filterDue}
-                onChange={(e) => setFilterDue(e.target.value)}
+            ))}
+          </div>
+
+          {/* ── TABS ── */}
+          <div
+            className="sf-tabs"
+            style={{
+              display: "flex",
+              gap: 0,
+              borderBottom: `1px solid ${T.border}`,
+              marginBottom: 20,
+            }}
+          >
+            {[
+              ["detail", "📋  Detail View"],
+              ["summary", "📊  Account Summary"],
+            ].map(([tab, label]) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 style={{
-                  ...inputStyle,
-                  width: "auto",
-                  minWidth: 150,
+                  padding: "10px 20px",
+                  border: "none",
+                  borderBottom: activeTab === tab
+                    ? `2px solid ${T.gold}`
+                    : "2px solid transparent",
+                  background: "transparent",
+                  color: activeTab === tab ? T.gold : T.text3,
+                  fontSize: 13,
+                  fontWeight: 700,
                   cursor: "pointer",
+                  marginBottom: -1,
+                  transition: "all 0.15s",
                 }}
               >
-                <option value="all">All Entries</option>
-                <option value="overdue">Overdue Only</option>
-                <option value="critical">Critical (90d+)</option>
-                <option value="notdue">Not Yet Due</option>
-              </select>
-            </div>
+                {label}
+              </button>
+            ))}
+          </div>
 
-            {/* Desktop Table */}
+          {/* ══ TAB 1: DETAIL VIEW ══ */}
+          {activeTab === "detail" && (
+            <>
+              {/* Filters */}
+              <div
+                className="sf-filters"
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginBottom: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: T.text3,
+                      fontSize: 14,
+                    }}
+                  >
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search account, ref no., salesman…"
+                    style={{ ...inputStyle, paddingLeft: 36 }} />
+                </div>
+                <select
+                  value={filterDue}
+                  onChange={(e) => setFilterDue(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    width: "auto",
+                    minWidth: 150,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="all">All Entries</option>
+                  <option value="overdue">Overdue Only</option>
+                  <option value="critical">Critical (90d+)</option>
+                  <option value="notdue">Not Yet Due</option>
+                </select>
+              </div>
+
+              {/* Mobile-friendly list: keeps every record visible without horizontal scrolling */}
+              <div className="mobile-list">
+                {filtered.map((r) => {
+                  const badge = getDueBadge(r["Due Days"]);
+                  return (
+                    <div className="mobile-card" key={`mobile-${r._id}`}>
+                      <div className="mobile-card-row">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="mobile-card-label">Account</div>
+                          <div className="mobile-card-account">{r["Account"] || "—"}</div>
+                        </div>
+                        <span style={{ ...badgePill, ...badge.style, flexShrink: 0 }}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="mobile-summary-grid" style={{ marginTop: 12 }}>
+                        <div>
+                          <div className="mobile-card-label">Date</div>
+                          <div className="mobile-card-value">{r["Dated"] || "—"}</div>
+                        </div>
+                        <div>
+                          <div className="mobile-card-label">Pending</div>
+                          <div className="mobile-card-value" style={{ color: T.gold }}>
+                            ₹{Number(r["Pending Amt."] || 0).toLocaleString("en-IN")}
+                          </div>
+                        </div>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <div className="mobile-card-label">Reference No.</div>
+                          <div className="mobile-card-value" style={{ fontFamily: "monospace", color: T.text2 }}>
+                            {r["Ref. No."] || "—"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mobile-actions">
+                        <button onClick={() => setPaymentRow(r)}>💰 Record Payment</button>
+                        <button
+                          onClick={() => confirmDeleteRow(r)}
+                          style={{ color: T.critical, borderColor: "rgba(244,63,94,.25)" }}
+                        >
+                          ✕ Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filtered.length > 0 && (
+                  <div className="mobile-summary-total">
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">Total · {filtered.length} records</span>
+                      <strong style={{ color: T.gold, fontSize: 16 }}>
+                        ₹{total.toLocaleString("en-IN")}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Table */}
+              <div
+                className="desktop-table"
+                style={{ ...card, overflow: "hidden" }}
+              >
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: 13,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: T.elevated }}>
+                        {[
+                          ["Account", "Account"],
+                          ["Dated", "Dated"],
+                          ["Ref. No.", "Ref. No."],
+                          ["Pending Amt.", "Pending Amt."],
+                          ["Due Days", "Due Days"],
+                        ].map(([label, col]) => (
+                          <th
+                            key={col}
+                            onClick={() => thSort(col)}
+                            style={{
+                              padding: "11px 16px",
+                              textAlign: col === "Pending Amt."
+                                ? "right"
+                                : col === "Due Days"
+                                  ? "center"
+                                  : "left",
+                              color: T.text3,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.08em",
+                              borderBottom: `1px solid ${T.border}`,
+                              cursor: "pointer",
+                              userSelect: "none",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {label}
+                            <span
+                              style={{
+                                marginLeft: 4,
+                                opacity: sortCol === col ? 1 : 0.3,
+                                color: sortCol === col ? T.gold : T.text3,
+                              }}
+                            >
+                              {sortCol === col
+                                ? sortDir === "asc"
+                                  ? "↑"
+                                  : "↓"
+                                : "↕"}
+                            </span>
+                          </th>
+                        ))}
+                        <th
+                          style={{
+                            padding: "11px 16px",
+                            color: T.text3,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            borderBottom: `1px solid ${T.border}`,
+                            textAlign: "center",
+                          }}
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((r, i) => {
+                        const badge = getDueBadge(r["Due Days"]);
+                        return (
+                          <tr
+                            key={r._id}
+                            style={{
+                              background: i % 2 === 0
+                                ? "transparent"
+                                : "rgba(255,255,255,0.012)",
+                              borderBottom: `1px solid ${T.border}`,
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = T.elevated)}
+                            onMouseLeave={(e) => (e.currentTarget.style.background =
+                              i % 2 === 0
+                                ? "transparent"
+                                : "rgba(255,255,255,0.012)")}
+                          >
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                color: T.text1,
+                                fontWeight: 500,
+                                maxWidth: 240,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={r["Account"]}
+                            >
+                              {r["Account"]}
+                            </td>
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                color: T.text2,
+                                whiteSpace: "nowrap",
+                                fontSize: 12,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              {r["Dated"]}
+                            </td>
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                color: T.text3,
+                                fontFamily: "monospace",
+                                fontSize: 11,
+                              }}
+                            >
+                              {r["Ref. No."]}
+                            </td>
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                textAlign: "right",
+                                color: T.text1,
+                                fontWeight: 700,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  color: T.text3,
+                                  marginRight: 1,
+                                  fontSize: 11,
+                                }}
+                              >
+                                ₹
+                              </span>
+                              {Number(r["Pending Amt."]).toLocaleString("en-IN")}
+                            </td>
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <span style={{ ...badgePill, ...badge.style }}>
+                                {badge.label}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                padding: "11px 16px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 4,
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <button
+                                  onClick={() => setPaymentRow(r)}
+                                  title="Record payment"
+                                  style={{ ...actionBtn }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background =
+                                    "rgba(16,185,129,0.12)")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background =
+                                    "transparent")}
+                                >
+                                  💰
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteRow(r)}
+                                  title="Delete entry"
+                                  style={{ ...actionBtn }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background =
+                                    "rgba(244,63,94,0.12)")}
+                                  onMouseLeave={(e) => (e.currentTarget.style.background =
+                                    "transparent")}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr
+                        style={{
+                          background: `rgba(212,160,23,0.05)`,
+                          borderTop: `1px solid ${T.gold}40`,
+                        }}
+                      >
+                        <td
+                          colSpan={3}
+                          style={{
+                            padding: "12px 16px",
+                            textAlign: "right",
+                            color: T.text2,
+                            fontWeight: 700,
+                            fontSize: 12,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                          }}
+                        >
+                          Total · {filtered.length} records
+                        </td>
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            textAlign: "right",
+                            color: T.gold,
+                            fontWeight: 800,
+                            fontSize: 16,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          <span
+                            style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
+                          >
+                            ₹
+                          </span>
+                          {total.toLocaleString("en-IN")}
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {filtered.length === 0 && data.length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "64px 0",
+                    color: T.text3,
+                  }}
+                >
+                  <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
+                  <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+                    No data loaded yet
+                  </p>
+                  <p style={{ fontSize: 13, marginTop: 6 }}>
+                    Upload an Excel file above to get started.
+                  </p>
+                </div>
+              )}
+              {filtered.length === 0 && data.length > 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "64px 0",
+                    color: T.text3,
+                  }}
+                >
+                  <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
+                  <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+                    No records match your filters
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ══ TAB 2: ACCOUNT SUMMARY ══ */}
+          {activeTab === "summary" && data.length === 0 && (
             <div
-              className="hidden sm:block"
-              style={{ ...card, overflow: "hidden" }}
+              style={{ textAlign: "center", padding: "64px 0", color: T.text3 }}
             >
-              <div style={{ overflowX: "auto" }}>
+              <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
+              <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
+                No data loaded yet
+              </p>
+              <p style={{ fontSize: 13, marginTop: 6 }}>
+                Upload an Excel file above to get started.
+              </p>
+            </div>
+          )}
+          {activeTab === "summary" && data.length > 0 && (
+            <div>
+              {/* Sort pills */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 16,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <span
+                  style={{
+                    color: T.text3,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Sort by
+                </span>
+                {[
+                  ["total", "Pending Amount"],
+                  ["entries", "No. of Bills"],
+                  ["maxDays", "Max Due Days"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSummarySort(key)}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: `1px solid ${T.border}`,
+                      background: summarySort === key ? T.gold : "transparent",
+                      color: summarySort === key ? "#000" : T.text2,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Mobile-friendly account cards */}
+              <div className="mobile-summary">
+                {accountSummary.map((row, i) => {
+                  const pct = ((row.total / grandTotal) * 100).toFixed(1);
+                  const barW = Math.round((row.total / maxBar) * 100);
+                  const isExpanded = expandedAccount === row.account;
+                  const subRows = data
+                    .filter((r) => r["Account"] === row.account)
+                    .sort((a, b) => (b["Due Days"] ?? 0) - (a["Due Days"] ?? 0));
+                  const badge = getDueBadge(row.maxDays);
+                  return (
+                    <div className="mobile-summary-card" key={`mobile-summary-${row.account}`}>
+                      <div
+                        className="mobile-summary-main"
+                        onClick={() => setExpandedAccount(isExpanded ? null : row.account)}
+                      >
+                        <div className="mobile-card-row">
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="mobile-card-label">#{i + 1} · Account</div>
+                            <div className="mobile-card-account">{row.account}</div>
+                          </div>
+                          <span style={{ ...badgePill, ...badge.style, flexShrink: 0 }}>
+                            {badge.label}
+                          </span>
+                        </div>
+                        <div className="mobile-summary-grid">
+                          <div>
+                            <div className="mobile-card-label">Bills</div>
+                            <div className="mobile-card-value">{row.entries}</div>
+                          </div>
+                          <div>
+                            <div className="mobile-card-label">Pending</div>
+                            <div className="mobile-card-value" style={{ color: T.gold }}>
+                              ₹{row.total.toLocaleString("en-IN")}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mobile-card-label">Overdue</div>
+                            <div className="mobile-card-value" style={{ color: row.overdueAmt ? T.critical : T.safe }}>
+                              {row.overdueAmt ? `₹${row.overdueAmt.toLocaleString("en-IN")}` : "—"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mobile-card-label">Share</div>
+                            <div className="mobile-card-value">{pct}%</div>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 10, height: 4, background: T.border, borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${barW}%`, height: "100%", background: T.gold, borderRadius: 999 }} />
+                        </div>
+                        <div style={{ marginTop: 9, color: T.text3, fontSize: 11 }}>
+                          {isExpanded ? "▲ Hide bills" : "▼ Show bills"} · Tap card to expand
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div className="mobile-summary-expanded">
+                          {subRows.map((r) => {
+                            const sb = getDueBadge(r["Due Days"]);
+                            return (
+                              <div className="mobile-sub-row" key={`mobile-sub-${r._id}`}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div className="mobile-card-value" style={{ fontFamily: "monospace" }}>
+                                    {r["Ref. No."] || "—"}
+                                  </div>
+                                  <div style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
+                                    {r["Dated"] || "—"} · {r["Type"] || "—"} · <span style={{ color: T.gold }}>₹{Number(r["Pending Amt."] || 0).toLocaleString("en-IN")}</span>
+                                  </div>
+                                  <div style={{ marginTop: 6 }}>
+                                    <span style={{ ...badgePill, ...sb.style }}>{sb.label}</span>
+                                  </div>
+                                </div>
+                                <div className="mobile-sub-actions">
+                                  <button onClick={() => setPaymentRow(r)} title="Record payment">💰</button>
+                                  <button onClick={() => confirmDeleteRow(r)} title="Delete entry" style={{ color: T.critical }}>✕</button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); confirmDeleteAccount(row.account); } }
+                            style={{
+                              width: "100%", marginTop: 10, padding: "9px 12px", borderRadius: 8,
+                              border: "1px solid rgba(244,63,94,.25)", background: "transparent",
+                              color: T.critical, fontWeight: 700, cursor: "pointer"
+                            }}
+                          >
+                            ✕ Delete all {row.entries} bills
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="mobile-summary-total">
+                  <div className="mobile-card-label">Grand Total · {accountSummary.length} accounts · {data.length} records</div>
+                  <div style={{ marginTop: 5, color: T.gold, fontSize: 18, fontWeight: 800 }}>
+                    ₹{grandTotal.toLocaleString("en-IN")}
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Summary Table */}
+              <div
+                className="desktop-table"
+                style={{ ...card, overflow: "hidden" }}
+              >
                 <table
                   style={{
                     width: "100%",
@@ -1315,201 +1874,388 @@ export default function App() {
                   <thead>
                     <tr style={{ background: T.elevated }}>
                       {[
-                        ["Account", "Account"],
-                        ["Dated", "Dated"],
-                        ["Ref. No.", "Ref. No."],
-                        ["Pending Amt.", "Pending Amt."],
-                        ["Due Days", "Due Days"],
-                      ].map(([label, col]) => (
+                        "#",
+                        "Account Name",
+                        "Bills",
+                        "Total Pending",
+                        "Overdue Amt.",
+                        "Max Days",
+                        "Share",
+                        "Action",
+                      ].map((h, i) => (
                         <th
-                          key={col}
-                          onClick={() => thSort(col)}
+                          key={h}
                           style={{
                             padding: "11px 16px",
-                            textAlign:
-                              col === "Pending Amt."
-                                ? "right"
-                                : col === "Due Days"
-                                  ? "center"
-                                  : "left",
                             color: T.text3,
                             fontSize: 10,
                             fontWeight: 700,
                             textTransform: "uppercase",
                             letterSpacing: "0.08em",
                             borderBottom: `1px solid ${T.border}`,
-                            cursor: "pointer",
-                            userSelect: "none",
-                            whiteSpace: "nowrap",
+                            textAlign: i >= 2 && i <= 4
+                              ? i === 2
+                                ? "center"
+                                : "right"
+                              : i === 6
+                                ? "left"
+                                : i === 7
+                                  ? "center"
+                                  : "left",
+                            minWidth: h === "Share" ? "130px" : "auto",
                           }}
                         >
-                          {label}
-                          <span
-                            style={{
-                              marginLeft: 4,
-                              opacity: sortCol === col ? 1 : 0.3,
-                              color: sortCol === col ? T.gold : T.text3,
-                            }}
-                          >
-                            {sortCol === col
-                              ? sortDir === "asc"
-                                ? "↑"
-                                : "↓"
-                              : "↕"}
-                          </span>
+                          {h}
                         </th>
                       ))}
-                      <th
-                        style={{
-                          padding: "11px 16px",
-                          color: T.text3,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          borderBottom: `1px solid ${T.border}`,
-                          textAlign: "center",
-                        }}
-                      >
-                        Actions
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((r, i) => {
-                      const badge = getDueBadge(r["Due Days"]);
+                    {accountSummary.map((row, i) => {
+                      const pct = ((row.total / grandTotal) * 100).toFixed(1);
+                      const barW = Math.round((row.total / maxBar) * 100);
+                      const isExpanded = expandedAccount === row.account;
+                      const subRows = data
+                        .filter((r) => r["Account"] === row.account)
+                        .sort((a, b) => b["Due Days"] - a["Due Days"]);
+                      const badge = getDueBadge(row.maxDays);
                       return (
-                        <tr
-                          key={r._id}
-                          style={{
-                            background:
-                              i % 2 === 0
-                                ? "transparent"
-                                : "rgba(255,255,255,0.012)",
-                            borderBottom: `1px solid ${T.border}`,
-                            transition: "background 0.15s",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background = T.elevated)
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background =
-                              i % 2 === 0
-                                ? "transparent"
-                                : "rgba(255,255,255,0.012)")
-                          }
-                        >
-                          <td
+                        <>
+                          <tr
+                            key={row.account}
+                            onClick={() => setExpandedAccount(isExpanded ? null : row.account)}
                             style={{
-                              padding: "11px 16px",
-                              color: T.text1,
-                              fontWeight: 500,
-                              maxWidth: 240,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                              borderBottom: `1px solid ${T.border}`,
+                              cursor: "pointer",
+                              background: isExpanded ? T.elevated : "transparent",
+                              transition: "background 0.15s",
                             }}
-                            title={r["Account"]}
+                            onMouseEnter={(e) => {
+                              if (!isExpanded)
+                                e.currentTarget.style.background =
+                                  "rgba(255,255,255,0.02)";
+                            } }
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = isExpanded
+                                ? T.elevated
+                                : "transparent";
+                            } }
                           >
-                            {r["Account"]}
-                          </td>
-                          <td
-                            style={{
-                              padding: "11px 16px",
-                              color: T.text2,
-                              whiteSpace: "nowrap",
-                              fontSize: 12,
-                              fontVariantNumeric: "tabular-nums",
-                            }}
-                          >
-                            {r["Dated"]}
-                          </td>
-                          <td
-                            style={{
-                              padding: "11px 16px",
-                              color: T.text3,
-                              fontFamily: "monospace",
-                              fontSize: 11,
-                            }}
-                          >
-                            {r["Ref. No."]}
-                          </td>
-                          <td
-                            style={{
-                              padding: "11px 16px",
-                              textAlign: "right",
-                              color: T.text1,
-                              fontWeight: 700,
-                              fontVariantNumeric: "tabular-nums",
-                            }}
-                          >
-                            <span
+                            <td
                               style={{
+                                padding: "12px 16px",
                                 color: T.text3,
-                                marginRight: 1,
+                                fontFamily: "monospace",
                                 fontSize: 11,
                               }}
                             >
-                              ₹
-                            </span>
-                            {Number(r["Pending Amt."]).toLocaleString("en-IN")}
-                          </td>
-                          <td
-                            style={{
-                              padding: "11px 16px",
-                              textAlign: "center",
-                            }}
-                          >
-                            <span style={{ ...badgePill, ...badge.style }}>
-                              {badge.label}
-                            </span>
-                          </td>
-                          <td
-                            style={{
-                              padding: "11px 16px",
-                              textAlign: "center",
-                            }}
-                          >
-                            <div
+                              {i + 1}
+                            </td>
+                            <td
                               style={{
-                                display: "flex",
-                                gap: 4,
-                                justifyContent: "center",
+                                padding: "12px 16px",
+                                color: T.text1,
+                                fontWeight: 600,
                               }}
                             >
-                              <button
-                                onClick={() => setPaymentRow(r)}
-                                title="Record payment"
-                                style={{ ...actionBtn }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "rgba(16,185,129,0.12)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "transparent")
-                                }
+                              <span
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                }}
                               >
-                                💰
-                              </button>
-                              <button
-                                onClick={() => confirmDeleteRow(r)}
-                                title="Delete entry"
-                                style={{ ...actionBtn }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "rgba(244,63,94,0.12)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "transparent")
-                                }
+                                <span
+                                  style={{
+                                    color: T.text3,
+                                    fontSize: 10,
+                                    display: "inline-block",
+                                    transition: "transform 0.2s",
+                                    transform: isExpanded
+                                      ? "rotate(90deg)"
+                                      : "rotate(0)",
+                                  }}
+                                >
+                                  ▶
+                                </span>
+                                <span
+                                  style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    maxWidth: 200,
+                                  }}
+                                  title={row.account}
+                                >
+                                  {row.account}
+                                </span>
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 16px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  background: "rgba(255,255,255,0.06)",
+                                  color: T.text2,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                }}
                               >
-                                ✕
+                                {row.entries}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 16px",
+                                textAlign: "right",
+                                color: T.text1,
+                                fontWeight: 700,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  color: T.text3,
+                                  fontSize: 11,
+                                  marginRight: 1,
+                                }}
+                              >
+                                ₹
+                              </span>
+                              {row.total.toLocaleString("en-IN")}
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 16px",
+                                textAlign: "right",
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              {row.overdueAmt > 0 ? (
+                                <span
+                                  style={{ color: T.critical, fontWeight: 600 }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      opacity: 0.7,
+                                      marginRight: 1,
+                                    }}
+                                  >
+                                    ₹
+                                  </span>
+                                  {row.overdueAmt.toLocaleString("en-IN")}
+                                </span>
+                              ) : (
+                                <span style={{ color: T.safe, fontSize: 12 }}>
+                                  —
+                                </span>
+                              )}
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 16px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <span style={{ ...badgePill, ...badge.style }}>
+                                {badge.label}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    background: T.border,
+                                    borderRadius: 999,
+                                    height: 4,
+                                    minWidth: 80,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: `${barW}%`,
+                                      height: 4,
+                                      borderRadius: 999,
+                                      background: `linear-gradient(90deg,${T.gold}99,${T.gold})`,
+                                      transition: "width 0.3s",
+                                    }} />
+                                </div>
+                                <span
+                                  style={{
+                                    color: T.text3,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    width: 38,
+                                    textAlign: "right",
+                                    flexShrink: 0,
+                                    fontVariantNumeric: "tabular-nums",
+                                  }}
+                                >
+                                  {pct}%
+                                </span>
+                              </div>
+                            </td>
+                            <td
+                              style={{
+                                padding: "12px 16px",
+                                textAlign: "center",
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => confirmDeleteAccount(row.account)}
+                                style={{
+                                  padding: "4px 10px",
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: T.critical,
+                                  border: `1px solid rgba(244,63,94,0.25)`,
+                                  background: "transparent",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✕ All
                               </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                          {isExpanded &&
+                            subRows.map((r, j) => {
+                              const sb = getDueBadge(r["Due Days"]);
+                              return (
+                                <tr
+                                  key={`${row.account}-${j}`}
+                                  style={{
+                                    background: `rgba(212,160,23,0.03)`,
+                                    borderBottom: `1px solid ${T.border}`,
+                                  }}
+                                >
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      color: T.text3,
+                                    }}
+                                  >
+                                    └
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      color: T.text3,
+                                      fontFamily: "monospace",
+                                      fontSize: 11,
+                                      paddingLeft: 32,
+                                    }}
+                                  >
+                                    {r["Ref. No."]}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      textAlign: "center",
+                                      color: T.text3,
+                                      fontSize: 11,
+                                    }}
+                                  >
+                                    {r["Dated"]}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      textAlign: "right",
+                                      color: T.text2,
+                                      fontWeight: 600,
+                                      fontSize: 12,
+                                      fontVariantNumeric: "tabular-nums",
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        opacity: 0.7,
+                                        marginRight: 1,
+                                      }}
+                                    >
+                                      ₹
+                                    </span>
+                                    {Number(r["Pending Amt."]).toLocaleString(
+                                      "en-IN"
+                                    )}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      textAlign: "right",
+                                      color: T.text3,
+                                      fontSize: 11,
+                                    }}
+                                  >
+                                    {r["Type"]}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    <span style={{ ...badgePill, ...sb.style }}>
+                                      {sb.label}
+                                    </span>
+                                  </td>
+                                  <td />
+                                  <td
+                                    style={{
+                                      padding: "8px 16px",
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        gap: 4,
+                                        justifyContent: "center",
+                                      }}
+                                    >
+                                      <button
+                                        onClick={() => setPaymentRow(r)}
+                                        style={{ ...actionBtn }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background =
+                                          "rgba(16,185,129,0.12)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background =
+                                          "transparent")}
+                                      >
+                                        💰
+                                      </button>
+                                      <button
+                                        onClick={() => confirmDeleteRow(r)}
+                                        style={{ ...actionBtn }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background =
+                                          "rgba(244,63,94,0.12)")}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background =
+                                          "transparent")}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </>
                       );
                     })}
                     <tr
@@ -1519,10 +2265,9 @@ export default function App() {
                       }}
                     >
                       <td
-                        colSpan={3}
+                        colSpan={2}
                         style={{
-                          padding: "12px 16px",
-                          textAlign: "right",
+                          padding: "13px 16px",
                           color: T.text2,
                           fontWeight: 700,
                           fontSize: 12,
@@ -1530,11 +2275,22 @@ export default function App() {
                           letterSpacing: "0.06em",
                         }}
                       >
-                        Total · {filtered.length} records
+                        Grand Total · {accountSummary.length} accounts
                       </td>
                       <td
                         style={{
-                          padding: "12px 16px",
+                          padding: "13px 16px",
+                          textAlign: "center",
+                          color: T.text2,
+                          fontWeight: 700,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {data.length}
+                      </td>
+                      <td
+                        style={{
+                          padding: "13px 16px",
                           textAlign: "right",
                           color: T.gold,
                           fontWeight: 800,
@@ -1547,596 +2303,35 @@ export default function App() {
                         >
                           ₹
                         </span>
-                        {total.toLocaleString("en-IN")}
+                        {grandTotal.toLocaleString("en-IN")}
                       </td>
-                      <td colSpan={2} />
+                      <td
+                        style={{
+                          padding: "13px 16px",
+                          textAlign: "right",
+                          color: T.critical,
+                          fontWeight: 700,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        <span
+                          style={{ fontSize: 11, opacity: 0.7, marginRight: 1 }}
+                        >
+                          ₹
+                        </span>
+                        {data
+                          .filter((r) => r["Due Days"] > 0)
+                          .reduce((s, r) => s + (r["Pending Amt."] || 0), 0)
+                          .toLocaleString("en-IN")}
+                      </td>
+                      <td colSpan={3} />
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
-
-            {filtered.length === 0 && data.length === 0 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "64px 0",
-                  color: T.text3,
-                }}
-              >
-                <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
-                <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
-                  No data loaded yet
-                </p>
-                <p style={{ fontSize: 13, marginTop: 6 }}>
-                  Upload an Excel file above to get started.
-                </p>
-              </div>
-            )}
-            {filtered.length === 0 && data.length > 0 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "64px 0",
-                  color: T.text3,
-                }}
-              >
-                <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
-                <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
-                  No records match your filters
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ══ TAB 2: ACCOUNT SUMMARY ══ */}
-        {activeTab === "summary" && data.length === 0 && (
-          <div
-            style={{ textAlign: "center", padding: "64px 0", color: T.text3 }}
-          >
-            <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
-            <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
-              No data loaded yet
-            </p>
-            <p style={{ fontSize: 13, marginTop: 6 }}>
-              Upload an Excel file above to get started.
-            </p>
-          </div>
-        )}
-        {activeTab === "summary" && data.length > 0 && (
-          <div>
-            {/* Sort pills */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 16,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <span
-                style={{
-                  color: T.text3,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                Sort by
-              </span>
-              {[
-                ["total", "Pending Amount"],
-                ["entries", "No. of Bills"],
-                ["maxDays", "Max Due Days"],
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setSummarySort(key)}
-                  style={{
-                    padding: "5px 14px",
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    border: `1px solid ${T.border}`,
-                    background: summarySort === key ? T.gold : "transparent",
-                    color: summarySort === key ? "#000" : T.text2,
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Desktop Summary Table */}
-            <div
-              className="hidden sm:block"
-              style={{ ...card, overflow: "hidden" }}
-            >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontSize: 13,
-                }}
-              >
-                <thead>
-                  <tr style={{ background: T.elevated }}>
-                    {[
-                      "#",
-                      "Account Name",
-                      "Bills",
-                      "Total Pending",
-                      "Overdue Amt.",
-                      "Max Days",
-                      "Share",
-                      "Action",
-                    ].map((h, i) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: "11px 16px",
-                          color: T.text3,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          borderBottom: `1px solid ${T.border}`,
-                          textAlign:
-                            i >= 2 && i <= 4
-                              ? i === 2
-                                ? "center"
-                                : "right"
-                              : i === 6
-                                ? "left"
-                                : i === 7
-                                  ? "center"
-                                  : "left",
-                          minWidth: h === "Share" ? "130px" : "auto",
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {accountSummary.map((row, i) => {
-                    const pct = ((row.total / grandTotal) * 100).toFixed(1);
-                    const barW = Math.round((row.total / maxBar) * 100);
-                    const isExpanded = expandedAccount === row.account;
-                    const subRows = data
-                      .filter((r) => r["Account"] === row.account)
-                      .sort((a, b) => b["Due Days"] - a["Due Days"]);
-                    const badge = getDueBadge(row.maxDays);
-                    return (
-                      <>
-                        <tr
-                          key={row.account}
-                          onClick={() =>
-                            setExpandedAccount(isExpanded ? null : row.account)
-                          }
-                          style={{
-                            borderBottom: `1px solid ${T.border}`,
-                            cursor: "pointer",
-                            background: isExpanded ? T.elevated : "transparent",
-                            transition: "background 0.15s",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isExpanded)
-                              e.currentTarget.style.background =
-                                "rgba(255,255,255,0.02)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = isExpanded
-                              ? T.elevated
-                              : "transparent";
-                          }}
-                        >
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              color: T.text3,
-                              fontFamily: "monospace",
-                              fontSize: 11,
-                            }}
-                          >
-                            {i + 1}
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              color: T.text1,
-                              fontWeight: 600,
-                            }}
-                          >
-                            <span
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  color: T.text3,
-                                  fontSize: 10,
-                                  display: "inline-block",
-                                  transition: "transform 0.2s",
-                                  transform: isExpanded
-                                    ? "rotate(90deg)"
-                                    : "rotate(0)",
-                                }}
-                              >
-                                ▶
-                              </span>
-                              <span
-                                style={{
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  maxWidth: 200,
-                                }}
-                                title={row.account}
-                              >
-                                {row.account}
-                              </span>
-                            </span>
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              textAlign: "center",
-                            }}
-                          >
-                            <span
-                              style={{
-                                background: "rgba(255,255,255,0.06)",
-                                color: T.text2,
-                                padding: "2px 8px",
-                                borderRadius: 999,
-                                fontSize: 11,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {row.entries}
-                            </span>
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              textAlign: "right",
-                              color: T.text1,
-                              fontWeight: 700,
-                              fontVariantNumeric: "tabular-nums",
-                            }}
-                          >
-                            <span
-                              style={{
-                                color: T.text3,
-                                fontSize: 11,
-                                marginRight: 1,
-                              }}
-                            >
-                              ₹
-                            </span>
-                            {row.total.toLocaleString("en-IN")}
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              textAlign: "right",
-                              fontVariantNumeric: "tabular-nums",
-                            }}
-                          >
-                            {row.overdueAmt > 0 ? (
-                              <span
-                                style={{ color: T.critical, fontWeight: 600 }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    opacity: 0.7,
-                                    marginRight: 1,
-                                  }}
-                                >
-                                  ₹
-                                </span>
-                                {row.overdueAmt.toLocaleString("en-IN")}
-                              </span>
-                            ) : (
-                              <span style={{ color: T.safe, fontSize: 12 }}>
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              textAlign: "center",
-                            }}
-                          >
-                            <span style={{ ...badgePill, ...badge.style }}>
-                              {badge.label}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px 16px" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  flex: 1,
-                                  background: T.border,
-                                  borderRadius: 999,
-                                  height: 4,
-                                  minWidth: 80,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: `${barW}%`,
-                                    height: 4,
-                                    borderRadius: 999,
-                                    background: `linear-gradient(90deg,${T.gold}99,${T.gold})`,
-                                    transition: "width 0.3s",
-                                  }}
-                                />
-                              </div>
-                              <span
-                                style={{
-                                  color: T.text3,
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  width: 38,
-                                  textAlign: "right",
-                                  flexShrink: 0,
-                                  fontVariantNumeric: "tabular-nums",
-                                }}
-                              >
-                                {pct}%
-                              </span>
-                            </div>
-                          </td>
-                          <td
-                            style={{
-                              padding: "12px 16px",
-                              textAlign: "center",
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => confirmDeleteAccount(row.account)}
-                              style={{
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: T.critical,
-                                border: `1px solid rgba(244,63,94,0.25)`,
-                                background: "transparent",
-                                cursor: "pointer",
-                              }}
-                            >
-                              ✕ All
-                            </button>
-                          </td>
-                        </tr>
-                        {isExpanded &&
-                          subRows.map((r, j) => {
-                            const sb = getDueBadge(r["Due Days"]);
-                            return (
-                              <tr
-                                key={`${row.account}-${j}`}
-                                style={{
-                                  background: `rgba(212,160,23,0.03)`,
-                                  borderBottom: `1px solid ${T.border}`,
-                                }}
-                              >
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    color: T.text3,
-                                  }}
-                                >
-                                  └
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    color: T.text3,
-                                    fontFamily: "monospace",
-                                    fontSize: 11,
-                                    paddingLeft: 32,
-                                  }}
-                                >
-                                  {r["Ref. No."]}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    textAlign: "center",
-                                    color: T.text3,
-                                    fontSize: 11,
-                                  }}
-                                >
-                                  {r["Dated"]}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    textAlign: "right",
-                                    color: T.text2,
-                                    fontWeight: 600,
-                                    fontSize: 12,
-                                    fontVariantNumeric: "tabular-nums",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: 10,
-                                      opacity: 0.7,
-                                      marginRight: 1,
-                                    }}
-                                  >
-                                    ₹
-                                  </span>
-                                  {Number(r["Pending Amt."]).toLocaleString(
-                                    "en-IN",
-                                  )}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    textAlign: "right",
-                                    color: T.text3,
-                                    fontSize: 11,
-                                  }}
-                                >
-                                  {r["Type"]}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  <span style={{ ...badgePill, ...sb.style }}>
-                                    {sb.label}
-                                  </span>
-                                </td>
-                                <td />
-                                <td
-                                  style={{
-                                    padding: "8px 16px",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: 4,
-                                      justifyContent: "center",
-                                    }}
-                                  >
-                                    <button
-                                      onClick={() => setPaymentRow(r)}
-                                      style={{ ...actionBtn }}
-                                      onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background =
-                                          "rgba(16,185,129,0.12)")
-                                      }
-                                      onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background =
-                                          "transparent")
-                                      }
-                                    >
-                                      💰
-                                    </button>
-                                    <button
-                                      onClick={() => confirmDeleteRow(r)}
-                                      style={{ ...actionBtn }}
-                                      onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background =
-                                          "rgba(244,63,94,0.12)")
-                                      }
-                                      onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background =
-                                          "transparent")
-                                      }
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </>
-                    );
-                  })}
-                  <tr
-                    style={{
-                      background: `rgba(212,160,23,0.05)`,
-                      borderTop: `1px solid ${T.gold}40`,
-                    }}
-                  >
-                    <td
-                      colSpan={2}
-                      style={{
-                        padding: "13px 16px",
-                        color: T.text2,
-                        fontWeight: 700,
-                        fontSize: 12,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      Grand Total · {accountSummary.length} accounts
-                    </td>
-                    <td
-                      style={{
-                        padding: "13px 16px",
-                        textAlign: "center",
-                        color: T.text2,
-                        fontWeight: 700,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {data.length}
-                    </td>
-                    <td
-                      style={{
-                        padding: "13px 16px",
-                        textAlign: "right",
-                        color: T.gold,
-                        fontWeight: 800,
-                        fontSize: 16,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
-                      >
-                        ₹
-                      </span>
-                      {grandTotal.toLocaleString("en-IN")}
-                    </td>
-                    <td
-                      style={{
-                        padding: "13px 16px",
-                        textAlign: "right",
-                        color: T.critical,
-                        fontWeight: 700,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      <span
-                        style={{ fontSize: 11, opacity: 0.7, marginRight: 1 }}
-                      >
-                        ₹
-                      </span>
-                      {data
-                        .filter((r) => r["Due Days"] > 0)
-                        .reduce((s, r) => s + (r["Pending Amt."] || 0), 0)
-                        .toLocaleString("en-IN")}
-                    </td>
-                    <td colSpan={3} />
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )}
+        </div>
+      </div></>
   );
 }
