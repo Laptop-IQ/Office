@@ -5,7 +5,8 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const api = axios.create({ baseURL: API_BASE });
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -651,23 +652,151 @@ const CustomerPaymentModal = ({ accounts, onConfirm, onCancel, busy }) => {
   const [amount, setAmount] = useState("");
   const value = Number(amount);
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(2,6,15,.78)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", padding: 16 }}>
-      <div style={{ ...card, width: "min(460px,100%)", padding: 24, boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div><div style={{ color: T.gold, fontSize: 11, fontWeight: 800, letterSpacing: 1 }}>PAYMENT COLLECTION</div><h2 style={{ color: T.text1, fontSize: 20, margin: "6px 0 0" }}>Payment Received</h2></div>
-          <button onClick={onCancel} style={{ border: `1px solid ${T.border}`, borderRadius: 8, background: "transparent", color: T.text2, padding: "7px 10px", cursor: "pointer" }}>✕</button>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 120,
+        background: "rgba(2,6,15,.78)",
+        backdropFilter: "blur(8px)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          ...card,
+          width: "min(460px,100%)",
+          padding: 24,
+          boxShadow: "0 24px 80px rgba(0,0,0,.5)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: T.gold,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: 1,
+              }}
+            >
+              PAYMENT COLLECTION
+            </div>
+            <h2 style={{ color: T.text1, fontSize: 20, margin: "6px 0 0" }}>
+              Payment Received
+            </h2>
+          </div>
+          <button
+            onClick={onCancel}
+            style={{
+              border: `1px solid ${T.border}`,
+              borderRadius: 8,
+              background: "transparent",
+              color: T.text2,
+              padding: "7px 10px",
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
         </div>
-        <p style={{ color: T.text2, fontSize: 12, margin: "10px 0 18px" }}>Payment oldest pending bill se FIFO order mein adjust hogi.</p>
-        <label style={{ display: "block", color: T.text2, fontSize: 11, fontWeight: 700, marginBottom: 7 }}>CUSTOMER / ACCOUNT</label>
-        <select value={account} onChange={(e) => setAccount(e.target.value)} style={{ ...inputStyle, marginBottom: 16 }}>
-          {accounts.map((name) => <option key={name} value={name}>{name}</option>)}
+        <p style={{ color: T.text2, fontSize: 12, margin: "10px 0 18px" }}>
+          Payment oldest pending bill se FIFO order mein adjust hogi.
+        </p>
+        <label
+          style={{
+            display: "block",
+            color: T.text2,
+            fontSize: 11,
+            fontWeight: 700,
+            marginBottom: 7,
+          }}
+        >
+          CUSTOMER / ACCOUNT
+        </label>
+        <select
+          value={account}
+          onChange={(e) => setAccount(e.target.value)}
+          style={{ ...inputStyle, marginBottom: 16 }}
+        >
+          {accounts.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
         </select>
-        <label style={{ display: "block", color: T.text2, fontSize: 11, fontWeight: 700, marginBottom: 7 }}>AMOUNT RECEIVED (₹)</label>
-        <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter amount received" style={{ ...inputStyle, fontSize: 18, padding: 13 }} autoFocus />
-        {value > 0 && <p style={{ color: T.safe, fontSize: 12, marginTop: 10 }}>Amount received: <b>{fmt(value)}</b></p>}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-          <button onClick={onCancel} style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text2, cursor: "pointer" }}>Cancel</button>
-          <button disabled={!account || !(value > 0) || busy} onClick={() => onConfirm(account, value)} style={{ padding: "10px 16px", borderRadius: 8, border: 0, background: T.gold, color: "#111827", fontWeight: 800, cursor: "pointer", opacity: busy ? .6 : 1 }}>{busy ? "Saving…" : "Confirm & Allocate"}</button>
+        <label
+          style={{
+            display: "block",
+            color: T.text2,
+            fontSize: 11,
+            fontWeight: 700,
+            marginBottom: 7,
+          }}
+        >
+          AMOUNT RECEIVED (₹)
+        </label>
+        <input
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="Enter amount received"
+          style={{ ...inputStyle, fontSize: 18, padding: 13 }}
+          autoFocus
+        />
+        {value > 0 && (
+          <p style={{ color: T.safe, fontSize: 12, marginTop: 10 }}>
+            Amount received: <b>{fmt(value)}</b>
+          </p>
+        )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 22,
+          }}
+        >
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: `1px solid ${T.border}`,
+              background: "transparent",
+              color: T.text2,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            disabled={!account || !(value > 0) || busy}
+            onClick={() => onConfirm(account, value)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              border: 0,
+              background: T.gold,
+              color: "#111827",
+              fontWeight: 800,
+              cursor: "pointer",
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? "Saving…" : "Confirm & Allocate"}
+          </button>
         </div>
       </div>
     </div>
@@ -675,28 +804,382 @@ const CustomerPaymentModal = ({ accounts, onConfirm, onCancel, busy }) => {
 };
 
 const PaymentHistoryModal = ({ payments, onClose }) => {
-  const totalReceived = payments.reduce((s, p) => s + (Number(p.amountReceived) || 0), 0);
-  const totalAllocated = payments.reduce((s, p) => s + (Number(p.allocatedAmount) || 0), 0);
+  const totalReceived = payments.reduce(
+    (s, p) => s + (Number(p.amountReceived) || 0),
+    0,
+  );
+  const totalAllocated = payments.reduce(
+    (s, p) => s + (Number(p.allocatedAmount) || 0),
+    0,
+  );
   const downloadPDF = () => {
-    const esc = (v) => String(v ?? "").replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;" }[c]));
-    const rows = payments.map((p) => `<tr><td>${esc(new Date(p.createdAt).toLocaleString("en-IN"))}</td><td>${esc(p.account)}</td><td class="num">₹${Number(p.amountReceived || 0).toLocaleString("en-IN")}</td><td class="num">₹${Number(p.allocatedAmount || 0).toLocaleString("en-IN")}</td><td class="num">₹${Number(p.unallocatedAmount || 0).toLocaleString("en-IN")}</td><td>${(p.allocations || []).map((a) => `${esc(a.refNo)}: ₹${Number(a.amount || 0).toLocaleString("en-IN")}`).join("<br>") || "—"}</td></tr>`).join("");
-    const w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to export PDF."); return; }
-    w.document.write(`<!doctype html><html><head><title>SF Overdues Payment History</title><style>body{font:12px Arial;color:#182235;padding:24px}header{background:#172b4d;color:white;padding:20px;border-radius:10px;margin-bottom:18px}h1{margin:0;font-size:22px}.sub{color:#d8e2f2;margin-top:6px}.stats{display:flex;gap:12px;margin:16px 0}.stat{border:1px solid #d7dfeb;border-left:4px solid #c89b24;padding:12px;flex:1;border-radius:8px}.label{font-size:10px;color:#64748b;text-transform:uppercase}.value{font-size:18px;font-weight:bold;margin-top:6px}table{width:100%;border-collapse:collapse}th{background:#172b4d;color:white;text-align:left}td,th{padding:9px;border:1px solid #d8dfeb;vertical-align:top}.num{text-align:right;white-space:nowrap}tr:nth-child(even){background:#f5f7fb}.foot{margin-top:18px;color:#64748b;font-size:10px}@media print{body{padding:8px}tr{break-inside:avoid}}</style></head><body><header><h1>SF Overdues · Payment History</h1><div class="sub">Cloud-synced records · Generated ${new Date().toLocaleString("en-IN")}</div></header><div class="stats"><div class="stat"><div class="label">Payments</div><div class="value">${payments.length}</div></div><div class="stat"><div class="label">Total Received</div><div class="value">₹${totalReceived.toLocaleString("en-IN")}</div></div><div class="stat"><div class="label">Allocated to Bills</div><div class="value">₹${totalAllocated.toLocaleString("en-IN")}</div></div><div class="stat"><div class="label">Unallocated</div><div class="value">₹${payments.reduce((s,p)=>s+(Number(p.unallocatedAmount)||0),0).toLocaleString("en-IN")}</div></div></div><table><thead><tr><th>Date / Time</th><th>Customer</th><th>Received</th><th>Allocated</th><th>Unallocated</th><th>Bill-wise FIFO allocation</th></tr></thead><tbody>${rows}</tbody></table><div class="foot">Confidential · SF Overdues · Exported from synced payment history</div><script>window.onload=()=>window.print()</script></body></html>`);
+    const esc = (value) =>
+      String(value ?? "").replace(
+        /[&<>"']/g,
+        (char) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[char],
+      );
+    const money = (value) =>
+      `₹${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+    const totalUnallocated = payments.reduce(
+      (sum, payment) => sum + (Number(payment.unallocatedAmount) || 0),
+      0,
+    );
+    const allocationRate =
+      totalReceived > 0
+        ? Math.min(100, Math.round((totalAllocated / totalReceived) * 100))
+        : 0;
+    const paymentCards = [...payments]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .map((payment, index) => {
+        const received = Number(payment.amountReceived) || 0;
+        const allocated = Number(payment.allocatedAmount) || 0;
+        const unallocated = Number(payment.unallocatedAmount) || 0;
+        const allocations = (payment.allocations || [])
+          .map(
+            (allocation) => `
+          <tr>
+            <td><span class="bill-ref">${esc(allocation.refNo || "—")}</span></td>
+            <td class="num">${money(allocation.amount)}</td>
+            <td>${
+              allocation.pendingAfter === 0
+                ? '<span class="status paid">Fully paid</span>'
+                : '<span class="status partial">Balance pending</span>'
+            }</td>
+          </tr>`,
+          )
+          .join("");
+        return `
+          <section class="payment-card">
+            <div class="payment-top">
+              <div class="payment-ident">
+                <span class="payment-index">${String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <div class="customer">${esc(payment.account || "Unknown customer")}</div>
+                  <div class="date">${esc(
+                    payment.createdAt
+                      ? new Date(payment.createdAt).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Date not available",
+                  )}</div>
+                </div>
+              </div>
+              <div class="received-block"><span>PAYMENT RECEIVED</span><strong>${money(received)}</strong></div>
+            </div>
+            <div class="payment-metrics">
+              <div class="metric allocated"><span>Allocated to bills</span><strong>${money(allocated)}</strong></div>
+              <div class="metric unallocated"><span>Unallocated amount</span><strong>${money(unallocated)}</strong></div>
+            </div>
+            <div class="allocation-heading">
+              <div><strong>Bill-wise allocation</strong><span>Oldest pending bills are adjusted first (FIFO)</span></div>
+              <span class="allocation-count">${(payment.allocations || []).length} bill(s)</span>
+            </div>
+            ${
+              (payment.allocations || []).length
+                ? `<table class="allocation-table"><thead><tr><th>Bill / Reference No.</th><th class="num">Amount applied</th><th>Status after payment</th></tr></thead><tbody>${allocations}</tbody></table>`
+                : '<div class="no-allocation">No bill allocation recorded for this payment.</div>'
+            }
+            ${unallocated > 0 ? `<div class="notice"><strong>${money(unallocated)} not allocated</strong><span>This amount is recorded as unallocated; it is not shown as an advance balance.</span></div>` : ""}
+          </section>`;
+      })
+      .join("");
+
+    const w = window.open("", "_blank");
+    if (!w) {
+      alert("Please allow pop-ups to export PDF.");
+      return;
+    }
+    w.document.write(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SF Overdues · Payment History</title>
+<style>
+  :root{color-scheme:light;--navy:#14233f;--navy2:#21395f;--gold:#b88a17;--ink:#182338;--muted:#66758b;--line:#dce4ef;--paper:#fff;--soft:#f4f7fb;--green:#13795b;--green-bg:#e7f6ef;--amber:#95620b;--amber-bg:#fff5dc}
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef2f7;color:var(--ink);font:13px/1.45 Inter,Segoe UI,Arial,sans-serif;padding:28px}
+  .report{max-width:1100px;margin:0 auto;background:var(--paper);padding:30px;border:1px solid #e4eaf2;border-radius:18px;box-shadow:0 12px 40px rgba(20,35,63,.08)}
+  .brandbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:12px}.brand-mark{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--navy);color:#f4ce68;font-size:15px;font-weight:900;letter-spacing:-1px}
+  .eyebrow{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
+  h1{font-size:25px;line-height:1.2;margin:4px 0;color:var(--navy);letter-spacing:-.6px}
+  .subtitle{color:var(--muted);font-size:11px;margin-top:5px}.generated{text-align:right;color:var(--muted);font-size:10px;line-height:1.6}
+  .overview{margin:22px 0 14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .summary{border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:#fff;min-width:0}
+  .summary.received{border-top:3px solid var(--gold)}.summary.allocated{border-top:3px solid #15966b}.summary.unallocated{border-top:3px solid #d99a18}
+  .summary-label{font-size:10px;font-weight:800;letter-spacing:.65px;color:var(--muted);text-transform:uppercase}
+  .summary-value{font-size:22px;font-weight:850;letter-spacing:-.5px;margin-top:7px;color:var(--navy);overflow-wrap:anywhere}
+  .summary-note{font-size:10px;color:var(--muted);margin-top:4px}
+  .allocation-overview{padding:13px 15px;border-radius:10px;background:var(--soft);margin-bottom:22px;display:flex;align-items:center;gap:14px}
+  .progress-copy{min-width:0;flex:1}.progress-title{font-size:11px;font-weight:800;color:var(--navy)}.progress-sub{font-size:10px;color:var(--muted);margin-top:2px}
+  .progress-track{height:7px;border-radius:99px;background:#dfe7f1;overflow:hidden;margin-top:8px}.progress-fill{height:100%;background:#15966b;border-radius:99px;width:${allocationRate}%}
+  .progress-percent{font-size:17px;font-weight:850;color:var(--green);white-space:nowrap}
+  .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:24px 0 12px;color:var(--navy);font-size:14px;font-weight:850}
+  .section-title span{font-size:10px;font-weight:600;color:var(--muted)}
+  .payment-card{border:1px solid var(--line);border-radius:13px;margin:0 0 14px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+  .payment-top{padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(110deg,#f7f9fc,#fff);border-bottom:1px solid var(--line)}
+  .payment-ident{display:flex;align-items:center;gap:11px;min-width:0}.payment-index{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;background:var(--navy);color:#fff;border-radius:10px;font-size:11px;font-weight:800}
+  .customer{font-size:14px;font-weight:850;color:var(--navy);overflow-wrap:anywhere}.date{font-size:10px;color:var(--muted);margin-top:3px}
+  .received-block{text-align:right;flex:0 0 auto}.received-block span{display:block;font-size:9px;letter-spacing:.7px;color:var(--muted);font-weight:800}.received-block strong{display:block;color:var(--navy);font-size:18px;margin-top:2px}
+  .payment-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px}
+  .metric{padding:10px 12px;border-radius:9px;background:var(--soft);min-width:0}.metric span{display:block;font-size:10px;color:var(--muted);font-weight:700}.metric strong{display:block;font-size:14px;margin-top:4px;overflow-wrap:anywhere}
+  .metric.allocated strong{color:var(--green)}.metric.unallocated strong{color:var(--amber)}
+  .allocation-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px 9px;border-top:1px solid var(--line)}
+  .allocation-heading strong{display:block;font-size:11px;color:var(--navy)}.allocation-heading span{font-size:10px;color:var(--muted)}.allocation-count{white-space:nowrap;padding:4px 8px;border-radius:99px;background:#edf2f8;color:var(--navy)!important;font-weight:800}
+  table{width:100%;border-collapse:collapse}.allocation-table{font-size:10.5px}.allocation-table th{background:#f3f6fa;color:#58677e;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;font-weight:800}
+  .allocation-table td,.allocation-table th{padding:9px 16px;border-top:1px solid #e9eef5}.num{text-align:right;white-space:nowrap}.bill-ref{font-weight:800;color:var(--navy)}
+  .status{display:inline-block;padding:3px 7px;border-radius:99px;font-size:9px;font-weight:800;white-space:nowrap}.paid{color:var(--green);background:var(--green-bg)}.partial{color:var(--amber);background:var(--amber-bg)}
+  .no-allocation{padding:12px 16px;color:var(--muted);font-size:10px;background:#fafbfd;border-top:1px solid var(--line)}
+  .notice{display:flex;flex-direction:column;gap:3px;margin:0 16px 14px;padding:10px 12px;border-radius:8px;background:var(--amber-bg);border:1px solid #f2dfaa;color:var(--amber);font-size:10px}.notice span{color:#795c22}
+  .empty{padding:34px;text-align:center;border:1px dashed #cbd5e1;border-radius:12px;color:var(--muted);background:#fafbfd}
+  footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:24px;padding-top:12px;color:var(--muted);font-size:9px}
+  @page{size:A4 portrait;margin:12mm}
+  @media(max-width:650px){body{padding:0;background:#fff}.report{padding:16px;border:0;box-shadow:none;border-radius:0}.overview{grid-template-columns:1fr}.brandbar{align-items:flex-start}.generated{max-width:110px}.payment-top{align-items:flex-start}.summary-value{font-size:20px}}
+  @media print{body{padding:0;background:#fff;font-size:11px}.report{max-width:none;padding:0;border:0;border-radius:0;box-shadow:none}.brandbar,.payment-card,.summary,.allocation-overview{print-color-adjust:exact;-webkit-print-color-adjust:exact}.overview{gap:8px;margin:16px 0 10px}.summary{padding:10px}.summary-value{font-size:18px}.payment-card{margin-bottom:10px}.payment-top{padding:10px 12px}.payment-metrics{padding:8px 12px}.allocation-heading{padding:9px 12px 7px}.allocation-table td,.allocation-table th{padding:7px 12px}.notice{margin:0 12px 10px}footer{margin-top:14px}.no-print{display:none!important}}
+</style></head><body><main class="report">
+  <div class="brandbar"><div class="brand"><div class="brand-mark">SF</div><div><div class="eyebrow">Accounts receivable</div><h1>Payment History</h1><div class="subtitle">Clear overview of collections and bill-wise adjustments</div></div></div><div class="generated"><strong>SF OVERDUES</strong><br>Generated ${esc(new Date().toLocaleString("en-IN"))}<br>${payments.length} payment record(s)</div></div>
+  <section class="overview">
+    <div class="summary received"><div class="summary-label">Total received</div><div class="summary-value">${money(totalReceived)}</div><div class="summary-note">Money collected from customers</div></div>
+    <div class="summary allocated"><div class="summary-label">Allocated to bills</div><div class="summary-value">${money(totalAllocated)}</div><div class="summary-note">Applied against outstanding invoices</div></div>
+    <div class="summary unallocated"><div class="summary-label">Unallocated</div><div class="summary-value">${money(totalUnallocated)}</div><div class="summary-note">Not applied to bills / advance not tracked here</div></div>
+  </section>
+  <section class="allocation-overview"><div class="progress-copy"><div class="progress-title">Collection allocation</div><div class="progress-sub">${money(totalAllocated)} of ${money(totalReceived)} received has been applied to bills.</div><div class="progress-track"><div class="progress-fill"></div></div></div><div class="progress-percent">${allocationRate}%<div style="font-size:9px;font-weight:700;color:#66758b;text-align:right">allocated</div></div></section>
+  <div class="section-title">Payment records <span>Newest first · FIFO bill allocation</span></div>
+  ${paymentCards || '<div class="empty"><strong>No payment records found</strong><br><span>Your recorded payments will appear here.</span></div>'}
+  <footer><span>Confidential · SF Overdues</span><span>Amounts shown in INR (₹) · Generated ${esc(new Date().toLocaleDateString("en-IN"))}</span></footer>
+</main><script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
   };
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 125, background: "rgba(2,6,15,.82)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", padding: 16 }}>
-      <div style={{ ...card, width: "min(1100px,100%)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,.55)" }}>
-        <div style={{ padding: 20, borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div><div style={{ color: T.gold, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>CLOUD-SYNCED LEDGER</div><h2 style={{ margin: "5px 0 0", color: T.text1, fontSize: 20 }}>Payment History</h2><p style={{ margin: "5px 0 0", color: T.text3, fontSize: 12 }}>{payments.length} records · saved to MongoDB</p></div>
-          <div style={{ display: "flex", gap: 8 }}><button onClick={downloadPDF} style={{ padding: "9px 13px", border: 0, borderRadius: 8, background: T.gold, color: "#111827", fontWeight: 800, cursor: "pointer" }}>⬇ Download PDF</button><button onClick={onClose} style={{ padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 8, background: "transparent", color: T.text2, cursor: "pointer" }}>✕</button></div>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 125,
+        background: "rgba(2,6,15,.82)",
+        backdropFilter: "blur(8px)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          ...card,
+          width: "min(1100px,100%)",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow: "0 24px 80px rgba(0,0,0,.55)",
+        }}
+      >
+        <div
+          style={{
+            padding: 20,
+            borderBottom: `1px solid ${T.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                color: T.gold,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: 1,
+              }}
+            >
+              CLOUD-SYNCED LEDGER
+            </div>
+            <h2 style={{ margin: "5px 0 0", color: T.text1, fontSize: 20 }}>
+              Payment History
+            </h2>
+            <p style={{ margin: "5px 0 0", color: T.text3, fontSize: 12 }}>
+              {payments.length} records · saved to MongoDB
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={downloadPDF}
+              style={{
+                padding: "9px 13px",
+                border: 0,
+                borderRadius: 8,
+                background: T.gold,
+                color: "#111827",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              ⬇ Download PDF
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                padding: "9px 12px",
+                border: `1px solid ${T.border}`,
+                borderRadius: 8,
+                background: "transparent",
+                color: T.text2,
+                cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10, padding: 16 }}>
-          {[["TOTAL RECEIVED", fmt(totalReceived), T.gold],["ALLOCATED TO BILLS", fmt(totalAllocated), T.safe],["UNALLOCATED", fmt(payments.reduce((s,p)=>s+(Number(p.unallocatedAmount)||0),0)), T.warning]].map(([label,value,color]) => <div key={label} style={{ ...card, padding: 14 }}><div style={{ color: T.text3, fontSize: 10, fontWeight: 800 }}>{label}</div><div style={{ color, fontSize: 19, fontWeight: 800, marginTop: 6 }}>{value}</div></div>)}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+            gap: 10,
+            padding: 16,
+          }}
+        >
+          {[
+            ["TOTAL RECEIVED", fmt(totalReceived), T.gold],
+            ["ALLOCATED TO BILLS", fmt(totalAllocated), T.safe],
+            [
+              "UNALLOCATED",
+              fmt(
+                payments.reduce(
+                  (s, p) => s + (Number(p.unallocatedAmount) || 0),
+                  0,
+                ),
+              ),
+              T.warning,
+            ],
+          ].map(([label, value, color]) => (
+            <div key={label} style={{ ...card, padding: 14 }}>
+              <div style={{ color: T.text3, fontSize: 10, fontWeight: 800 }}>
+                {label}
+              </div>
+              <div
+                style={{ color, fontSize: 19, fontWeight: 800, marginTop: 6 }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
         </div>
         <div style={{ overflow: "auto", padding: "0 16px 16px" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 760 }}><thead><tr style={{ background: T.elevated, color: T.text2, textAlign: "left" }}>{["Date / Time","Customer","Received","Allocated","Unallocated","Bill-wise FIFO allocation"].map((x)=><th key={x} style={{ padding: 11, borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" }}>{x}</th>)}</tr></thead><tbody>{payments.map((p)=><tr key={p._id} style={{ borderBottom: `1px solid ${T.border}` }}><td style={{ padding: 11, color: T.text2, whiteSpace: "nowrap" }}>{new Date(p.createdAt).toLocaleString("en-IN")}</td><td style={{ padding: 11, color: T.text1, fontWeight: 700 }}>{p.account}</td><td style={{ padding: 11, textAlign: "right", color: T.gold, fontWeight: 800 }}>{fmt(p.amountReceived)}</td><td style={{ padding: 11, textAlign: "right", color: T.safe }}>{fmt(p.allocatedAmount)}</td><td style={{ padding: 11, textAlign: "right", color: T.warning }}>{fmt(p.unallocatedAmount)}</td><td style={{ padding: 11, color: T.text2 }}>{(p.allocations || []).map((a)=><div key={`${a.refNo}-${a.amount}`} style={{ marginBottom: 3 }}><b style={{ color: T.text1 }}>{a.refNo}</b> · {fmt(a.amount)}{a.pendingAfter === 0 ? <span style={{ color: T.safe }}> · Paid</span> : null}</div>)}</td></tr>)}</tbody></table>
-          {payments.length === 0 && <div style={{ padding: 48, textAlign: "center", color: T.text3 }}>No payment records yet. Payments will appear here after they are saved.</div>}
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 12,
+              minWidth: 760,
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  background: T.elevated,
+                  color: T.text2,
+                  textAlign: "left",
+                }}
+              >
+                {[
+                  "Date / Time",
+                  "Customer",
+                  "Received",
+                  "Allocated",
+                  "Unallocated",
+                  "Bill-wise FIFO allocation",
+                ].map((x) => (
+                  <th
+                    key={x}
+                    style={{
+                      padding: 11,
+                      borderBottom: `1px solid ${T.border}`,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {x}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr
+                  key={p._id}
+                  style={{ borderBottom: `1px solid ${T.border}` }}
+                >
+                  <td
+                    style={{
+                      padding: 11,
+                      color: T.text2,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {new Date(p.createdAt).toLocaleString("en-IN")}
+                  </td>
+                  <td style={{ padding: 11, color: T.text1, fontWeight: 700 }}>
+                    {p.account}
+                  </td>
+                  <td
+                    style={{
+                      padding: 11,
+                      textAlign: "right",
+                      color: T.gold,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {fmt(p.amountReceived)}
+                  </td>
+                  <td
+                    style={{ padding: 11, textAlign: "right", color: T.safe }}
+                  >
+                    {fmt(p.allocatedAmount)}
+                  </td>
+                  <td
+                    style={{
+                      padding: 11,
+                      textAlign: "right",
+                      color: T.warning,
+                    }}
+                  >
+                    {fmt(p.unallocatedAmount)}
+                  </td>
+                  <td style={{ padding: 11, color: T.text2 }}>
+                    {(p.allocations || []).map((a) => (
+                      <div
+                        key={`${a.refNo}-${a.amount}`}
+                        style={{ marginBottom: 3 }}
+                      >
+                        <b style={{ color: T.text1 }}>{a.refNo}</b> ·{" "}
+                        {fmt(a.amount)}
+                        {a.pendingAfter === 0 ? (
+                          <span style={{ color: T.safe }}> · Paid</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {payments.length === 0 && (
+            <div style={{ padding: 48, textAlign: "center", color: T.text3 }}>
+              No payment records yet. Payments will appear here after they are
+              saved.
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -733,16 +1216,32 @@ export default function App() {
   const fileRef = useRef();
 
   const refreshCloudData = useCallback(async () => {
-    setStorageSaving(true); setStorageError("");
+    setStorageSaving(true);
+    setStorageError("");
     try {
-      const [overdueRes, paymentRes] = await Promise.all([api.get("/overdues"), api.get("/overdues/payments")]);
+      const [overdueRes, paymentRes] = await Promise.all([
+        api.get("/overdues"),
+        api.get("/overdues/payments"),
+      ]);
       let cloudRows = overdueRes.data?.data || [];
       // Migrate the old browser-only data once, but only when the server has no records.
-      if (cloudRows.length === 0 && Array.isArray(_boot?.data) && _boot.data.length) {
+      if (
+        cloudRows.length === 0 &&
+        Array.isArray(_boot?.data) &&
+        _boot.data.length
+      ) {
         try {
-          const migrated = await api.post("/overdues/migrate-local", { data: _boot.data, fileName: _boot.fileName || "Local data migration" });
+          const migrated = await api.post("/overdues/migrate-local", {
+            data: _boot.data,
+            fileName: _boot.fileName || "Local data migration",
+          });
           cloudRows = migrated.data?.data || [];
-        } catch (migrationError) { console.warn("Legacy local data migration skipped:", migrationError.response?.data?.message || migrationError.message); }
+        } catch (migrationError) {
+          console.warn(
+            "Legacy local data migration skipped:",
+            migrationError.response?.data?.message || migrationError.message,
+          );
+        }
       }
       setData(refreshDueDays(cloudRows));
       setFileName(overdueRes.data?.fileName || _boot?.fileName || "");
@@ -750,26 +1249,50 @@ export default function App() {
       setStorageSavedAt(new Date());
       setSyncReady(true);
     } catch (error) {
-      setStorageError(error.response?.data?.message || "Cloud sync unavailable. Check backend/API URL and login.");
-    } finally { setStorageSaving(false); }
+      setStorageError(
+        error.response?.data?.message ||
+          "Cloud sync unavailable. Check backend/API URL and login.",
+      );
+    } finally {
+      setStorageSaving(false);
+    }
   }, [_boot]);
 
-  useEffect(() => { refreshCloudData(); }, [refreshCloudData]);
+  useEffect(() => {
+    refreshCloudData();
+  }, [refreshCloudData]);
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
-    setUploading(true); setParseErr(""); setStorageSaving(true); setStorageError("");
+    setUploading(true);
+    setParseErr("");
+    setStorageSaving(true);
+    setStorageError("");
     try {
-      const form = new FormData(); form.append("file", file);
-      const response = await api.post("/overdues/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      const form = new FormData();
+      form.append("file", file);
+      const response = await api.post("/overdues/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       setData(refreshDueDays(response.data?.data || []));
       setFileName(response.data?.fileName || file.name);
       setStorageSavedAt(new Date());
       setSyncReady(true);
     } catch (error) {
-      setParseErr(error.response?.data?.message || "Upload failed. Please confirm backend connection and try again.");
-      setStorageError(error.response?.status === 401 ? "Please login again to sync data." : "Cloud save failed");
-    } finally { setUploading(false); setStorageSaving(false); if (fileRef.current) fileRef.current.value = ""; }
+      setParseErr(
+        error.response?.data?.message ||
+          "Upload failed. Please confirm backend connection and try again.",
+      );
+      setStorageError(
+        error.response?.status === 401
+          ? "Please login again to sync data."
+          : "Cloud save failed",
+      );
+    } finally {
+      setUploading(false);
+      setStorageSaving(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }, []);
 
   const onDrop = (e) => {
@@ -779,44 +1302,105 @@ export default function App() {
   };
   const handleSaveToFile = () => exportToXLSX(data, fileName);
   const handleClearStorage = async () => {
-    if (!window.confirm("Clear all synced overdue entries and payment history for your account?\n\nThis action cannot be undone.")) return;
-    setStorageSaving(true); setStorageError("");
-    try { await api.delete("/overdues/clear"); setData([]); setPaymentHistory([]); setDeletedRefs(new Set()); setOverrides({}); setFileName(""); setStorageSavedAt(new Date()); }
-    catch (error) { setStorageError(error.response?.data?.message || "Could not clear cloud data"); }
-    finally { setStorageSaving(false); }
+    if (
+      !window.confirm(
+        "Clear all synced overdue entries and payment history for your account?\n\nThis action cannot be undone.",
+      )
+    )
+      return;
+    setStorageSaving(true);
+    setStorageError("");
+    try {
+      await api.delete("/overdues/clear");
+      setData([]);
+      setPaymentHistory([]);
+      setDeletedRefs(new Set());
+      setOverrides({});
+      setFileName("");
+      setStorageSavedAt(new Date());
+    } catch (error) {
+      setStorageError(
+        error.response?.data?.message || "Could not clear cloud data",
+      );
+    } finally {
+      setStorageSaving(false);
+    }
   };
 
   const confirmDeleteRow = (row) => {
-    setConfirmModal({ message: `Delete "${row["Ref. No."]}" for ${row["Account"]}?`, onConfirm: async () => {
-      try { await api.delete(`/overdues/${row._id}`); setData((current) => current.filter((r) => r._id !== row._id)); setConfirmModal(null); setStorageSavedAt(new Date()); }
-      catch (error) { setStorageError(error.response?.data?.message || "Delete failed"); setConfirmModal(null); }
-    }});
+    setConfirmModal({
+      message: `Delete "${row["Ref. No."]}" for ${row["Account"]}?`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/overdues/${row._id}`);
+          setData((current) => current.filter((r) => r._id !== row._id));
+          setConfirmModal(null);
+          setStorageSavedAt(new Date());
+        } catch (error) {
+          setStorageError(error.response?.data?.message || "Delete failed");
+          setConfirmModal(null);
+        }
+      },
+    });
   };
 
   const confirmDeleteAccount = (acctName) => {
     const acctRows = data.filter((r) => r["Account"] === acctName);
-    const total = acctRows.reduce((sum, r) => sum + (r["Pending Amt."] || 0), 0);
-    setConfirmModal({ message: `Delete all ${acctRows.length} entries for "${acctName}" totalling ${fmt(total)}?`, onConfirm: async () => {
-      try { await api.delete(`/overdues/account/${encodeURIComponent(acctName)}`); setData((current) => current.filter((r) => r["Account"] !== acctName)); if (expandedAccount === acctName) setExpandedAccount(null); setConfirmModal(null); setStorageSavedAt(new Date()); }
-      catch (error) { setStorageError(error.response?.data?.message || "Delete failed"); setConfirmModal(null); }
-    }});
+    const total = acctRows.reduce(
+      (sum, r) => sum + (r["Pending Amt."] || 0),
+      0,
+    );
+    setConfirmModal({
+      message: `Delete all ${acctRows.length} entries for "${acctName}" totalling ${fmt(total)}?`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/overdues/account/${encodeURIComponent(acctName)}`);
+          setData((current) =>
+            current.filter((r) => r["Account"] !== acctName),
+          );
+          if (expandedAccount === acctName) setExpandedAccount(null);
+          setConfirmModal(null);
+          setStorageSavedAt(new Date());
+        } catch (error) {
+          setStorageError(error.response?.data?.message || "Delete failed");
+          setConfirmModal(null);
+        }
+      },
+    });
   };
 
   const handleRecordPayment = async (amountReceived) => {
-    const row = paymentRow; if (!row) return;
-    setStorageSaving(true); setStorageError("");
-    try { await api.put(`/overdues/${row._id}/payment`, { amount: amountReceived }); await refreshCloudData(); setPaymentRow(null); }
-    catch (error) { setStorageError(error.response?.data?.message || "Payment could not be saved"); }
-    finally { setStorageSaving(false); }
+    const row = paymentRow;
+    if (!row) return;
+    setStorageSaving(true);
+    setStorageError("");
+    try {
+      await api.put(`/overdues/${row._id}/payment`, { amount: amountReceived });
+      await refreshCloudData();
+      setPaymentRow(null);
+    } catch (error) {
+      setStorageError(
+        error.response?.data?.message || "Payment could not be saved",
+      );
+    } finally {
+      setStorageSaving(false);
+    }
   };
 
   const handleCustomerPayment = async (account, amount) => {
-    setPaymentBusy(true); setStorageError("");
+    setPaymentBusy(true);
+    setStorageError("");
     try {
       await api.post("/overdues/payments", { account, amount });
-      await refreshCloudData(); setPaymentReceivedOpen(false);
-    } catch (error) { setStorageError(error.response?.data?.message || "Payment could not be saved to cloud"); }
-    finally { setPaymentBusy(false); }
+      await refreshCloudData();
+      setPaymentReceivedOpen(false);
+    } catch (error) {
+      setStorageError(
+        error.response?.data?.message || "Payment could not be saved to cloud",
+      );
+    } finally {
+      setPaymentBusy(false);
+    }
   };
 
   const filtered = data
@@ -933,7 +1517,8 @@ export default function App() {
   };
 
   return (
-    <><style>{`
+    <>
+      <style>{`
       * { box-sizing: border-box; }
       html, body, #root { width: 100%; min-width: 0; margin: 0; }
       button, input, select { font: inherit; }
@@ -994,14 +1579,16 @@ export default function App() {
         .sf-header-actions { grid-template-columns:1fr; }
         .mobile-summary-grid { grid-template-columns:1fr 1fr; }
       }
-    `}</style><div
+    `}</style>
+      <div
         className="sf-shell"
         style={{
           minHeight: "100vh",
           background: T.pageBg,
           fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
           color: T.text1,
-          backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
           backgroundSize: "28px 28px",
         }}
       >
@@ -1009,15 +1596,31 @@ export default function App() {
           <ConfirmModal
             message={confirmModal.message}
             onConfirm={confirmModal.onConfirm}
-            onCancel={() => setConfirmModal(null)} />
+            onCancel={() => setConfirmModal(null)}
+          />
         )}
-        {paymentReceivedOpen && <CustomerPaymentModal accounts={[...new Set(data.map((r) => r["Account"]).filter(Boolean))].sort()} onConfirm={handleCustomerPayment} onCancel={() => setPaymentReceivedOpen(false)} busy={paymentBusy} />}
-        {historyOpen && <PaymentHistoryModal payments={paymentHistory} onClose={() => setHistoryOpen(false)} />}
+        {paymentReceivedOpen && (
+          <CustomerPaymentModal
+            accounts={[
+              ...new Set(data.map((r) => r["Account"]).filter(Boolean)),
+            ].sort()}
+            onConfirm={handleCustomerPayment}
+            onCancel={() => setPaymentReceivedOpen(false)}
+            busy={paymentBusy}
+          />
+        )}
+        {historyOpen && (
+          <PaymentHistoryModal
+            payments={paymentHistory}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
         {paymentRow && (
           <PaymentModal
             row={paymentRow}
             onConfirm={handleRecordPayment}
-            onCancel={() => setPaymentRow(null)} />
+            onCancel={() => setPaymentRow(null)}
+          />
         )}
 
         {/* ── HEADER ── */}
@@ -1105,10 +1708,71 @@ export default function App() {
                 </span>
               </p>
             </div>
-            <div className="sf-header-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={refreshCloudData} disabled={storageSaving} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text2, fontSize: 13, fontWeight: 700, cursor: storageSaving ? "wait" : "pointer" }}>{storageSaving ? "↻ Syncing…" : "↻ Sync now"}</button>
-              <button onClick={() => setPaymentReceivedOpen(true)} disabled={!data.length} style={{ padding: "8px 13px", borderRadius: 8, border: `1px solid rgba(16,185,129,.35)`, background: "rgba(16,185,129,.10)", color: T.safe, fontSize: 13, fontWeight: 800, cursor: data.length ? "pointer" : "not-allowed" }}>💰 Payment Received</button>
-              <button onClick={async () => { setStorageSaving(true); try { const r = await api.get("/overdues/payments"); setPaymentHistory(r.data?.payments || []); setHistoryOpen(true); } catch (e) { setStorageError(e.response?.data?.message || "Payment history could not be loaded"); } finally { setStorageSaving(false); } }} style={{ padding: "8px 13px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text1, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>🧾 Payment History ({paymentHistory.length})</button>
+            <div
+              className="sf-header-actions"
+              style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
+            >
+              <button
+                onClick={refreshCloudData}
+                disabled={storageSaving}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.text2,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: storageSaving ? "wait" : "pointer",
+                }}
+              >
+                {storageSaving ? "↻ Syncing…" : "↻ Sync now"}
+              </button>
+              <button
+                onClick={() => setPaymentReceivedOpen(true)}
+                disabled={!data.length}
+                style={{
+                  padding: "8px 13px",
+                  borderRadius: 8,
+                  border: `1px solid rgba(16,185,129,.35)`,
+                  background: "rgba(16,185,129,.10)",
+                  color: T.safe,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: data.length ? "pointer" : "not-allowed",
+                }}
+              >
+                💰 Payment Received
+              </button>
+              <button
+                onClick={async () => {
+                  setStorageSaving(true);
+                  try {
+                    const r = await api.get("/overdues/payments");
+                    setPaymentHistory(r.data?.payments || []);
+                    setHistoryOpen(true);
+                  } catch (e) {
+                    setStorageError(
+                      e.response?.data?.message ||
+                        "Payment history could not be loaded",
+                    );
+                  } finally {
+                    setStorageSaving(false);
+                  }
+                }}
+                style={{
+                  padding: "8px 13px",
+                  borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  background: "transparent",
+                  color: T.text1,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🧾 Payment History ({paymentHistory.length})
+              </button>
               <button
                 onClick={handleSaveToFile}
                 style={{
@@ -1152,7 +1816,11 @@ export default function App() {
 
         <div
           className="sf-container"
-          style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 24px 48px" }}
+          style={{
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "24px 24px 48px",
+          }}
         >
           {/* ── UPLOAD ZONE ── */}
           <div
@@ -1161,7 +1829,7 @@ export default function App() {
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);
-            } }
+            }}
             onDragLeave={() => setDragOver(false)}
             onClick={() => fileRef.current.click()}
             style={{
@@ -1182,7 +1850,8 @@ export default function App() {
               type="file"
               accept=".xlsx,.xls"
               style={{ display: "none" }}
-              onChange={(e) => handleFile(e.target.files[0])} />
+              onChange={(e) => handleFile(e.target.files[0])}
+            />
             <span style={{ fontSize: 26, lineHeight: 1 }}>
               {uploading ? "⏳" : "📂"}
             </span>
@@ -1200,7 +1869,7 @@ export default function App() {
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClearStorage();
-                } }
+                }}
                 style={{
                   fontSize: 11,
                   color: T.critical,
@@ -1318,9 +1987,10 @@ export default function App() {
                 style={{
                   padding: "10px 20px",
                   border: "none",
-                  borderBottom: activeTab === tab
-                    ? `2px solid ${T.gold}`
-                    : "2px solid transparent",
+                  borderBottom:
+                    activeTab === tab
+                      ? `2px solid ${T.gold}`
+                      : "2px solid transparent",
                   background: "transparent",
                   color: activeTab === tab ? T.gold : T.text3,
                   fontSize: 13,
@@ -1366,7 +2036,8 @@ export default function App() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search account, ref no., salesman…"
-                    style={{ ...inputStyle, paddingLeft: 36 }} />
+                    style={{ ...inputStyle, paddingLeft: 36 }}
+                  />
                 </div>
                 <select
                   value={filterDue}
@@ -1394,35 +2065,62 @@ export default function App() {
                       <div className="mobile-card-row">
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="mobile-card-label">Account</div>
-                          <div className="mobile-card-account">{r["Account"] || "—"}</div>
+                          <div className="mobile-card-account">
+                            {r["Account"] || "—"}
+                          </div>
                         </div>
-                        <span style={{ ...badgePill, ...badge.style, flexShrink: 0 }}>
+                        <span
+                          style={{
+                            ...badgePill,
+                            ...badge.style,
+                            flexShrink: 0,
+                          }}
+                        >
                           {badge.label}
                         </span>
                       </div>
-                      <div className="mobile-summary-grid" style={{ marginTop: 12 }}>
+                      <div
+                        className="mobile-summary-grid"
+                        style={{ marginTop: 12 }}
+                      >
                         <div>
                           <div className="mobile-card-label">Date</div>
-                          <div className="mobile-card-value">{r["Dated"] || "—"}</div>
+                          <div className="mobile-card-value">
+                            {r["Dated"] || "—"}
+                          </div>
                         </div>
                         <div>
                           <div className="mobile-card-label">Pending</div>
-                          <div className="mobile-card-value" style={{ color: T.gold }}>
-                            ₹{Number(r["Pending Amt."] || 0).toLocaleString("en-IN")}
+                          <div
+                            className="mobile-card-value"
+                            style={{ color: T.gold }}
+                          >
+                            ₹
+                            {Number(r["Pending Amt."] || 0).toLocaleString(
+                              "en-IN",
+                            )}
                           </div>
                         </div>
                         <div style={{ gridColumn: "1 / -1" }}>
                           <div className="mobile-card-label">Reference No.</div>
-                          <div className="mobile-card-value" style={{ fontFamily: "monospace", color: T.text2 }}>
+                          <div
+                            className="mobile-card-value"
+                            style={{ fontFamily: "monospace", color: T.text2 }}
+                          >
                             {r["Ref. No."] || "—"}
                           </div>
                         </div>
                       </div>
                       <div className="mobile-actions">
-                        <button onClick={() => setPaymentRow(r)}>💰 Record Payment</button>
+                        <button onClick={() => setPaymentRow(r)}>
+                          💰 Record Payment
+                        </button>
                         <button
                           onClick={() => confirmDeleteRow(r)}
-                          style={{ color: T.critical, borderColor: "rgba(244,63,94,.25)" }}
+                          style={{
+                            color: T.critical,
+                            borderColor: "rgba(244,63,94,.25)",
+                          }}
                         >
                           ✕ Delete
                         </button>
@@ -1433,7 +2131,9 @@ export default function App() {
                 {filtered.length > 0 && (
                   <div className="mobile-summary-total">
                     <div className="mobile-card-row">
-                      <span className="mobile-card-label">Total · {filtered.length} records</span>
+                      <span className="mobile-card-label">
+                        Total · {filtered.length} records
+                      </span>
                       <strong style={{ color: T.gold, fontSize: 16 }}>
                         ₹{total.toLocaleString("en-IN")}
                       </strong>
@@ -1469,11 +2169,12 @@ export default function App() {
                             onClick={() => thSort(col)}
                             style={{
                               padding: "11px 16px",
-                              textAlign: col === "Pending Amt."
-                                ? "right"
-                                : col === "Due Days"
-                                  ? "center"
-                                  : "left",
+                              textAlign:
+                                col === "Pending Amt."
+                                  ? "right"
+                                  : col === "Due Days"
+                                    ? "center"
+                                    : "left",
                               color: T.text3,
                               fontSize: 10,
                               fontWeight: 700,
@@ -1524,17 +2225,22 @@ export default function App() {
                           <tr
                             key={r._id}
                             style={{
-                              background: i % 2 === 0
-                                ? "transparent"
-                                : "rgba(255,255,255,0.012)",
+                              background:
+                                i % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.012)",
                               borderBottom: `1px solid ${T.border}`,
                               transition: "background 0.15s",
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = T.elevated)}
-                            onMouseLeave={(e) => (e.currentTarget.style.background =
-                              i % 2 === 0
-                                ? "transparent"
-                                : "rgba(255,255,255,0.012)")}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = T.elevated)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background =
+                                i % 2 === 0
+                                  ? "transparent"
+                                  : "rgba(255,255,255,0.012)")
+                            }
                           >
                             <td
                               style={{
@@ -1589,7 +2295,9 @@ export default function App() {
                               >
                                 ₹
                               </span>
-                              {Number(r["Pending Amt."]).toLocaleString("en-IN")}
+                              {Number(r["Pending Amt."]).toLocaleString(
+                                "en-IN",
+                              )}
                             </td>
                             <td
                               style={{
@@ -1618,10 +2326,14 @@ export default function App() {
                                   onClick={() => setPaymentRow(r)}
                                   title="Record payment"
                                   style={{ ...actionBtn }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.background =
-                                    "rgba(16,185,129,0.12)")}
-                                  onMouseLeave={(e) => (e.currentTarget.style.background =
-                                    "transparent")}
+                                  onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "rgba(16,185,129,0.12)")
+                                  }
+                                  onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "transparent")
+                                  }
                                 >
                                   💰
                                 </button>
@@ -1629,10 +2341,14 @@ export default function App() {
                                   onClick={() => confirmDeleteRow(r)}
                                   title="Delete entry"
                                   style={{ ...actionBtn }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.background =
-                                    "rgba(244,63,94,0.12)")}
-                                  onMouseLeave={(e) => (e.currentTarget.style.background =
-                                    "transparent")}
+                                  onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "rgba(244,63,94,0.12)")
+                                  }
+                                  onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                      "transparent")
+                                  }
                                 >
                                   ✕
                                 </button>
@@ -1672,7 +2388,11 @@ export default function App() {
                           }}
                         >
                           <span
-                            style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
+                            style={{
+                              fontSize: 12,
+                              opacity: 0.7,
+                              marginRight: 1,
+                            }}
                           >
                             ₹
                           </span>
@@ -1789,38 +2509,67 @@ export default function App() {
                   const isExpanded = expandedAccount === row.account;
                   const subRows = data
                     .filter((r) => r["Account"] === row.account)
-                    .sort((a, b) => (b["Due Days"] ?? 0) - (a["Due Days"] ?? 0));
+                    .sort(
+                      (a, b) => (b["Due Days"] ?? 0) - (a["Due Days"] ?? 0),
+                    );
                   const badge = getDueBadge(row.maxDays);
                   return (
-                    <div className="mobile-summary-card" key={`mobile-summary-${row.account}`}>
+                    <div
+                      className="mobile-summary-card"
+                      key={`mobile-summary-${row.account}`}
+                    >
                       <div
                         className="mobile-summary-main"
-                        onClick={() => setExpandedAccount(isExpanded ? null : row.account)}
+                        onClick={() =>
+                          setExpandedAccount(isExpanded ? null : row.account)
+                        }
                       >
                         <div className="mobile-card-row">
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div className="mobile-card-label">#{i + 1} · Account</div>
-                            <div className="mobile-card-account">{row.account}</div>
+                            <div className="mobile-card-label">
+                              #{i + 1} · Account
+                            </div>
+                            <div className="mobile-card-account">
+                              {row.account}
+                            </div>
                           </div>
-                          <span style={{ ...badgePill, ...badge.style, flexShrink: 0 }}>
+                          <span
+                            style={{
+                              ...badgePill,
+                              ...badge.style,
+                              flexShrink: 0,
+                            }}
+                          >
                             {badge.label}
                           </span>
                         </div>
                         <div className="mobile-summary-grid">
                           <div>
                             <div className="mobile-card-label">Bills</div>
-                            <div className="mobile-card-value">{row.entries}</div>
+                            <div className="mobile-card-value">
+                              {row.entries}
+                            </div>
                           </div>
                           <div>
                             <div className="mobile-card-label">Pending</div>
-                            <div className="mobile-card-value" style={{ color: T.gold }}>
+                            <div
+                              className="mobile-card-value"
+                              style={{ color: T.gold }}
+                            >
                               ₹{row.total.toLocaleString("en-IN")}
                             </div>
                           </div>
                           <div>
                             <div className="mobile-card-label">Overdue</div>
-                            <div className="mobile-card-value" style={{ color: row.overdueAmt ? T.critical : T.safe }}>
-                              {row.overdueAmt ? `₹${row.overdueAmt.toLocaleString("en-IN")}` : "—"}
+                            <div
+                              className="mobile-card-value"
+                              style={{
+                                color: row.overdueAmt ? T.critical : T.safe,
+                              }}
+                            >
+                              {row.overdueAmt
+                                ? `₹${row.overdueAmt.toLocaleString("en-IN")}`
+                                : "—"}
                             </div>
                           </div>
                           <div>
@@ -1828,11 +2577,29 @@ export default function App() {
                             <div className="mobile-card-value">{pct}%</div>
                           </div>
                         </div>
-                        <div style={{ marginTop: 10, height: 4, background: T.border, borderRadius: 999, overflow: "hidden" }}>
-                          <div style={{ width: `${barW}%`, height: "100%", background: T.gold, borderRadius: 999 }} />
+                        <div
+                          style={{
+                            marginTop: 10,
+                            height: 4,
+                            background: T.border,
+                            borderRadius: 999,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${barW}%`,
+                              height: "100%",
+                              background: T.gold,
+                              borderRadius: 999,
+                            }}
+                          />
                         </div>
-                        <div style={{ marginTop: 9, color: T.text3, fontSize: 11 }}>
-                          {isExpanded ? "▲ Hide bills" : "▼ Show bills"} · Tap card to expand
+                        <div
+                          style={{ marginTop: 9, color: T.text3, fontSize: 11 }}
+                        >
+                          {isExpanded ? "▲ Hide bills" : "▼ Show bills"} · Tap
+                          card to expand
                         </div>
                       </div>
                       {isExpanded && (
@@ -1840,31 +2607,71 @@ export default function App() {
                           {subRows.map((r) => {
                             const sb = getDueBadge(r["Due Days"]);
                             return (
-                              <div className="mobile-sub-row" key={`mobile-sub-${r._id}`}>
+                              <div
+                                className="mobile-sub-row"
+                                key={`mobile-sub-${r._id}`}
+                              >
                                 <div style={{ minWidth: 0 }}>
-                                  <div className="mobile-card-value" style={{ fontFamily: "monospace" }}>
+                                  <div
+                                    className="mobile-card-value"
+                                    style={{ fontFamily: "monospace" }}
+                                  >
                                     {r["Ref. No."] || "—"}
                                   </div>
-                                  <div style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
-                                    {r["Dated"] || "—"} · {r["Type"] || "—"} · <span style={{ color: T.gold }}>₹{Number(r["Pending Amt."] || 0).toLocaleString("en-IN")}</span>
+                                  <div
+                                    style={{
+                                      color: T.text3,
+                                      fontSize: 11,
+                                      marginTop: 4,
+                                    }}
+                                  >
+                                    {r["Dated"] || "—"} · {r["Type"] || "—"} ·{" "}
+                                    <span style={{ color: T.gold }}>
+                                      ₹
+                                      {Number(
+                                        r["Pending Amt."] || 0,
+                                      ).toLocaleString("en-IN")}
+                                    </span>
                                   </div>
                                   <div style={{ marginTop: 6 }}>
-                                    <span style={{ ...badgePill, ...sb.style }}>{sb.label}</span>
+                                    <span style={{ ...badgePill, ...sb.style }}>
+                                      {sb.label}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="mobile-sub-actions">
-                                  <button onClick={() => setPaymentRow(r)} title="Record payment">💰</button>
-                                  <button onClick={() => confirmDeleteRow(r)} title="Delete entry" style={{ color: T.critical }}>✕</button>
+                                  <button
+                                    onClick={() => setPaymentRow(r)}
+                                    title="Record payment"
+                                  >
+                                    💰
+                                  </button>
+                                  <button
+                                    onClick={() => confirmDeleteRow(r)}
+                                    title="Delete entry"
+                                    style={{ color: T.critical }}
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                               </div>
                             );
                           })}
                           <button
-                            onClick={(e) => { e.stopPropagation(); confirmDeleteAccount(row.account); } }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteAccount(row.account);
+                            }}
                             style={{
-                              width: "100%", marginTop: 10, padding: "9px 12px", borderRadius: 8,
-                              border: "1px solid rgba(244,63,94,.25)", background: "transparent",
-                              color: T.critical, fontWeight: 700, cursor: "pointer"
+                              width: "100%",
+                              marginTop: 10,
+                              padding: "9px 12px",
+                              borderRadius: 8,
+                              border: "1px solid rgba(244,63,94,.25)",
+                              background: "transparent",
+                              color: T.critical,
+                              fontWeight: 700,
+                              cursor: "pointer",
                             }}
                           >
                             ✕ Delete all {row.entries} bills
@@ -1875,8 +2682,18 @@ export default function App() {
                   );
                 })}
                 <div className="mobile-summary-total">
-                  <div className="mobile-card-label">Grand Total · {accountSummary.length} accounts · {data.length} records</div>
-                  <div style={{ marginTop: 5, color: T.gold, fontSize: 18, fontWeight: 800 }}>
+                  <div className="mobile-card-label">
+                    Grand Total · {accountSummary.length} accounts ·{" "}
+                    {data.length} records
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 5,
+                      color: T.gold,
+                      fontSize: 18,
+                      fontWeight: 800,
+                    }}
+                  >
                     ₹{grandTotal.toLocaleString("en-IN")}
                   </div>
                 </div>
@@ -1916,15 +2733,16 @@ export default function App() {
                             textTransform: "uppercase",
                             letterSpacing: "0.08em",
                             borderBottom: `1px solid ${T.border}`,
-                            textAlign: i >= 2 && i <= 4
-                              ? i === 2
-                                ? "center"
-                                : "right"
-                              : i === 6
-                                ? "left"
-                                : i === 7
+                            textAlign:
+                              i >= 2 && i <= 4
+                                ? i === 2
                                   ? "center"
-                                  : "left",
+                                  : "right"
+                                : i === 6
+                                  ? "left"
+                                  : i === 7
+                                    ? "center"
+                                    : "left",
                             minWidth: h === "Share" ? "130px" : "auto",
                           }}
                         >
@@ -1946,23 +2764,29 @@ export default function App() {
                         <>
                           <tr
                             key={row.account}
-                            onClick={() => setExpandedAccount(isExpanded ? null : row.account)}
+                            onClick={() =>
+                              setExpandedAccount(
+                                isExpanded ? null : row.account,
+                              )
+                            }
                             style={{
                               borderBottom: `1px solid ${T.border}`,
                               cursor: "pointer",
-                              background: isExpanded ? T.elevated : "transparent",
+                              background: isExpanded
+                                ? T.elevated
+                                : "transparent",
                               transition: "background 0.15s",
                             }}
                             onMouseEnter={(e) => {
                               if (!isExpanded)
                                 e.currentTarget.style.background =
                                   "rgba(255,255,255,0.02)";
-                            } }
+                            }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = isExpanded
                                 ? T.elevated
                                 : "transparent";
-                            } }
+                            }}
                           >
                             <td
                               style={{
@@ -2115,7 +2939,8 @@ export default function App() {
                                       borderRadius: 999,
                                       background: `linear-gradient(90deg,${T.gold}99,${T.gold})`,
                                       transition: "width 0.3s",
-                                    }} />
+                                    }}
+                                  />
                                 </div>
                                 <span
                                   style={{
@@ -2140,7 +2965,9 @@ export default function App() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
-                                onClick={() => confirmDeleteAccount(row.account)}
+                                onClick={() =>
+                                  confirmDeleteAccount(row.account)
+                                }
                                 style={{
                                   padding: "4px 10px",
                                   borderRadius: 6,
@@ -2216,7 +3043,7 @@ export default function App() {
                                       ₹
                                     </span>
                                     {Number(r["Pending Amt."]).toLocaleString(
-                                      "en-IN"
+                                      "en-IN",
                                     )}
                                   </td>
                                   <td
@@ -2256,20 +3083,28 @@ export default function App() {
                                       <button
                                         onClick={() => setPaymentRow(r)}
                                         style={{ ...actionBtn }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.background =
-                                          "rgba(16,185,129,0.12)")}
-                                        onMouseLeave={(e) => (e.currentTarget.style.background =
-                                          "transparent")}
+                                        onMouseEnter={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "rgba(16,185,129,0.12)")
+                                        }
+                                        onMouseLeave={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "transparent")
+                                        }
                                       >
                                         💰
                                       </button>
                                       <button
                                         onClick={() => confirmDeleteRow(r)}
                                         style={{ ...actionBtn }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.background =
-                                          "rgba(244,63,94,0.12)")}
-                                        onMouseLeave={(e) => (e.currentTarget.style.background =
-                                          "transparent")}
+                                        onMouseEnter={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "rgba(244,63,94,0.12)")
+                                        }
+                                        onMouseLeave={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "transparent")
+                                        }
                                       >
                                         ✕
                                       </button>
@@ -2355,6 +3190,7 @@ export default function App() {
             </div>
           )}
         </div>
-      </div></>
+      </div>
+    </>
   );
 }
