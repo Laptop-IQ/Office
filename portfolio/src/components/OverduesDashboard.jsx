@@ -1,5 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
+import axios from "axios";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const api = axios.create({ baseURL: API_BASE });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const T = {
@@ -636,19 +645,71 @@ const PaymentModal = ({ row, onConfirm, onCancel }) => {
   );
 };
 
+// ── Customer payment modal ────────────────────────────────────────────────
+const CustomerPaymentModal = ({ accounts, onConfirm, onCancel, busy }) => {
+  const [account, setAccount] = useState(accounts[0] || "");
+  const [amount, setAmount] = useState("");
+  const value = Number(amount);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(2,6,15,.78)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", padding: 16 }}>
+      <div style={{ ...card, width: "min(460px,100%)", padding: 24, boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div><div style={{ color: T.gold, fontSize: 11, fontWeight: 800, letterSpacing: 1 }}>PAYMENT COLLECTION</div><h2 style={{ color: T.text1, fontSize: 20, margin: "6px 0 0" }}>Payment Received</h2></div>
+          <button onClick={onCancel} style={{ border: `1px solid ${T.border}`, borderRadius: 8, background: "transparent", color: T.text2, padding: "7px 10px", cursor: "pointer" }}>✕</button>
+        </div>
+        <p style={{ color: T.text2, fontSize: 12, margin: "10px 0 18px" }}>Payment oldest pending bill se FIFO order mein adjust hogi.</p>
+        <label style={{ display: "block", color: T.text2, fontSize: 11, fontWeight: 700, marginBottom: 7 }}>CUSTOMER / ACCOUNT</label>
+        <select value={account} onChange={(e) => setAccount(e.target.value)} style={{ ...inputStyle, marginBottom: 16 }}>
+          {accounts.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <label style={{ display: "block", color: T.text2, fontSize: 11, fontWeight: 700, marginBottom: 7 }}>AMOUNT RECEIVED (₹)</label>
+        <input type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter amount received" style={{ ...inputStyle, fontSize: 18, padding: 13 }} autoFocus />
+        {value > 0 && <p style={{ color: T.safe, fontSize: 12, marginTop: 10 }}>Amount received: <b>{fmt(value)}</b></p>}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
+          <button onClick={onCancel} style={{ padding: "10px 14px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text2, cursor: "pointer" }}>Cancel</button>
+          <button disabled={!account || !(value > 0) || busy} onClick={() => onConfirm(account, value)} style={{ padding: "10px 16px", borderRadius: 8, border: 0, background: T.gold, color: "#111827", fontWeight: 800, cursor: "pointer", opacity: busy ? .6 : 1 }}>{busy ? "Saving…" : "Confirm & Allocate"}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PaymentHistoryModal = ({ payments, onClose }) => {
+  const totalReceived = payments.reduce((s, p) => s + (Number(p.amountReceived) || 0), 0);
+  const totalAllocated = payments.reduce((s, p) => s + (Number(p.allocatedAmount) || 0), 0);
+  const downloadPDF = () => {
+    const esc = (v) => String(v ?? "").replace(/[&<>\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;" }[c]));
+    const rows = payments.map((p) => `<tr><td>${esc(new Date(p.createdAt).toLocaleString("en-IN"))}</td><td>${esc(p.account)}</td><td class="num">₹${Number(p.amountReceived || 0).toLocaleString("en-IN")}</td><td class="num">₹${Number(p.allocatedAmount || 0).toLocaleString("en-IN")}</td><td class="num">₹${Number(p.unallocatedAmount || 0).toLocaleString("en-IN")}</td><td>${(p.allocations || []).map((a) => `${esc(a.refNo)}: ₹${Number(a.amount || 0).toLocaleString("en-IN")}`).join("<br>") || "—"}</td></tr>`).join("");
+    const w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to export PDF."); return; }
+    w.document.write(`<!doctype html><html><head><title>SF Overdues Payment History</title><style>body{font:12px Arial;color:#182235;padding:24px}header{background:#172b4d;color:white;padding:20px;border-radius:10px;margin-bottom:18px}h1{margin:0;font-size:22px}.sub{color:#d8e2f2;margin-top:6px}.stats{display:flex;gap:12px;margin:16px 0}.stat{border:1px solid #d7dfeb;border-left:4px solid #c89b24;padding:12px;flex:1;border-radius:8px}.label{font-size:10px;color:#64748b;text-transform:uppercase}.value{font-size:18px;font-weight:bold;margin-top:6px}table{width:100%;border-collapse:collapse}th{background:#172b4d;color:white;text-align:left}td,th{padding:9px;border:1px solid #d8dfeb;vertical-align:top}.num{text-align:right;white-space:nowrap}tr:nth-child(even){background:#f5f7fb}.foot{margin-top:18px;color:#64748b;font-size:10px}@media print{body{padding:8px}tr{break-inside:avoid}}</style></head><body><header><h1>SF Overdues · Payment History</h1><div class="sub">Cloud-synced records · Generated ${new Date().toLocaleString("en-IN")}</div></header><div class="stats"><div class="stat"><div class="label">Payments</div><div class="value">${payments.length}</div></div><div class="stat"><div class="label">Total Received</div><div class="value">₹${totalReceived.toLocaleString("en-IN")}</div></div><div class="stat"><div class="label">Allocated to Bills</div><div class="value">₹${totalAllocated.toLocaleString("en-IN")}</div></div><div class="stat"><div class="label">Unallocated</div><div class="value">₹${payments.reduce((s,p)=>s+(Number(p.unallocatedAmount)||0),0).toLocaleString("en-IN")}</div></div></div><table><thead><tr><th>Date / Time</th><th>Customer</th><th>Received</th><th>Allocated</th><th>Unallocated</th><th>Bill-wise FIFO allocation</th></tr></thead><tbody>${rows}</tbody></table><div class="foot">Confidential · SF Overdues · Exported from synced payment history</div><script>window.onload=()=>window.print()</script></body></html>`);
+    w.document.close();
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 125, background: "rgba(2,6,15,.82)", backdropFilter: "blur(8px)", display: "grid", placeItems: "center", padding: 16 }}>
+      <div style={{ ...card, width: "min(1100px,100%)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,.55)" }}>
+        <div style={{ padding: 20, borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div><div style={{ color: T.gold, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>CLOUD-SYNCED LEDGER</div><h2 style={{ margin: "5px 0 0", color: T.text1, fontSize: 20 }}>Payment History</h2><p style={{ margin: "5px 0 0", color: T.text3, fontSize: 12 }}>{payments.length} records · saved to MongoDB</p></div>
+          <div style={{ display: "flex", gap: 8 }}><button onClick={downloadPDF} style={{ padding: "9px 13px", border: 0, borderRadius: 8, background: T.gold, color: "#111827", fontWeight: 800, cursor: "pointer" }}>⬇ Download PDF</button><button onClick={onClose} style={{ padding: "9px 12px", border: `1px solid ${T.border}`, borderRadius: 8, background: "transparent", color: T.text2, cursor: "pointer" }}>✕</button></div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10, padding: 16 }}>
+          {[["TOTAL RECEIVED", fmt(totalReceived), T.gold],["ALLOCATED TO BILLS", fmt(totalAllocated), T.safe],["UNALLOCATED", fmt(payments.reduce((s,p)=>s+(Number(p.unallocatedAmount)||0),0)), T.warning]].map(([label,value,color]) => <div key={label} style={{ ...card, padding: 14 }}><div style={{ color: T.text3, fontSize: 10, fontWeight: 800 }}>{label}</div><div style={{ color, fontSize: 19, fontWeight: 800, marginTop: 6 }}>{value}</div></div>)}
+        </div>
+        <div style={{ overflow: "auto", padding: "0 16px 16px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 760 }}><thead><tr style={{ background: T.elevated, color: T.text2, textAlign: "left" }}>{["Date / Time","Customer","Received","Allocated","Unallocated","Bill-wise FIFO allocation"].map((x)=><th key={x} style={{ padding: 11, borderBottom: `1px solid ${T.border}`, whiteSpace: "nowrap" }}>{x}</th>)}</tr></thead><tbody>{payments.map((p)=><tr key={p._id} style={{ borderBottom: `1px solid ${T.border}` }}><td style={{ padding: 11, color: T.text2, whiteSpace: "nowrap" }}>{new Date(p.createdAt).toLocaleString("en-IN")}</td><td style={{ padding: 11, color: T.text1, fontWeight: 700 }}>{p.account}</td><td style={{ padding: 11, textAlign: "right", color: T.gold, fontWeight: 800 }}>{fmt(p.amountReceived)}</td><td style={{ padding: 11, textAlign: "right", color: T.safe }}>{fmt(p.allocatedAmount)}</td><td style={{ padding: 11, textAlign: "right", color: T.warning }}>{fmt(p.unallocatedAmount)}</td><td style={{ padding: 11, color: T.text2 }}>{(p.allocations || []).map((a)=><div key={`${a.refNo}-${a.amount}`} style={{ marginBottom: 3 }}><b style={{ color: T.text1 }}>{a.refNo}</b> · {fmt(a.amount)}{a.pendingAfter === 0 ? <span style={{ color: T.safe }}> · Paid</span> : null}</div>)}</td></tr>)}</tbody></table>
+          {payments.length === 0 && <div style={{ padding: 48, textAlign: "center", color: T.text3 }}>No payment records yet. Payments will appear here after they are saved.</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function App() {
   const [_boot] = useState(() => lsGet(STORAGE_KEY));
-  const [data, setData] = useState(() =>
-    Array.isArray(_boot?.data) && _boot.data.length > 0
-      ? refreshDueDays(_boot.data)
-      : [],
-  );
-  const [deletedRefs, setDeletedRefs] = useState(
-    () => new Set(_boot?.deletedRefs || []),
-  );
-  const [overrides, setOverrides] = useState(() => _boot?.overrides || {});
-  const [fileName, setFileName] = useState(() => _boot?.fileName || "");
+  const [data, setData] = useState([]);
+  const [deletedRefs, setDeletedRefs] = useState(new Set());
+  const [overrides, setOverrides] = useState({});
+  const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
   const [filterDue, setFilterDue] = useState("all");
   const [sortCol, setSortCol] = useState("Due Days");
@@ -662,61 +723,54 @@ export default function App() {
   const [confirmModal, setConfirmModal] = useState(null);
   const [paymentRow, setPaymentRow] = useState(null);
   const [storageSaving, setStorageSaving] = useState(false);
-  const [storageSavedAt, setStorageSavedAt] = useState(() =>
-    _boot?.savedAt ? new Date(_boot.savedAt) : null,
-  );
+  const [storageSavedAt, setStorageSavedAt] = useState(null);
   const [storageError, setStorageError] = useState("");
-  const saveTimerRef = useRef(null);
-  const storageReadyRef = useRef(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [paymentReceivedOpen, setPaymentReceivedOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [syncReady, setSyncReady] = useState(false);
   const fileRef = useRef();
 
-  useEffect(() => {
-    storageReadyRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (!storageReadyRef.current) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      setStorageSaving(true);
-      setStorageError("");
-      const now = new Date().toISOString();
-      const ok = lsSet(STORAGE_KEY, {
-        data,
-        deletedRefs: [...deletedRefs],
-        overrides,
-        fileName,
-        savedAt: now,
-      });
-      if (ok) setStorageSavedAt(new Date(now));
-      else
-        setStorageError(
-          "Auto-save failed — storage full? Use 💾 Excel to back up.",
-        );
-      setStorageSaving(false);
-    }, 1500);
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [data, deletedRefs, overrides, fileName]);
-
-  const handleFile = useCallback(
-    async (file) => {
-      if (!file) return;
-      setUploading(true);
-      setParseErr("");
-      try {
-        const parsed = await parseXLSX(file);
-        if (!parsed.length) throw new Error("No data rows found.");
-        setData(applyAdjustments(parsed, deletedRefs, overrides));
-        setFileName(file.name);
-      } catch (e) {
-        setParseErr("Parse failed: " + (e.message || "Unknown error"));
+  const refreshCloudData = useCallback(async () => {
+    setStorageSaving(true); setStorageError("");
+    try {
+      const [overdueRes, paymentRes] = await Promise.all([api.get("/overdues"), api.get("/overdues/payments")]);
+      let cloudRows = overdueRes.data?.data || [];
+      // Migrate the old browser-only data once, but only when the server has no records.
+      if (cloudRows.length === 0 && Array.isArray(_boot?.data) && _boot.data.length) {
+        try {
+          const migrated = await api.post("/overdues/migrate-local", { data: _boot.data, fileName: _boot.fileName || "Local data migration" });
+          cloudRows = migrated.data?.data || [];
+        } catch (migrationError) { console.warn("Legacy local data migration skipped:", migrationError.response?.data?.message || migrationError.message); }
       }
-      setUploading(false);
-    },
-    [deletedRefs, overrides],
-  );
+      setData(refreshDueDays(cloudRows));
+      setFileName(overdueRes.data?.fileName || _boot?.fileName || "");
+      setPaymentHistory(paymentRes.data?.payments || []);
+      setStorageSavedAt(new Date());
+      setSyncReady(true);
+    } catch (error) {
+      setStorageError(error.response?.data?.message || "Cloud sync unavailable. Check backend/API URL and login.");
+    } finally { setStorageSaving(false); }
+  }, [_boot]);
+
+  useEffect(() => { refreshCloudData(); }, [refreshCloudData]);
+
+  const handleFile = useCallback(async (file) => {
+    if (!file) return;
+    setUploading(true); setParseErr(""); setStorageSaving(true); setStorageError("");
+    try {
+      const form = new FormData(); form.append("file", file);
+      const response = await api.post("/overdues/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      setData(refreshDueDays(response.data?.data || []));
+      setFileName(response.data?.fileName || file.name);
+      setStorageSavedAt(new Date());
+      setSyncReady(true);
+    } catch (error) {
+      setParseErr(error.response?.data?.message || "Upload failed. Please confirm backend connection and try again.");
+      setStorageError(error.response?.status === 401 ? "Please login again to sync data." : "Cloud save failed");
+    } finally { setUploading(false); setStorageSaving(false); if (fileRef.current) fileRef.current.value = ""; }
+  }, []);
 
   const onDrop = (e) => {
     e.preventDefault();
@@ -724,81 +778,45 @@ export default function App() {
     handleFile(e.dataTransfer.files[0]);
   };
   const handleSaveToFile = () => exportToXLSX(data, fileName);
-  const handleClearStorage = () => {
-    if (
-      !window.confirm(
-        "Clear all saved data?\n\nDownload an Excel backup first if needed.",
-      )
-    )
-      return;
-    lsDel(STORAGE_KEY);
-    setData([]);
-    setDeletedRefs(new Set());
-    setOverrides({});
-    setFileName("");
-    setStorageSavedAt(null);
-    setStorageError("");
+  const handleClearStorage = async () => {
+    if (!window.confirm("Clear all synced overdue entries and payment history for your account?\n\nThis action cannot be undone.")) return;
+    setStorageSaving(true); setStorageError("");
+    try { await api.delete("/overdues/clear"); setData([]); setPaymentHistory([]); setDeletedRefs(new Set()); setOverrides({}); setFileName(""); setStorageSavedAt(new Date()); }
+    catch (error) { setStorageError(error.response?.data?.message || "Could not clear cloud data"); }
+    finally { setStorageSaving(false); }
   };
 
   const confirmDeleteRow = (row) => {
-    setConfirmModal({
-      message: `Delete "${row["Ref. No."]}" for ${row["Account"]}?`,
-      onConfirm: () => {
-        const ref = row["Ref. No."];
-        const nextOverrides = { ...overrides };
-        delete nextOverrides[ref];
-        setData(data.filter((r) => r._id !== row._id));
-        setDeletedRefs(new Set(deletedRefs).add(ref));
-        setOverrides(nextOverrides);
-        setConfirmModal(null);
-      },
-    });
+    setConfirmModal({ message: `Delete "${row["Ref. No."]}" for ${row["Account"]}?`, onConfirm: async () => {
+      try { await api.delete(`/overdues/${row._id}`); setData((current) => current.filter((r) => r._id !== row._id)); setConfirmModal(null); setStorageSavedAt(new Date()); }
+      catch (error) { setStorageError(error.response?.data?.message || "Delete failed"); setConfirmModal(null); }
+    }});
   };
 
   const confirmDeleteAccount = (acctName) => {
     const acctRows = data.filter((r) => r["Account"] === acctName);
-    const total = acctRows.reduce((s, r) => s + (r["Pending Amt."] || 0), 0);
-    setConfirmModal({
-      message: `Delete all ${acctRows.length} entries for "${acctName}" totalling ${fmt(total)}?`,
-      onConfirm: () => {
-        const nextDeleted = new Set(deletedRefs);
-        const nextOverrides = { ...overrides };
-        acctRows.forEach((r) => {
-          nextDeleted.add(r["Ref. No."]);
-          delete nextOverrides[r["Ref. No."]];
-        });
-        setData(data.filter((r) => r["Account"] !== acctName));
-        setDeletedRefs(nextDeleted);
-        setOverrides(nextOverrides);
-        if (expandedAccount === acctName) setExpandedAccount(null);
-        setConfirmModal(null);
-      },
-    });
+    const total = acctRows.reduce((sum, r) => sum + (r["Pending Amt."] || 0), 0);
+    setConfirmModal({ message: `Delete all ${acctRows.length} entries for "${acctName}" totalling ${fmt(total)}?`, onConfirm: async () => {
+      try { await api.delete(`/overdues/account/${encodeURIComponent(acctName)}`); setData((current) => current.filter((r) => r["Account"] !== acctName)); if (expandedAccount === acctName) setExpandedAccount(null); setConfirmModal(null); setStorageSavedAt(new Date()); }
+      catch (error) { setStorageError(error.response?.data?.message || "Delete failed"); setConfirmModal(null); }
+    }});
   };
 
-  const handleRecordPayment = (amountReceived) => {
-    const row = paymentRow;
-    if (!row) return;
-    const ref = row["Ref. No."];
-    const newPending = Math.max(0, (row["Pending Amt."] || 0) - amountReceived);
-    const clearedFully = newPending <= 0;
-    const next = clearedFully
-      ? data.filter((r) => r._id !== row._id)
-      : data.map((r) =>
-          r._id === row._id ? { ...r, "Pending Amt.": newPending } : r,
-        );
-    const nextDeleted = new Set(deletedRefs);
-    const nextOverrides = { ...overrides };
-    if (clearedFully) {
-      nextDeleted.add(ref);
-      delete nextOverrides[ref];
-    } else {
-      nextOverrides[ref] = newPending;
-    }
-    setData(next);
-    setDeletedRefs(nextDeleted);
-    setOverrides(nextOverrides);
-    setPaymentRow(null);
+  const handleRecordPayment = async (amountReceived) => {
+    const row = paymentRow; if (!row) return;
+    setStorageSaving(true); setStorageError("");
+    try { await api.put(`/overdues/${row._id}/payment`, { amount: amountReceived }); await refreshCloudData(); setPaymentRow(null); }
+    catch (error) { setStorageError(error.response?.data?.message || "Payment could not be saved"); }
+    finally { setStorageSaving(false); }
+  };
+
+  const handleCustomerPayment = async (account, amount) => {
+    setPaymentBusy(true); setStorageError("");
+    try {
+      await api.post("/overdues/payments", { account, amount });
+      await refreshCloudData(); setPaymentReceivedOpen(false);
+    } catch (error) { setStorageError(error.response?.data?.message || "Payment could not be saved to cloud"); }
+    finally { setPaymentBusy(false); }
   };
 
   const filtered = data
@@ -993,6 +1011,8 @@ export default function App() {
             onConfirm={confirmModal.onConfirm}
             onCancel={() => setConfirmModal(null)} />
         )}
+        {paymentReceivedOpen && <CustomerPaymentModal accounts={[...new Set(data.map((r) => r["Account"]).filter(Boolean))].sort()} onConfirm={handleCustomerPayment} onCancel={() => setPaymentReceivedOpen(false)} busy={paymentBusy} />}
+        {historyOpen && <PaymentHistoryModal payments={paymentHistory} onClose={() => setHistoryOpen(false)} />}
         {paymentRow && (
           <PaymentModal
             row={paymentRow}
@@ -1066,12 +1086,12 @@ export default function App() {
                 </span>
                 <span style={{ marginLeft: 4 }}>
                   {storageSaving ? (
-                    <span style={{ color: T.info }}>🔄 Saving…</span>
+                    <span style={{ color: T.info }}>🔄 Syncing…</span>
                   ) : storageError ? (
                     <span style={{ color: T.warning }}>⚠ {storageError}</span>
                   ) : storageSavedAt ? (
                     <span style={{ color: T.safe }}>
-                      ✓ Saved{" "}
+                      ✓ Cloud synced{" "}
                       {storageSavedAt.toLocaleTimeString("en-IN", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -1079,13 +1099,16 @@ export default function App() {
                     </span>
                   ) : data.length === 0 ? (
                     <span style={{ color: T.text3 }}>
-                      Upload an Excel file to begin
+                      Connect to cloud or upload Excel
                     </span>
                   ) : null}
                 </span>
               </p>
             </div>
             <div className="sf-header-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={refreshCloudData} disabled={storageSaving} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text2, fontSize: 13, fontWeight: 700, cursor: storageSaving ? "wait" : "pointer" }}>{storageSaving ? "↻ Syncing…" : "↻ Sync now"}</button>
+              <button onClick={() => setPaymentReceivedOpen(true)} disabled={!data.length} style={{ padding: "8px 13px", borderRadius: 8, border: `1px solid rgba(16,185,129,.35)`, background: "rgba(16,185,129,.10)", color: T.safe, fontSize: 13, fontWeight: 800, cursor: data.length ? "pointer" : "not-allowed" }}>💰 Payment Received</button>
+              <button onClick={async () => { setStorageSaving(true); try { const r = await api.get("/overdues/payments"); setPaymentHistory(r.data?.payments || []); setHistoryOpen(true); } catch (e) { setStorageError(e.response?.data?.message || "Payment history could not be loaded"); } finally { setStorageSaving(false); } }} style={{ padding: "8px 13px", borderRadius: 8, border: `1px solid ${T.border}`, background: "transparent", color: T.text1, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>🧾 Payment History ({paymentHistory.length})</button>
               <button
                 onClick={handleSaveToFile}
                 style={{
@@ -1168,7 +1191,7 @@ export default function App() {
                 {uploading ? "Processing…" : "Upload Excel File"}
               </p>
               <p style={{ color: T.text3, fontSize: 12, marginTop: 2 }}>
-                Click or drag & drop — data saves automatically to this browser
+                Click or drag & drop — records sync to your account database
               </p>
             </div>
             {data.length > 0 && (

@@ -1,5 +1,6 @@
 import XLSX from "xlsx";
 import OverdueEntry from "../models/overdueModel.js";
+import PaymentHistory from "../models/paymentHistoryModel.js";
 
 // ────────────────────────────────────────────
 // SHARED HELPERS
@@ -258,7 +259,8 @@ export const recordPayment = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Entry not found" });
 
-    const newPending   = Math.max(0, entry.pendingAmt - amount);
+    const pendingBefore = Number(entry.pendingAmt) || 0;
+    const newPending   = Math.max(0, pendingBefore - amount);
     const clearedFully = newPending <= 0;
 
     entry.pendingAmt        = newPending;
@@ -266,6 +268,24 @@ export const recordPayment = async (req, res) => {
     if (clearedFully) entry.isDeleted = true;
 
     await entry.save();
+
+    const allocatedAmount = Math.min(amount, pendingBefore);
+    await PaymentHistory.create({
+      user: req.user.id,
+      account: entry.account,
+      amountReceived: amount,
+      allocatedAmount,
+      unallocatedAmount: Math.max(0, amount - allocatedAmount),
+      source: "single-bill",
+      allocations: [{
+        entryId: entry._id,
+        refNo: entry.refNo,
+        dated: entry.dated,
+        amount: allocatedAmount,
+        pendingBefore,
+        pendingAfter: entry.pendingAmt,
+      }],
+    });
 
     res.json({
       success:      true,
@@ -340,6 +360,7 @@ export const deleteAccount = async (req, res) => {
 export const clearAll = async (req, res) => {
   try {
     const result = await OverdueEntry.deleteMany({ user: req.user.id });
+    await PaymentHistory.deleteMany({ user: req.user.id });
     res.json({
       success: true,
       message: `All data cleared (${result.deletedCount} entries removed)`,
@@ -423,4 +444,92 @@ export const getStats = async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+};
+
+
+// CUSTOMER PAYMENT — FIFO allocation to the oldest open bills first.
+export const recordCustomerPayment = async (req, res) => {
+  try {
+    const account = String(req.body.account || "").trim();
+    const amountReceived = Number(req.body.amount);
+    if (!account) return res.status(400).json({ success: false, message: "Customer/account is required" });
+    if (!Number.isFinite(amountReceived) || amountReceived <= 0)
+      return res.status(400).json({ success: false, message: "Amount must be a positive number" });
+
+    const bills = await OverdueEntry.find({ user: req.user.id, account, isDeleted: false, pendingAmt: { $gt: 0 } })
+      .sort({ dated: 1, createdAt: 1, refNo: 1 });
+    if (!bills.length) return res.status(404).json({ success: false, message: "No pending bills found for this customer" });
+
+    let remaining = amountReceived;
+    let allocatedAmount = 0;
+    const allocations = [];
+    for (const bill of bills) {
+      if (remaining <= 0) break;
+      const before = Number(bill.pendingAmt) || 0;
+      const applied = Math.min(before, remaining);
+      if (applied <= 0) continue;
+      const after = Math.max(0, before - applied);
+      bill.pendingAmt = after;
+      bill.isPendingModified = true;
+      if (after <= 0) bill.isDeleted = true;
+      await bill.save();
+      allocations.push({ entryId: bill._id, refNo: bill.refNo, dated: bill.dated, amount: applied, pendingBefore: before, pendingAfter: after });
+      allocatedAmount += applied;
+      remaining = Math.max(0, remaining - applied);
+    }
+
+    const payment = await PaymentHistory.create({
+      user: req.user.id, account, amountReceived, allocatedAmount,
+      unallocatedAmount: Math.max(0, amountReceived - allocatedAmount),
+      allocations, source: "customer",
+    });
+    const activeDocs = await OverdueEntry.find({ user: req.user.id, isDeleted: false }).lean();
+    res.status(201).json({
+      success: true, message: "Payment received and allocated FIFO",
+      payment: payment.toObject(), data: activeDocs.map(toResponseShape),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET PAYMENT HISTORY — scoped to the authenticated user.
+export const getPaymentHistory = async (req, res) => {
+  try {
+    const query = { user: req.user.id };
+    if (req.query.account) query.account = String(req.query.account);
+    const payments = await PaymentHistory.find(query).sort({ createdAt: -1 }).limit(2000).lean();
+    res.json({ success: true, total: payments.length, payments });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+// One-time migration helper for records saved by the old localStorage version.
+export const importLocalOverdues = async (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body.data) ? req.body.data : [];
+    if (!incoming.length) return res.status(400).json({ success: false, message: "No local records to import" });
+    const ops = [];
+    for (const row of incoming) {
+      const refNo = String(row["Ref. No."] ?? row.refNo ?? "").trim();
+      if (!refNo) continue;
+      const entry = {
+        user: req.user.id, salesman: String(row.Salesman ?? row.salesman ?? ""),
+        account: String(row.Account ?? row.account ?? ""), dated: toISODate(row.Dated ?? row.dated) || "",
+        type: String(row.Type ?? row.type ?? ""), refNo,
+        refAmt: Number(row["Ref. Amt."] ?? row.refAmt ?? 0) || 0,
+        pendingAmt: Math.max(0, Number(row["Pending Amt."] ?? row.pendingAmt ?? 0) || 0),
+        due: String(row.Due ?? row.due ?? ""), dueDate: toISODate(row["Due Date"] ?? row.dueDate) || "",
+        fileName: String(req.body.fileName || row.fileName || "Local data migration"),
+        isDeleted: false, isPendingModified: true,
+      };
+      ops.push({ updateOne: { filter: { user: req.user.id, refNo }, update: { $setOnInsert: entry }, upsert: true } });
+    }
+    if (!ops.length) return res.status(400).json({ success: false, message: "No valid reference numbers found" });
+    await OverdueEntry.bulkWrite(ops, { ordered: false });
+    const docs = await OverdueEntry.find({ user: req.user.id, isDeleted: false }).lean();
+    res.status(201).json({ success: true, message: "Local records synced to database", data: docs.map(toResponseShape) });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };

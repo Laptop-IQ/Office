@@ -6,6 +6,9 @@ import {
   getOverdues,
   getStats,
   recordPayment,
+  recordCustomerPayment,
+  getPaymentHistory,
+  importLocalOverdues,
   deleteEntry,
   deleteAccount,
   clearAll,
@@ -37,6 +40,9 @@ const router = express.Router();
 router.post("/upload", protect, upload.single("file"), uploadOverdues);
 
 router.get("/stats", protect, getStats);
+router.get("/payments", protect, getPaymentHistory);
+router.post("/payments", protect, recordCustomerPayment);
+router.post("/migrate-local", protect, importLocalOverdues);
 router.get("/",      protect, getOverdues);
 
 router.delete("/clear",           protect, clearAll);
