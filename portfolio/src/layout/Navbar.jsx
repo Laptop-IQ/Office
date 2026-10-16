@@ -10,6 +10,7 @@ import {
   CubeIcon,
   CreditCardIcon,
   ChartBarIcon,
+  DocumentTextIcon,
   ArrowRightOnRectangleIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -94,6 +95,11 @@ const NAV = [
         name: "Daily Visit Report",
         path: "/DailySalesReport",
         icon: ChartBarIcon,
+      },
+      {
+        name: "Ecofast Trial Reports",
+        path: "/Ecofast",
+        icon: DocumentTextIcon,
       },
     ],
   },

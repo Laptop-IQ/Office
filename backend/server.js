@@ -13,6 +13,8 @@ import dsrCustomerRouter from "./routes/dsrCustomerRouter.js";
 import stockRoute from "./routes/stockRoute.js";
 import dispatchRoutes from "./routes/dispatchRoutes.js";
 import overdueRoutes from "./routes/overdueRoutes.js";
+import ecofastRoutes from "./routes/ecofastRoutes.js";
+import { protect } from "./middleware/authMiddleware.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -86,6 +88,8 @@ app.use("/api/dsr/customers", dsrCustomerRouter);
 app.use("/api/stock", stockRoute);
 app.use("/api/dispatch", dispatchRoutes);
 app.use("/api/overdues", overdueRoutes);
+// Ecofast Trial Report + Excel export (authenticated)
+app.use("/api/ecofast", protect, express.json({ limit: "2mb" }), ecofastRoutes);
 
 // Health check
 app.get("/", (req, res) => {

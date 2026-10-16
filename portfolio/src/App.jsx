@@ -24,6 +24,7 @@ import OverduesDashboard from "./components/OverduesDashboard";
 import StockManager from "./components/Stockmanager";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
+import EcofastEntry from "./components/EcofastEntry";
 
 
 // Portfolio Page (Public)
@@ -101,6 +102,16 @@ function App() {
             }
           />
         
+
+          <Route
+            path="/Ecofast"
+            element={
+              <PrivateRoute>
+                <EcofastEntry />
+              </PrivateRoute>
+            }
+          />
+
           <Route
             path="/purchase"
             element={
