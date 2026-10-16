@@ -13,6 +13,21 @@ async function ecofastFetch(url, options = {}) {
   return fetch(url, { ...options, headers });
 }
 
+async function readApiJson(response) {
+  const raw = await response.text();
+  if (!raw.trim()) {
+    throw new Error(`Server ne empty response bheja (HTTP ${response.status}). Backend server aur route check karein.`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const hint = raw.trim().startsWith("<")
+      ? "API ke badle HTML page mila. Frontend proxy/backend URL check karein."
+      : "Server ka response valid JSON nahi hai. Backend logs check karein.";
+    throw new Error(`${hint} (HTTP ${response.status})`);
+  }
+}
+
 const emptyEntry = () => ({
   report: {
     date: new Date().toISOString().slice(0, 10), customer: "", visitedBy: "", dmuMet: "",
@@ -99,7 +114,9 @@ export default function App() {
     try {
       const res = await ecofastFetch("/api/ecofast/entries");
       if (!res.ok) throw new Error("Could not load saved entries.");
-      setSaved(await res.json());
+      const data = await readApiJson(res);
+      if (!Array.isArray(data)) throw new Error("Saved entries API ne list return nahi ki.");
+      setSaved(data);
     } catch {
       setNotice({ type: "error", text: "Server se connect nahi ho raha. Backend start karein." });
     }
@@ -146,7 +163,7 @@ export default function App() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...entry, ...(activeId ? { id: activeId } : {}) })
       });
-      const data = await res.json();
+      const data = await readApiJson(res);
       if (!res.ok) throw new Error(data.message || "Save failed.");
       setActiveId(data.id);
       setNotice({ type: "success", text: "Entry server par save ho gayi." });
@@ -164,7 +181,7 @@ export default function App() {
         const saveRes = await ecofastFetch("/api/ecofast/entries", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry)
         });
-        const savedEntry = await saveRes.json();
+        const savedEntry = await readApiJson(saveRes);
         if (!saveRes.ok) throw new Error(savedEntry.message || "Entry save nahi ho saki.");
         id = savedEntry.id;
         setActiveId(id);
@@ -172,7 +189,8 @@ export default function App() {
       }
       const res = await ecofastFetch(`/api/ecofast/entries/${id}/export`);
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        let body = {};
+        try { body = await readApiJson(res); } catch (error) { body = { message: error.message }; }
         throw new Error(body.message || "Excel export failed.");
       }
       const blob = await res.blob();
