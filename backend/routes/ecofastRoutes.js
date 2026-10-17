@@ -1,29 +1,14 @@
 import express from "express";
 import ExcelJS from "exceljs";
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import crypto from "node:crypto";
+import mongoose from "mongoose";
+import EcofastEntry from "../models/EcofastEntry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
-const DATA_DIR = path.join(__dirname, "..", "data", "ecofast");
-const DATA_FILE = path.join(DATA_DIR, "entries.json");
 const TEMPLATE_FILE = path.join(__dirname, "..", "templates", "ecofast-template.xlsx");
 
-async function readEntries() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    return JSON.parse(await fs.readFile(DATA_FILE, "utf8"));
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-async function writeEntries(entries) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(entries, null, 2), "utf8");
-}
 function clean(value, max = 5000) {
   if (value === null || value === undefined) return "";
   return String(value).trim().slice(0, max);
@@ -33,95 +18,91 @@ function normalizeEntry(input = {}) {
   const process = input.process || {};
   return {
     report: {
-      date: clean(report.date, 30),
-      customer: clean(report.customer, 200),
-      visitedBy: clean(report.visitedBy, 200),
-      dmuMet: clean(report.dmuMet, 200),
-      objective: clean(report.objective),
-      reason: clean(report.reason, 1000),
-      quality: clean(report.quality, 200),
-      qualityType: clean(report.qualityType, 200),
-      trialDetails: clean(report.trialDetails, 1000),
-      machinery: clean(report.machinery, 300),
-      mlr: clean(report.mlr, 100),
-      processFollowed: clean(report.processFollowed, 1000),
-      observations: clean(report.observations, 3000),
-      conclusion: clean(report.conclusion, 1000),
-      product: clean(report.product, 500),
-      action: clean(report.action, 1500)
+      date: clean(report.date, 30), customer: clean(report.customer, 200),
+      visitedBy: clean(report.visitedBy, 200), dmuMet: clean(report.dmuMet, 200),
+      objective: clean(report.objective), reason: clean(report.reason, 1000),
+      quality: clean(report.quality, 200), qualityType: clean(report.qualityType, 200),
+      trialDetails: clean(report.trialDetails, 1000), machinery: clean(report.machinery, 300),
+      mlr: clean(report.mlr, 100), processFollowed: clean(report.processFollowed, 1000),
+      observations: clean(report.observations, 3000), conclusion: clean(report.conclusion, 1000),
+      product: clean(report.product, 500), action: clean(report.action, 1500),
     },
     process: {
-      quality: clean(process.quality, 200),
-      qualityType: clean(process.qualityType, 200),
-      raw: clean(process.raw, 200),
-      quantity: clean(process.quantity, 100),
-      standardSolution: clean(process.standardSolution, 100),
-      standardValue: clean(process.standardValue, 100),
-      machine: clean(process.machine, 200),
-      liquorQuantity: clean(process.liquorQuantity, 100),
-      sample: clean(process.sample, 200),
-      method: clean(process.method, 300),
-      speed: clean(process.speed, 100),
+      quality: clean(process.quality, 200), qualityType: clean(process.qualityType, 200),
+      raw: clean(process.raw, 200), quantity: clean(process.quantity, 100),
+      standardSolution: clean(process.standardSolution, 100), standardValue: clean(process.standardValue, 100),
+      machine: clean(process.machine, 200), liquorQuantity: clean(process.liquorQuantity, 100),
+      sample: clean(process.sample, 200), method: clean(process.method, 300), speed: clean(process.speed, 100),
       steps: Array.isArray(process.steps) ? process.steps.slice(0, 18).map((s) => ({
-        no: clean(s.no, 20),
-        details: clean(s.details, 500),
-        dosage: clean(s.dosage, 100),
-        totalQty: clean(s.totalQty, 100),
-        ph: clean(s.ph, 50),
-        temp: clean(s.temp, 50),
-        time: clean(s.time, 50),
-        costPerKg: clean(s.costPerKg, 50),
-        cost: clean(s.cost, 50)
-      })) : []
-    }
+        no: clean(s.no, 20), details: clean(s.details, 500), dosage: clean(s.dosage, 100),
+        totalQty: clean(s.totalQty, 100), ph: clean(s.ph, 50), temp: clean(s.temp, 50),
+        time: clean(s.time, 50), costPerKg: clean(s.costPerKg, 50), cost: clean(s.cost, 50),
+      })) : [],
+    },
   };
 }
+function publicEntry(doc) {
+  const item = doc.toObject ? doc.toObject() : doc;
+  return {
+    id: String(item._id),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    report: item.report,
+    process: item.process,
+  };
+}
+function validId(id) {
+  return mongoose.isValidObjectId(id);
+}
 
-router.get("/health", (_req, res) => res.json({ ok: true }));
-router.get("/entries", async (_req, res, next) => {
+router.get("/health", (_req, res) => res.json({ ok: true, storage: "mongodb" }));
+
+router.get("/entries", async (req, res, next) => {
   try {
-    const entries = await readEntries();
-    res.json(entries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-  } catch (e) { next(e); }
+    const docs = await EcofastEntry.find({ user: req.user._id }).sort({ updatedAt: -1 }).lean();
+    res.json(docs.map(publicEntry));
+  } catch (error) { next(error); }
 });
+
 router.get("/entries/:id", async (req, res, next) => {
   try {
-    const entries = await readEntries();
-    const entry = entries.find((x) => x.id === req.params.id);
-    if (!entry) return res.status(404).json({ message: "Entry not found" });
-    res.json(entry);
-  } catch (e) { next(e); }
+    if (!validId(req.params.id)) return res.status(400).json({ message: "Invalid entry id." });
+    const doc = await EcofastEntry.findOne({ _id: req.params.id, user: req.user._id });
+    if (!doc) return res.status(404).json({ message: "Entry not found." });
+    res.json(publicEntry(doc));
+  } catch (error) { next(error); }
 });
+
 router.post("/entries", async (req, res, next) => {
   try {
     const normalized = normalizeEntry(req.body);
     if (!normalized.report.customer) {
       return res.status(400).json({ message: "Customer name is required." });
     }
-    const entries = await readEntries();
-    const now = new Date().toISOString();
-    const id = req.body.id || crypto.randomUUID();
-    const existingIndex = entries.findIndex((x) => x.id === id);
-    const entry = {
-      id,
-      createdAt: existingIndex >= 0 ? entries[existingIndex].createdAt : now,
-      updatedAt: now,
-      ...normalized
-    };
-    if (existingIndex >= 0) entries[existingIndex] = entry;
-    else entries.push(entry);
-    await writeEntries(entries);
-    res.status(existingIndex >= 0 ? 200 : 201).json(entry);
-  } catch (e) { next(e); }
+
+    if (req.body.id) {
+      if (!validId(req.body.id)) return res.status(400).json({ message: "Invalid entry id." });
+      const updated = await EcofastEntry.findOneAndUpdate(
+        { _id: req.body.id, user: req.user._id },
+        { $set: normalized },
+        { new: true, runValidators: true },
+      );
+      if (!updated) return res.status(404).json({ message: "Entry not found or access denied." });
+      return res.json(publicEntry(updated));
+    }
+
+    const created = await EcofastEntry.create({ ...normalized, user: req.user._id });
+    return res.status(201).json(publicEntry(created));
+  } catch (error) { next(error); }
 });
+
 router.delete("/entries/:id", async (req, res, next) => {
   try {
-    const entries = await readEntries();
-    const nextEntries = entries.filter((x) => x.id !== req.params.id);
-    if (nextEntries.length === entries.length) return res.status(404).json({ message: "Entry not found" });
-    await writeEntries(nextEntries);
+    if (!validId(req.params.id)) return res.status(400).json({ message: "Invalid entry id." });
+    const deleted = await EcofastEntry.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    if (!deleted) return res.status(404).json({ message: "Entry not found." });
     res.json({ ok: true });
-  } catch (e) { next(e); }
+  } catch (error) { next(error); }
 });
 
 const processRows = [18, 19, 20, 21, 23, 24, 25, 26, 28, 30, 32, 33, 34, 36, 37, 39, 41];
@@ -137,9 +118,10 @@ function setDateCell(sheet, address, value) {
 }
 router.get("/entries/:id/export", async (req, res, next) => {
   try {
-    const entries = await readEntries();
-    const entry = entries.find((x) => x.id === req.params.id);
-    if (!entry) return res.status(404).json({ message: "Entry not found" });
+    if (!validId(req.params.id)) return res.status(400).json({ message: "Invalid entry id." });
+    const doc = await EcofastEntry.findOne({ _id: req.params.id, user: req.user._id }).lean();
+    if (!doc) return res.status(404).json({ message: "Entry not found" });
+    const entry = publicEntry(doc);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(TEMPLATE_FILE);
     const report = workbook.getWorksheet("Report");

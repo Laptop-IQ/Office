@@ -6,11 +6,14 @@ import {
   Trash2, Users, X
 } from "lucide-react";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
 async function ecofastFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
   const token = localStorage.getItem("token");
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  return fetch(url, { ...options, headers });
+  const targetUrl = url.startsWith("/api/") ? `${API_BASE_URL}${url}` : url;
+  return fetch(targetUrl, { ...options, headers });
 }
 
 async function readApiJson(response) {

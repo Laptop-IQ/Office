@@ -23,7 +23,11 @@ const port = process.env.PORT || 4000;
 app.set("trust proxy", 1);
 
 // Allowed origins
-const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || "").split(",").map((value) => value.trim()),
+  "https://office-1-jg5x.onrender.com",
+].filter(Boolean);
 
 // CORS options
 const corsOptions = {
