@@ -6,25 +6,26 @@ import React, {
   useRef,
 } from "react";
 import * as XLSX from "xlsx-js-style";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
 const DS = {
-  bg: "#06101E",
-  sidebar: "#040C18",
-  card: "#0B1A2E",
-  surface: "#122035",
-  border: "#1A3050",
-  borderHi: "#254868",
-  primary: "#00C8B4",
-  primaryGlow: "rgba(0,200,180,0.20)",
-  primaryDim: "rgba(0,200,180,0.08)",
-  gold: "#F5A623",
-  goldGlow: "rgba(245,166,35,0.20)",
-  goldDim: "rgba(245,166,35,0.08)",
-  text1: "#DAE8F8",
-  text2: "#6A8BAE",
-  text3: "#344D68",
+  bg: "#0A0B10",
+  sidebar: "#07080B",
+  card: "#12141B",
+  surface: "#191C25",
+  border: "#272B38",
+  borderHi: "#3C4153",
+  primary: "#D4AF6A",
+  primaryGlow: "rgba(212,175,106,0.20)",
+  primaryDim: "rgba(212,175,106,0.08)",
+  gold: "#E9CF98",
+  goldGlow: "rgba(233,207,152,0.20)",
+  goldDim: "rgba(233,207,152,0.08)",
+  text1: "#F4EFE6",
+  text2: "#A9A396",
+  text3: "#6E6B63",
   success: "#22C55E",
   danger: "#F43F5E",
   warning: "#F97316",
@@ -339,6 +340,40 @@ const Icon = ({ name, size = 16, strokeWidth = 1.8, style, className }) => {
           <path d="M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.2 1 2.1h5c0-.9.4-1.7 1-2.1A6 6 0 0012 3z" />
         </svg>
       );
+    case "phone":
+      return (
+        <svg {...c}>
+          <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" />
+        </svg>
+      );
+    case "whatsapp":
+      return (
+        <svg {...c}>
+          <path d="M20 11.5a8 8 0 01-11.8 7L4 20l1.6-4.1A8 8 0 1120 11.5z" />
+          <path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-.8.8a3.5 3.5 0 01-1.5-1.5l.8-.8-1-2L9 9.5z" />
+        </svg>
+      );
+    case "mail":
+      return (
+        <svg {...c}>
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="M3.5 6.5l8.5 6.5 8.5-6.5" />
+        </svg>
+      );
+    case "user":
+      return (
+        <svg {...c}>
+          <circle cx="12" cy="8" r="3.6" />
+          <path d="M5 20v-1a5 5 0 015-5h4a5 5 0 015 5v1" />
+        </svg>
+      );
+    case "copy":
+      return (
+        <svg {...c}>
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15V6a2 2 0 012-2h9" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -368,7 +403,48 @@ const EMPTY_CUSTOMER = {
   exDyes: "",
   exAux: "",
   abp: "",
+  contactPerson: "",
+  designation: "",
+  mobile: "",
+  altMobile: "",
+  email: "",
+  address: "",
+  gstin: "",
+  notes: "",
 };
+const CONTACT_FIELDS = [
+  "contactPerson",
+  "designation",
+  "mobile",
+  "altMobile",
+  "email",
+  "address",
+  "gstin",
+  "notes",
+];
+const pickContact = (o) =>
+  Object.fromEntries(CONTACT_FIELDS.map((k) => [k, o?.[k] ?? ""]));
+// "+91 98765 43210" -> "9876543210"
+const cleanMobile = (v) =>
+  String(v ?? "")
+    .replace(/\D/g, "")
+    .replace(/^(91|0)(?=\d{10}$)/, "")
+    .slice(0, 10);
+const isValidMobile = (v) => /^[6-9]\d{9}$/.test(v || "");
+const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
+const isValidGSTIN = (v) =>
+  /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(v || "");
+const fmtMobile = (v) => (v ? `+91 ${v.slice(0, 5)} ${v.slice(5)}` : "");
+const DESIGNATION_SUGGESTIONS = [
+  "Owner",
+  "Partner",
+  "Director",
+  "Manager",
+  "Purchase Manager",
+  "Dyeing Master",
+  "Production Head",
+  "Accountant",
+];
 const getToken = () => localStorage.getItem("token") || "";
 const apiFetch = async (path, options = {}) => {
   const res = await fetch(`${API}${path}`, {
@@ -420,27 +496,61 @@ const injectGlobalStyles = () => {
   style.id = "dsr-global-styles";
   // NOTE: @import must be the very first rule, otherwise browsers ignore it.
   style.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
     *, *::before, *::after { box-sizing: border-box; }
-    .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea {
+    .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea,
+    .dsr-pages, .dsr-pages input, .dsr-pages select, .dsr-pages button, .dsr-pages textarea {
       font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     .dsr-mono { font-family: 'IBM Plex Mono','SF Mono',ui-monospace,Consolas,monospace; font-feature-settings:"tnum" 1,"zero" 1; letter-spacing:-0.01em; }
-    .dsr-layout ::selection { background:rgba(0,200,180,0.28); color:#DAE8F8; }
-    .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid #00C8B4; outline-offset:2px; border-radius:6px; }
+    .dsr-layout ::selection { background:rgba(212,175,106,0.28); color:#F4EFE6; }
+    .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid #D4AF6A; outline-offset:2px; border-radius:6px; }
     @media(prefers-reduced-motion:reduce){.dsr-layout *,.dsr-layout *::before,.dsr-layout *::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important;}}
+
+    .dsr-display { font-family:'Playfair Display','Times New Roman',serif!important; letter-spacing:0.005em; font-weight:600; }
+    .dsr-pages ::selection { background:rgba(212,175,106,0.30); color:#F4EFE6; }
+    .dsr-pages button:focus-visible,.dsr-pages input:focus-visible,.dsr-pages select:focus-visible { outline:2px solid #D4AF6A; outline-offset:2px; border-radius:6px; }
+    .dsr-layout, .dsr-pages { background-image:radial-gradient(ellipse at 15% 0%,rgba(212,175,106,0.07) 0%,transparent 45%),radial-gradient(ellipse at 90% 100%,rgba(212,175,106,0.04) 0%,transparent 50%)!important; }
+    .dsr-half-card { transition:border-color .2s,box-shadow .2s,transform .2s; }
+    .dsr-half-card:hover { border-color:rgba(212,175,106,0.55)!important; box-shadow:0 14px 30px -18px rgba(212,175,106,0.45); transform:translateY(-1px); }
+    .dsr-half-open { font-size:11px; font-weight:700; color:#D4AF6A; opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
+    .dsr-half-card:hover .dsr-half-open, .dsr-half-card:focus-within .dsr-half-open { opacity:1; transform:none; }
+    @media(max-width:767px){ .dsr-half-open{opacity:1;transform:none;} }
+    @media(max-width:640px){ .dsr-home-text{display:none;} }
+    .dsr-home-link:hover { background:rgba(212,175,106,0.15)!important; }
+    .dsr-gold-rule { height:1px; border:0; background:linear-gradient(90deg,transparent,rgba(212,175,106,0.55),transparent); margin:0; }
+    .dsr-glass { background:linear-gradient(160deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))!important; backdrop-filter:blur(14px); border:1px solid rgba(212,175,106,0.16)!important; box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,0 18px 40px -20px rgba(0,0,0,0.7)!important; }
+    .dsr-pagebar { position:sticky; top:0; z-index:60; background:rgba(10,11,16,0.82); backdrop-filter:blur(16px) saturate(1.3); border-bottom:1px solid rgba(212,175,106,0.18); }
+    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:999px; border:1px solid rgba(212,175,106,0.30); background:rgba(212,175,106,0.06); color:#D4AF6A; font-size:12.5px; font-weight:700; cursor:pointer; transition:background .15s,transform .15s; }
+    .dsr-back-btn:hover { background:rgba(212,175,106,0.14); transform:translateX(-2px); }
+    .dsr-page-enter { animation:dsr-page-in .45s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes dsr-page-in { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+    .dsr-page-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
+    .dsr-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .dsr-ghost-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:38px; padding:0 14px; border-radius:10px; border:1px solid #272B38; background:rgba(255,255,255,0.03); color:#F4EFE6; font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s,color .15s,background .15s; }
+    .dsr-ghost-btn:hover:not(:disabled) { border-color:#D4AF6A; color:#D4AF6A; background:rgba(212,175,106,0.08); }
+    .dsr-ghost-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:linear-gradient(180deg,rgba(10,11,16,0),rgba(10,11,16,0.94) 35%); backdrop-filter:blur(8px); }
+    @keyframes dsr-shimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
+    .dsr-skeleton { border-radius:12px; background:linear-gradient(90deg,#14161d 25%,#1c1f29 37%,#14161d 63%); background-size:800px 100%; animation:dsr-shimmer 1.4s infinite linear; }
+    @media(min-width:960px){
+      .dsr-page-grid.has-aside { grid-template-columns:minmax(0,1fr) 340px; }
+      .dsr-aside-sticky { position:sticky; top:84px; }
+      .dsr-stat-grid.cols4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+      .dsr-sticky-actions { margin:20px 0 0; padding:0; position:static; background:none; backdrop-filter:none; }
+    }
     @keyframes dsr-modal-in { from{opacity:0;transform:translateY(12px) scale(0.97);} to{opacity:1;transform:translateY(0) scale(1);} }
     .dsr-modal-box { animation:dsr-modal-in 0.28s cubic-bezier(0.16,1,0.3,1) both; }
     .dsr-ladder-seg { transition:background-color 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s ease; }
     @keyframes dsr-spin { to{transform:rotate(360deg);} }
-    .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid rgba(255,255,255,0.08);border-top-color:#00C8B4;animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
-    .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(0,200,180,0.12),rgba(59,130,246,0.12));border:1px solid rgba(0,200,180,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
-    .dsr-input:focus { outline:none;border-color:#00C8B4!important;box-shadow:0 0 0 3px rgba(0,200,180,0.18)!important; }
+    .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid rgba(255,255,255,0.08);border-top-color:#D4AF6A;animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
+    .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(212,175,106,0.12),rgba(59,130,246,0.12));border:1px solid rgba(212,175,106,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
+    .dsr-input:focus { outline:none;border-color:#D4AF6A!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
     .dsr-input-highlight { border-color:#F59E0B!important;background:rgba(245,158,11,0.06)!important;box-shadow:0 0 0 2px rgba(245,158,11,0.15)!important; }
     .dsr-input-highlight:focus { border-color:#D97706!important;box-shadow:0 0 0 3px rgba(217,119,6,0.22)!important; }
-    .dsr-btn-primary { background:linear-gradient(135deg,#00E4CC,#00A89A)!important;border:none!important;box-shadow:0 1px 2px rgba(0,0,0,0.25),0 8px 20px -6px rgba(0,200,180,0.50);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
-    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px);box-shadow:0 2px 4px rgba(0,0,0,0.3),0 12px 24px -6px rgba(0,200,180,0.60); }
+    .dsr-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A)!important;border:none!important;box-shadow:0 1px 2px rgba(0,0,0,0.25),0 8px 20px -6px rgba(212,175,106,0.50);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
+    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px);box-shadow:0 2px 4px rgba(0,0,0,0.3),0 12px 24px -6px rgba(212,175,106,0.60); }
     .dsr-btn-primary:active:not(:disabled) { transform:translateY(0);filter:brightness(0.97); }
     .dsr-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
     .dsr-btn-danger:hover { background:rgba(244,63,94,0.15)!important;color:#FB7185!important;border-color:rgba(244,63,94,0.4)!important; }
@@ -448,76 +558,76 @@ const injectGlobalStyles = () => {
     .dsr-btn-export { background:linear-gradient(135deg,#0D9B72,#047857)!important;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 18px -6px rgba(4,120,87,0.45);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
     .dsr-btn-export:hover { filter:brightness(1.08);transform:translateY(-1.5px); }
     .dsr-record-card { transition:box-shadow 0.25s cubic-bezier(0.16,1,0.3,1),transform 0.25s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 1px 1px rgba(0,0,0,0.15); }
-    .dsr-record-card:hover { box-shadow:0 4px 8px rgba(0,0,0,0.3),0 16px 32px -12px rgba(0,200,180,0.20)!important;transform:translateY(-2px);border-color:#254868!important; }
+    .dsr-record-card:hover { box-shadow:0 4px 8px rgba(0,0,0,0.3),0 16px 32px -12px rgba(212,175,106,0.20)!important;transform:translateY(-2px);border-color:#3C4153!important; }
     .dsr-customer-row { transition:background 0.12s;cursor:pointer; }
-    .dsr-customer-row:focus-visible { outline:2px solid #00C8B4;outline-offset:-2px; }
-    .dsr-customer-row:hover { background:rgba(0,200,180,0.06)!important; }
+    .dsr-customer-row:focus-visible { outline:2px solid #D4AF6A;outline-offset:-2px; }
+    .dsr-customer-row:hover { background:rgba(212,175,106,0.06)!important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
     .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
     @media(max-width:767px){.dsr-row-actions{opacity:1!important;}}
     .dsr-nav-item:hover { background:rgba(255,255,255,0.05)!important; }
-    .dsr-nav-item.active { background:rgba(0,200,180,0.14)!important;color:#00C8B4!important; }
+    .dsr-nav-item.active { background:rgba(212,175,106,0.14)!important;color:#D4AF6A!important; }
     .dsr-topbar-btn:hover { background:rgba(255,255,255,0.12)!important; }
     .dsr-topbar-btn:active { background:rgba(255,255,255,0.20)!important; }
     .dsr-visits-btn { transition:background 0.15s,border-color 0.15s,transform 0.15s; }
-    .dsr-visits-btn:hover { background:rgba(0,200,180,0.18)!important;border-color:#00C8B4!important;transform:translateY(-1px); }
+    .dsr-visits-btn:hover { background:rgba(212,175,106,0.18)!important;border-color:#D4AF6A!important;transform:translateY(-1px); }
     .dsr-export-dropdown { position:relative;display:inline-flex;flex-shrink:0; }
-    .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:#0B1A2E;border:1px solid #1A3050;border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3); }
-    .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:#DAE8F8;border:none;background:transparent;width:100%;text-align:left; }
-    .dsr-export-menu-item:hover { background:rgba(0,200,180,0.10);color:#00C8B4; }
-    .dsr-export-menu-item.active { background:rgba(0,200,180,0.12);color:#00C8B4;font-weight:700; }
-    .dsr-export-divider { height:1px;background:#1A3050;margin:6px 0; }
+    .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:#12141B;border:1px solid #272B38;border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3); }
+    .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:#F4EFE6;border:none;background:transparent;width:100%;text-align:left; }
+    .dsr-export-menu-item:hover { background:rgba(212,175,106,0.10);color:#D4AF6A; }
+    .dsr-export-menu-item.active { background:rgba(212,175,106,0.12);color:#D4AF6A;font-weight:700; }
+    .dsr-export-divider { height:1px;background:#272B38;margin:6px 0; }
     .dsr-export-custom-row { padding:10px 12px 4px;display:flex;flex-direction:column;gap:6px; }
-    .dsr-export-custom-row label { font-size:11px;font-weight:700;color:#6A8BAE;text-transform:uppercase;letter-spacing:0.05em; }
+    .dsr-export-custom-row label { font-size:11px;font-weight:700;color:#A9A396;text-transform:uppercase;letter-spacing:0.05em; }
     .dsr-export-custom-inputs { display:flex;gap:6px;align-items:center; }
-    .dsr-card-expanded { border:1.5px solid #00C8B4!important;box-shadow:0 4px 8px rgba(0,0,0,0.25),0 16px 40px -10px rgba(0,200,180,0.22)!important; }
-    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid #1A3050;background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:#6A8BAE;transition:all 0.15s;display:flex;align-items:center;gap:4px; }
+    .dsr-card-expanded { border:1.5px solid #D4AF6A!important;box-shadow:0 4px 8px rgba(0,0,0,0.25),0 16px 40px -10px rgba(212,175,106,0.22)!important; }
+    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid #272B38;background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:#A9A396;transition:all 0.15s;display:flex;align-items:center;gap:4px; }
     .dsr-expand-btn:hover,.dsr-expand-btn.expanded { background:rgba(59,130,246,0.10);color:#60A5FA;border-color:rgba(59,130,246,0.35); }
     .dsr-card-detail-section { overflow:hidden;transition:max-height 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.2s ease;max-height:0;opacity:0; }
     .dsr-card-detail-section.open { max-height:800px;opacity:1; }
-    .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #1A3050;background:rgba(255,255,255,0.03);font-size:12px;font-weight:600;color:#6A8BAE;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
-    .dsr-filter-chip:hover { border-color:#00C8B4;color:#00C8B4;background:rgba(0,200,180,0.08); }
-    .dsr-filter-chip.active { background:#00C8B4;color:#06101E;border-color:#00C8B4; }
-    .dsr-cust-banner { background:rgba(0,200,180,0.06);border:1px solid rgba(0,200,180,0.20);border-left:4px solid #00C8B4;border-radius:10px;padding:12px 14px;margin-bottom:14px; }
-    .dsr-cust-banner-title { font-size:10px;font-weight:700;color:#00C8B4;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px; }
+    .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #272B38;background:rgba(255,255,255,0.03);font-size:12px;font-weight:600;color:#A9A396;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
+    .dsr-filter-chip:hover { border-color:#D4AF6A;color:#D4AF6A;background:rgba(212,175,106,0.08); }
+    .dsr-filter-chip.active { background:#D4AF6A;color:#0A0B10;border-color:#D4AF6A; }
+    .dsr-cust-banner { background:rgba(212,175,106,0.06);border:1px solid rgba(212,175,106,0.20);border-left:4px solid #D4AF6A;border-radius:10px;padding:12px 14px;margin-bottom:14px; }
+    .dsr-cust-banner-title { font-size:10px;font-weight:700;color:#D4AF6A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px; }
     .dsr-cust-banner-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px 14px; }
     .dsr-cust-banner-item { display:flex;flex-direction:column;gap:1px; }
-    .dsr-cust-banner-key { font-size:9px;color:#344D68;font-weight:600;text-transform:uppercase;letter-spacing:0.05em; }
-    .dsr-cust-banner-val { font-size:12px;font-weight:700;color:#F5A623; }
-    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);font-size:11px;color:#F5A623;line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
+    .dsr-cust-banner-key { font-size:9px;color:#6E6B63;font-weight:600;text-transform:uppercase;letter-spacing:0.05em; }
+    .dsr-cust-banner-val { font-size:12px;font-weight:700;color:#E9CF98; }
+    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);font-size:11px;color:#E9CF98;line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
     .dsr-last-hint:hover { background:rgba(245,158,11,0.15); }
     .dsr-last-hint .hint-text { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:700;color:#F5A623;margin-left:3px; }
-    .dsr-edit-stripe { background:linear-gradient(135deg,#0E2A5A,#1A4E9E);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
+    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:700;color:#E9CF98;margin-left:3px; }
+    .dsr-edit-stripe { background:linear-gradient(135deg,#1B1D28,#2C3042);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
     .dsr-modal-box::-webkit-scrollbar { width:4px; }
-    .dsr-modal-box::-webkit-scrollbar-track { background:#122035; }
-    .dsr-modal-box::-webkit-scrollbar-thumb { background:#1A3050;border-radius:2px; }
+    .dsr-modal-box::-webkit-scrollbar-track { background:#191C25; }
+    .dsr-modal-box::-webkit-scrollbar-thumb { background:#272B38;border-radius:2px; }
     .dsr-scroll::-webkit-scrollbar { width:4px; }
-    .dsr-scroll::-webkit-scrollbar-track { background:#122035; }
-    .dsr-scroll::-webkit-scrollbar-thumb { background:#1A3050;border-radius:2px; }
+    .dsr-scroll::-webkit-scrollbar-track { background:#191C25; }
+    .dsr-scroll::-webkit-scrollbar-thumb { background:#272B38;border-radius:2px; }
     @keyframes ei-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.45);}70%{box-shadow:0 0 0 7px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);} }
     .ei-import-btn { animation:ei-pulse 2s ease-out 1; }
     .ei-import-btn:hover { background:#059669!important; }
     .ei-input { transition:border-color 0.15s,box-shadow 0.15s;outline:none; }
-    .ei-input:focus { border-color:#00C8B4!important;box-shadow:0 0 0 3px rgba(0,200,180,0.18)!important; }
-    .ei-row-new { background:rgba(0,200,180,0.05); }
+    .ei-input:focus { border-color:#D4AF6A!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
+    .ei-row-new { background:rgba(212,175,106,0.05); }
     .ei-row-dup { background:rgba(245,158,11,0.05); }
-    .ei-row-new td:first-child { border-left:3px solid #00C8B4; }
+    .ei-row-new td:first-child { border-left:3px solid #D4AF6A; }
     .ei-row-dup td:first-child { border-left:3px solid #F59E0B; }
-    .ei-check:checked { accent-color:#00C8B4; }
-    .ei-btn-primary { background:linear-gradient(135deg,#00E4CC,#00A89A);color:#06101E;border:none;border-radius:8px;cursor:pointer;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 20px -6px rgba(0,200,180,0.45);transition:filter 0.18s,transform 0.18s; }
+    .ei-check:checked { accent-color:#D4AF6A; }
+    .ei-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A);color:#0A0B10;border:none;border-radius:8px;cursor:pointer;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 20px -6px rgba(212,175,106,0.45);transition:filter 0.18s,transform 0.18s; }
     .ei-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px); }
     .ei-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
-    .ei-btn-secondary { background:rgba(255,255,255,0.05);color:#DAE8F8;border:1px solid #1A3050;border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
+    .ei-btn-secondary { background:rgba(255,255,255,0.05);color:#F4EFE6;border:1px solid #272B38;border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
     .ei-btn-secondary:hover { background:rgba(255,255,255,0.08); }
-    .ei-dropzone { border:2px dashed #1A3050;border-radius:12px;background:rgba(255,255,255,0.02);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
-    .ei-dropzone.dragover { border-color:#00C8B4;background:rgba(0,200,180,0.06); }
+    .ei-dropzone { border:2px dashed #272B38;border-radius:12px;background:rgba(255,255,255,0.02);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
+    .ei-dropzone.dragover { border-color:#D4AF6A;background:rgba(212,175,106,0.06); }
     .ei-table { border-collapse:collapse;width:100%;font-size:12px; }
-    .ei-table th { background:#122035;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#6A8BAE;padding:8px 10px;border-bottom:1px solid #1A3050;position:sticky;top:0;z-index:1; }
-    .ei-table td { padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;color:#DAE8F8; }
+    .ei-table th { background:#191C25;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#A9A396;padding:8px 10px;border-bottom:1px solid #272B38;position:sticky;top:0;z-index:1; }
+    .ei-table td { padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;color:#F4EFE6; }
     .ei-badge { display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700; }
-    .ei-badge-new { background:rgba(0,200,180,0.15);color:#00C8B4;border:1px solid rgba(0,200,180,0.3); }
-    .ei-badge-dup { background:rgba(245,158,11,0.12);color:#F5A623;border:1px solid rgba(245,158,11,0.3); }
+    .ei-badge-new { background:rgba(212,175,106,0.15);color:#D4AF6A;border:1px solid rgba(212,175,106,0.3); }
+    .ei-badge-dup { background:rgba(245,158,11,0.12);color:#E9CF98;border:1px solid rgba(245,158,11,0.3); }
     .ei-toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;align-items:center;gap:8px; }
     @media(max-width:640px){.ei-desktop-only{display:none!important;}}
     @media(min-width:768px){
@@ -539,15 +649,200 @@ const injectGlobalStyles = () => {
 
 const EI_COL_MAP = {
   Customer: "name",
+  "Customer Name": "name",
+  Name: "name",
   Area: "area",
   Distributor: "distributor",
   "Project Stage": "stage",
+  Stage: "stage",
   "Potential - Dyes (Rs L/mth)": "potDyes",
+  "Potential Dyes (Rs L/mth)": "potDyes",
   "Potential - Aux (Rs L/mth)": "potAux",
+  "Potential Aux (Rs L/mth)": "potAux",
   "Existing Bus: Dyes (Rs L/mth)": "exDyes",
+  "Existing Dyes (Rs L/mth)": "exDyes",
   "Existing Bus: Aux (Rs L/mth)": "exAux",
+  "Existing Aux (Rs L/mth)": "exAux",
   "ABP AM26  (Rs L)": "abp",
+  "ABP AM26 (Rs L)": "abp",
   "YTD Sale till end of Prev Mth (Rs L)": "ytd",
+  "Contact Person": "contactPerson",
+  "Contact Person Name": "contactPerson",
+  "Person Name": "contactPerson",
+  Designation: "designation",
+  Mobile: "mobile",
+  "Mobile Number": "mobile",
+  "Mobile No": "mobile",
+  Phone: "mobile",
+  "Contact Number": "mobile",
+  "Alternate Mobile": "altMobile",
+  "Alt Mobile": "altMobile",
+  "Alternate Number": "altMobile",
+  Email: "email",
+  "Email ID": "email",
+  Address: "address",
+  Location: "address",
+  GSTIN: "gstin",
+  "GST No": "gstin",
+  "GST Number": "gstin",
+  Notes: "notes",
+  Remarks: "notes",
+};
+const eiNorm = (h) =>
+  String(h ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+const EI_COL_LOWER = Object.fromEntries(
+  Object.entries(EI_COL_MAP).map(([k, v]) => [eiNorm(k), v]),
+);
+const eiKey = (h) => EI_COL_LOWER[eiNorm(h)];
+
+// ── Customer Excel download / template (same headers the importer reads) ──
+const CUSTOMER_XLSX_COLS = [
+  ["Customer", 28, (n) => n],
+  ["Area", 18, (n, c) => c.area],
+  ["Distributor", 20, (n, c) => c.distributor],
+  ["Project Stage", 34, (n, c) => c.stage],
+  ["Potential - Dyes (Rs L/mth)", 16, (n, c) => toNum(c.potDyes)],
+  ["Potential - Aux (Rs L/mth)", 16, (n, c) => toNum(c.potAux)],
+  ["Existing Bus: Dyes (Rs L/mth)", 16, (n, c) => toNum(c.exDyes)],
+  ["Existing Bus: Aux (Rs L/mth)", 16, (n, c) => toNum(c.exAux)],
+  ["ABP AM26 (Rs L)", 14, (n, c) => toNum(c.abp)],
+  ["Contact Person", 22, (n, c) => c.contactPerson || ""],
+  ["Designation", 18, (n, c) => c.designation || ""],
+  ["Mobile", 15, (n, c) => c.mobile || ""],
+  ["Alternate Mobile", 15, (n, c) => c.altMobile || ""],
+  ["Email", 28, (n, c) => c.email || ""],
+  ["Address", 34, (n, c) => c.address || ""],
+  ["GSTIN", 18, (n, c) => c.gstin || ""],
+  ["Notes", 36, (n, c) => c.notes || ""],
+];
+const XL_HEAD_STYLE = {
+  font: { bold: true, color: { rgb: "0A0B10" }, sz: 11 },
+  fill: { patternType: "solid", fgColor: { rgb: "D4AF6A" } },
+  alignment: { horizontal: "center", vertical: "center", wrapText: true },
+  border: {
+    top: { style: "thin", color: { rgb: "A8823A" } },
+    bottom: { style: "thin", color: { rgb: "A8823A" } },
+    left: { style: "thin", color: { rgb: "A8823A" } },
+    right: { style: "thin", color: { rgb: "A8823A" } },
+  },
+};
+const XL_CELL_STYLE = (zebra) => ({
+  font: { sz: 10.5 },
+  fill: zebra
+    ? { patternType: "solid", fgColor: { rgb: "F6F1E6" } }
+    : undefined,
+  alignment: { vertical: "center", wrapText: true },
+  border: {
+    bottom: { style: "hair", color: { rgb: "CFC7B5" } },
+  },
+});
+const styleSheet = (ws, widths, nRows, nCols) => {
+  ws["!cols"] = widths.map((w) => ({ wch: w }));
+  ws["!rows"] = [{ hpt: 34 }];
+  ws["!autofilter"] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: Math.max(nRows, 1), c: nCols - 1 },
+    }),
+  };
+  for (let c = 0; c < nCols; c++) {
+    const a = XLSX.utils.encode_cell({ r: 0, c });
+    if (ws[a]) ws[a].s = XL_HEAD_STYLE;
+    for (let r = 1; r <= nRows; r++) {
+      const b = XLSX.utils.encode_cell({ r, c });
+      if (ws[b]) ws[b].s = XL_CELL_STYLE(r % 2 === 0);
+    }
+  }
+};
+const exportCustomersXlsx = (customers, names, historyMap) => {
+  const head = [
+    ...CUSTOMER_XLSX_COLS.map((c) => c[0]),
+    "Total Visits",
+    "Last Visit",
+  ];
+  const body = names.map((n) => {
+    const c = customers[n] || {};
+    const h = historyMap[n] || [];
+    return [
+      ...CUSTOMER_XLSX_COLS.map((col) => col[2](n, c)),
+      h.length,
+      h[0] ? fmtDate(h[0].date) : "",
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([head, ...body]);
+  styleSheet(
+    ws,
+    [...CUSTOMER_XLSX_COLS.map((c) => c[1]), 12, 16],
+    body.length,
+    head.length,
+  );
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const stamp = new Date().toISOString().slice(0, 10);
+  downloadBlob(
+    new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    `DSR_Customers_${stamp}.xlsx`,
+  );
+  return body.length;
+};
+const downloadCustomerTemplate = () => {
+  const head = CUSTOMER_XLSX_COLS.map((c) => c[0]);
+  const ws = XLSX.utils.aoa_to_sheet([head]);
+  styleSheet(
+    ws,
+    CUSTOMER_XLSX_COLS.map((c) => c[1]),
+    0,
+    head.length,
+  );
+  const info = [
+    ["Column", "Required?", "Rules / example"],
+    ["Customer", "Yes", "Unique customer name. Example: ABC Dyeing Pvt Ltd"],
+    ["Area", "Yes", "Example: Barhi"],
+    ["Distributor", "Yes", `One of: ${DISTRIBUTOR_OPTIONS.join(" / ")}`],
+    [
+      "Project Stage",
+      "Yes",
+      "Stage letter ya poora naam. Example: D ya D. Bulk Trials Complete",
+    ],
+    [
+      "Potential / Existing / ABP",
+      "Numbers",
+      "Rs Lakhs, sirf number. Example: 2.5",
+    ],
+    ["Contact Person", "No", "Example: Ramesh Gupta"],
+    ["Designation", "No", "Example: Owner, Purchase Manager"],
+    [
+      "Mobile / Alternate Mobile",
+      "No",
+      "10 digit, 6-9 se start. +91 ya 0 laga ho to bhi chalega. Example: 9876543210",
+    ],
+    ["Email", "No", "Example: name@company.com"],
+    ["Address", "No", "Free text"],
+    ["GSTIN", "No", "15 character. Example: 07AABCU9603R1ZM"],
+    ["Notes", "No", "Free text"],
+  ];
+  const wi = XLSX.utils.aoa_to_sheet(info);
+  wi["!cols"] = [{ wch: 28 }, { wch: 12 }, { wch: 80 }];
+  for (let c = 0; c < 3; c++) {
+    const a = XLSX.utils.encode_cell({ r: 0, c });
+    if (wi[a]) wi[a].s = XL_HEAD_STYLE;
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Customers");
+  XLSX.utils.book_append_sheet(wb, wi, "Instructions");
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  downloadBlob(
+    new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    "DSR_Customer_Import_Template.xlsx",
+  );
 };
 const normalizeDistributor = (val) => {
   if (!val) return "";
@@ -568,10 +863,10 @@ const IS = {
   width: "100%",
   height: 38,
   padding: "0 12px",
-  border: `1px solid #1A3050`,
+  border: `1px solid #272B38`,
   borderRadius: 8,
   fontSize: 13,
-  color: "#DAE8F8",
+  color: "#F4EFE6",
   background: "rgba(255,255,255,0.04)",
   boxSizing: "border-box",
   outline: "none",
@@ -617,7 +912,7 @@ const ExcelImporter = ({
           const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
           let hi = 0;
           for (let i = 0; i < Math.min(5, raw.length); i++) {
-            if (raw[i].some((c) => String(c).trim() === "Customer")) {
+            if (raw[i].some((c) => eiKey(c) === "name")) {
               hi = i;
               break;
             }
@@ -626,7 +921,7 @@ const ExcelImporter = ({
           const dataRows = raw.slice(hi + 1);
           const seenInFile = {};
           dataRows.forEach((row, i) => {
-            const ci = headers.indexOf("Customer");
+            const ci = headers.findIndex((h) => eiKey(h) === "name");
             const cn = ci >= 0 ? String(row[ci] || "").trim() : "";
             if (cn) seenInFile[cn] = i;
           });
@@ -634,8 +929,8 @@ const ExcelImporter = ({
           dataRows.forEach((row, i) => {
             const obj = {};
             headers.forEach((h, j) => {
-              const key = EI_COL_MAP[h];
-              if (key) obj[key] = row[j];
+              const key = eiKey(h);
+              if (key && obj[key] === undefined) obj[key] = row[j];
             });
             const name = String(obj.name || "").trim();
             if (!name || seenInFile[name] !== i) return;
@@ -651,6 +946,33 @@ const ExcelImporter = ({
               abp: toNum(obj.abp),
               ytd: toNum(obj.ytd),
             };
+            const issues = [];
+            const mob = cleanMobile(obj.mobile);
+            const alt = cleanMobile(obj.altMobile);
+            const em = String(obj.email ?? "")
+              .trim()
+              .toLowerCase();
+            const gst = String(obj.gstin ?? "")
+              .trim()
+              .toUpperCase();
+            n.contactPerson = String(obj.contactPerson ?? "").trim();
+            n.designation = String(obj.designation ?? "").trim();
+            n.address = String(obj.address ?? "").trim();
+            n.notes = String(obj.notes ?? "").trim();
+            n.mobile = isValidMobile(mob) ? mob : "";
+            n.altMobile = isValidMobile(alt) ? alt : "";
+            n.email = isValidEmail(em) ? em : "";
+            n.gstin = isValidGSTIN(gst) ? gst : "";
+            if (obj.mobile && !n.mobile) issues.push("Mobile");
+            if (obj.altMobile && !n.altMobile) issues.push("Alt mobile");
+            if (em && !n.email) issues.push("Email");
+            if (gst && !n.gstin) issues.push("GSTIN");
+            n._missing = [
+              !n.area && "Area",
+              !DISTRIBUTOR_OPTIONS.includes(n.distributor) && "Distributor",
+              !n.stage && "Stage",
+            ].filter(Boolean);
+            n._issues = issues;
             n._isDup = !!existingCustomers[name];
             n._status = n._isDup ? "dup" : "new";
             parsed.push(n);
@@ -658,7 +980,7 @@ const ExcelImporter = ({
           setRows(parsed);
           const sel = {};
           parsed.forEach((r, idx) => {
-            sel[idx] = !r._isDup;
+            sel[idx] = !r._isDup && r._missing.length === 0;
           });
           setSelected(sel);
           setDone(false);
@@ -679,14 +1001,14 @@ const ExcelImporter = ({
   const selectAllNew = () => {
     const s = {};
     rows.forEach((r, i) => {
-      s[i] = !r._isDup;
+      s[i] = !r._isDup && r._missing.length === 0;
     });
     setSelected(s);
   };
   const selectAll = () => {
     const s = {};
     rows.forEach((r, i) => {
-      s[i] = true;
+      s[i] = r._missing.length === 0;
     });
     setSelected(s);
   };
@@ -721,6 +1043,19 @@ const ExcelImporter = ({
         exAux: r.exAux,
         abp: r.abp,
       };
+      // contact: overwrite sirf non-empty values ko (khali cell purana data na mitaye)
+      [
+        "contactPerson",
+        "designation",
+        "mobile",
+        "altMobile",
+        "email",
+        "address",
+        "gstin",
+        "notes",
+      ].forEach((k) => {
+        if (r[k]) p[k] = r[k];
+      });
       try {
         if (r._isDup && dupAction === "overwrite") {
           const eid = existingCustomers[r.name]?._id;
@@ -735,7 +1070,7 @@ const ExcelImporter = ({
             });
             const d = await res.json();
             if (res.ok && d.data) {
-              imported[r.name] = d.data;
+              imported[r.name] = { ...d.data, ...pickContact(d.data) };
               ok++;
             } else fail++;
           } else fail++;
@@ -814,7 +1149,7 @@ const ExcelImporter = ({
       >
         <div
           style={{
-            background: "linear-gradient(135deg,#050E1D,#0A2A5A)",
+            background: "linear-gradient(135deg,#0B0C11,#1B1D28)",
             padding: "18px 20px",
             display: "flex",
             alignItems: "center",
@@ -828,19 +1163,19 @@ const ExcelImporter = ({
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: "linear-gradient(135deg,#00C8B4,#008A7E)",
+              background: "linear-gradient(135deg,#D4AF6A,#A8823A)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              boxShadow: "0 4px 12px rgba(0,200,180,0.35)",
+              boxShadow: "0 4px 12px rgba(212,175,106,0.35)",
             }}
           >
             <Icon
               name="upload"
               size={19}
               strokeWidth={2}
-              style={{ color: "#06101E" }}
+              style={{ color: "#0A0B10" }}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -888,8 +1223,8 @@ const ExcelImporter = ({
                   height: 64,
                   borderRadius: "50%",
                   background:
-                    "linear-gradient(135deg,rgba(0,200,180,0.12),rgba(59,130,246,0.12))",
-                  border: "1px solid rgba(0,200,180,0.2)",
+                    "linear-gradient(135deg,rgba(212,175,106,0.12),rgba(59,130,246,0.12))",
+                  border: "1px solid rgba(212,175,106,0.2)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -923,12 +1258,12 @@ const ExcelImporter = ({
                   gap: 6,
                   padding: "8px 20px",
                   background: DS.primary,
-                  color: "#06101E",
+                  color: "#0A0B10",
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 4px 12px rgba(0,200,180,0.35)",
+                  boxShadow: "0 4px 12px rgba(212,175,106,0.35)",
                 }}
               >
                 <Icon name="upload" size={13} strokeWidth={2.1} /> File Browse
@@ -945,6 +1280,46 @@ const ExcelImporter = ({
               />
             </div>
           )}
+          {rows.length === 0 && (
+            <div
+              className="dsr-glass"
+              style={{
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginTop: 14,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div
+                  style={{ fontSize: 12.5, fontWeight: 700, color: DS.text1 }}
+                >
+                  Template chahiye?
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: DS.text2,
+                    marginTop: 2,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Customer, Area, Distributor, Stage, numbers + Contact Person,
+                  Mobile, Email, Address, GSTIN, Notes columns. Download kiya
+                  hua customers file bhi seedha wapas upload ho sakta hai.
+                </div>
+              </div>
+              <button
+                className="dsr-ghost-btn"
+                onClick={downloadCustomerTemplate}
+              >
+                <Icon name="download" size={14} /> Template download
+              </button>
+            </div>
+          )}
           {rows.length > 0 && (
             <>
               <div
@@ -959,7 +1334,7 @@ const ExcelImporter = ({
                 <div
                   style={{
                     padding: "6px 14px",
-                    background: "rgba(0,200,180,0.12)",
+                    background: "rgba(212,175,106,0.12)",
                     color: DS.primary,
                     borderRadius: 20,
                     fontSize: 12,
@@ -967,7 +1342,7 @@ const ExcelImporter = ({
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
-                    border: "1px solid rgba(0,200,180,0.25)",
+                    border: "1px solid rgba(212,175,106,0.25)",
                   }}
                 >
                   <Icon name="sparkle" size={11} />
@@ -977,7 +1352,7 @@ const ExcelImporter = ({
                   <div
                     style={{
                       padding: "6px 14px",
-                      background: "rgba(245,166,35,0.10)",
+                      background: "rgba(233,207,152,0.10)",
                       color: DS.gold,
                       borderRadius: 20,
                       fontSize: 12,
@@ -985,7 +1360,7 @@ const ExcelImporter = ({
                       display: "flex",
                       alignItems: "center",
                       gap: 5,
-                      border: "1px solid rgba(245,166,35,0.25)",
+                      border: "1px solid rgba(233,207,152,0.25)",
                     }}
                   >
                     <Icon name="alert" size={12} strokeWidth={2} />
@@ -1112,6 +1487,7 @@ const ExcelImporter = ({
                       <th style={{ width: 36 }}></th>
                       <th>Customer</th>
                       <th>Area</th>
+                      <th className="ei-desktop-only">Contact</th>
                       <th className="ei-desktop-only">Pot. Dyes</th>
                       <th className="ei-desktop-only">ABP</th>
                       <th>Status</th>
@@ -1136,13 +1512,30 @@ const ExcelImporter = ({
                               checked={isSel}
                               onChange={() => toggleRow(idx)}
                               onClick={(e) => e.stopPropagation()}
-                              disabled={r._isDup && dupAction === "skip"}
+                              disabled={
+                                r._missing.length > 0 ||
+                                (r._isDup && dupAction === "skip")
+                              }
                             />
                           </td>
                           <td style={{ fontWeight: 600, color: DS.text1 }}>
                             {r.name}
                           </td>
                           <td style={{ color: DS.text2 }}>{r.area}</td>
+                          <td
+                            className="ei-desktop-only"
+                            style={{ color: DS.text2, fontSize: 11.5 }}
+                          >
+                            {r.contactPerson || r.mobile ? (
+                              <>
+                                {r.contactPerson}
+                                {r.contactPerson && r.mobile ? " · " : ""}
+                                <span className="dsr-mono">{r.mobile}</span>
+                              </>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td
                             className="ei-desktop-only"
                             style={{ color: DS.gold }}
@@ -1171,6 +1564,30 @@ const ExcelImporter = ({
                               )}
                               {r._isDup ? "Dup" : "New"}
                             </span>
+                            {r._missing.length > 0 && (
+                              <div
+                                style={{
+                                  fontSize: 10,
+                                  color: DS.danger,
+                                  marginTop: 4,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Missing: {r._missing.join(", ")}
+                              </div>
+                            )}
+                            {r._issues.length > 0 && (
+                              <div
+                                style={{
+                                  fontSize: 10,
+                                  color: DS.amber,
+                                  marginTop: 4,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                ⚠ {r._issues.join(", ")} invalid — skip
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1259,7 +1676,7 @@ const ExcelImporter = ({
                       width: 14,
                       height: 14,
                       border: "2px solid rgba(0,0,0,0.2)",
-                      borderTopColor: "#06101E",
+                      borderTopColor: "#0A0B10",
                       margin: 0,
                     }}
                   />
@@ -1612,7 +2029,7 @@ const FieldLabel = ({ children, required, keyBadge }) => (
           fontSize: 10,
           fontWeight: 700,
           color: DS.gold,
-          background: "rgba(245,166,35,0.12)",
+          background: "rgba(233,207,152,0.12)",
           padding: "1px 6px 1px 5px",
           borderRadius: 4,
           letterSpacing: "0.03em",
@@ -1696,7 +2113,7 @@ const CustomSelect = ({
           color: isEmpty ? DS.text2 : DS.text1,
           borderColor: open ? DS.primary : highlight ? DS.amber : DS.border,
           boxShadow: open
-            ? `0 0 0 3px rgba(0,200,180,0.18)`
+            ? `0 0 0 3px rgba(212,175,106,0.18)`
             : highlight
               ? "0 0 0 2px rgba(245,158,11,0.15)"
               : "none",
@@ -1955,7 +2372,7 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
               color: DS.text1,
               marginBottom: 6,
               lineHeight: 1.4,
-              background: "rgba(0,200,180,0.07)",
+              background: "rgba(212,175,106,0.07)",
               borderRadius: 6,
               padding: "6px 10px",
               borderLeft: `3px solid ${DS.primary}`,
@@ -2206,8 +2623,8 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 "Total Potential",
                 `₹${(toNum(record.potDyes) + toNum(record.potAux)).toFixed(2)}L/mth`,
                 DS.primary,
-                "rgba(0,200,180,0.08)",
-                "rgba(0,200,180,0.2)",
+                "rgba(212,175,106,0.08)",
+                "rgba(212,175,106,0.2)",
               ],
               [
                 "Total Existing",
@@ -2220,8 +2637,8 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                 "YTD vs ABP",
                 `${record.pct}%`,
                 color,
-                "rgba(245,166,35,0.06)",
-                "rgba(245,166,35,0.18)",
+                "rgba(233,207,152,0.06)",
+                "rgba(233,207,152,0.18)",
               ],
             ].map(([lbl, val, clr, bg, bd]) => (
               <div
@@ -2266,751 +2683,31 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
   );
 };
 
-// ── VisitsModal — shows all visits of a customer in a month (latest first) ─
-const VisitsModal = ({ data, onClose }) => {
-  useEffect(() => {
-    if (!data) return undefined;
-    const h = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [data, onClose]);
-
-  if (!data) return null;
-  const { name, month, records } = data;
-
-  return (
-    <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${name} visits`}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.82)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 250,
-        padding: 16,
-        backdropFilter: "blur(6px)",
-      }}
-    >
-      <div
-        className="dsr-modal-box"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: DS.card,
-          border: `1px solid ${DS.border}`,
-          borderRadius: 14,
-          width: "100%",
-          maxWidth: 520,
-          maxHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow:
-            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
-        }}
-      >
-        <div
-          style={{
-            background: "linear-gradient(135deg,#050E1D,#0A2A5A)",
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            borderBottom: `1px solid ${DS.border}`,
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: DS.text1,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
-              {month} · {records.length} visit{records.length > 1 ? "s" : ""}{" "}
-              (latest first)
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              border: `1px solid ${DS.border}`,
-              background: "rgba(255,255,255,0.06)",
-              color: DS.text2,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <Icon name="close" size={14} strokeWidth={2.2} />
-          </button>
-        </div>
-
-        <div
-          className="dsr-scroll"
-          style={{
-            padding: 16,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          {records.map((r, i) => {
-            const sc = stageColor(r.stage);
-            const isLatest = i === 0;
-            return (
-              <div
-                key={r._id || r.id || i}
-                style={{
-                  background: DS.surface,
-                  border: `1px solid ${isLatest ? DS.primary : DS.border}`,
-                  borderLeft: `4px solid ${isLatest ? DS.primary : sc.border}`,
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    marginBottom: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      color: DS.text1,
-                    }}
-                  >
-                    <Icon
-                      name="calendar"
-                      size={13}
-                      strokeWidth={2}
-                      style={{ color: DS.primary }}
-                    />
-                    {fmtDate(r.date)}
-                  </div>
-                  {isLatest && (
-                    <span
-                      style={{
-                        fontSize: 9.5,
-                        fontWeight: 800,
-                        color: "#06101E",
-                        background: DS.primary,
-                        padding: "2px 8px",
-                        borderRadius: 20,
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      LATEST
-                    </span>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: DS.text1,
-                    lineHeight: 1.45,
-                    background: "rgba(59,130,246,0.08)",
-                    borderLeft: `3px solid ${DS.info}`,
-                    borderRadius: 6,
-                    padding: "6px 10px",
-                    marginBottom: 6,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: DS.text3,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      display: "block",
-                      marginBottom: 2,
-                    }}
-                  >
-                    Visit Outcome
-                  </span>
-                  {r.outcome || (
-                    <span style={{ color: DS.text3 }}>— no outcome —</span>
-                  )}
-                </div>
-
-                {r.objective && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: DS.text1,
-                      lineHeight: 1.45,
-                      background: "rgba(0,200,180,0.07)",
-                      borderLeft: `3px solid ${DS.primary}`,
-                      borderRadius: 6,
-                      padding: "6px 10px",
-                      marginBottom: 6,
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: DS.text3,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        display: "block",
-                        marginBottom: 2,
-                      }}
-                    >
-                      Objective
-                    </span>
-                    {r.objective}
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    marginTop: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <StageLadder stage={r.stage} size="sm" />
-                  <span
-                    className="dsr-mono"
-                    style={{ fontSize: 11, color: DS.gold, fontWeight: 700 }}
-                  >
-                    YTD ₹{r.ytd ?? 0}L · {r.pct ?? 0}%
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── CustomerHistoryModal — full visit history of a customer (start → now) ──
-const CustomerHistoryModal = ({ name, customer, records, onClose }) => {
-  useEffect(() => {
-    const h = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  // records are sorted latest → oldest
-  const total = records.length;
-  const latest = records[0];
-  const first = records[total - 1];
-  const currentStage = latest?.stage || customer?.stage || "";
-  const sc = stageColor(currentStage);
-
-  // group by month (keeps latest-first order)
-  const groups = useMemo(() => {
-    const out = [];
-    const idx = {};
-    records.forEach((r, i) => {
-      const d = new Date(r.date);
-      const valid = !isNaN(d.getTime());
-      const key = valid
-        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-        : "unknown";
-      if (idx[key] === undefined) {
-        idx[key] = out.length;
-        out.push({
-          key,
-          label: valid
-            ? d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
-            : "Date missing",
-          items: [],
-        });
-      }
-      out[idx[key]].items.push({ r, i });
-    });
-    return out;
-  }, [records]);
-
-  return (
-    <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${name} history`}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.82)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 250,
-        padding: 16,
-        backdropFilter: "blur(6px)",
-      }}
-    >
-      <div
-        className="dsr-modal-box"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: DS.card,
-          border: `1px solid ${DS.border}`,
-          borderRadius: 14,
-          width: "100%",
-          maxWidth: 560,
-          maxHeight: "90vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow:
-            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            background: "linear-gradient(135deg,#050E1D,#0A2A5A)",
-            padding: "16px 20px",
-            borderBottom: `1px solid ${DS.border}`,
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: "50%",
-                  background: "rgba(59,130,246,0.15)",
-                  border: "1px solid rgba(59,130,246,0.3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: DS.info,
-                  flexShrink: 0,
-                }}
-              >
-                {getInitials(name)}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: DS.text1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {name}
-                </div>
-                <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
-                  {customer?.area || latest?.area || "—"} ·{" "}
-                  {customer?.distributor || latest?.distributor || "—"}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                border: `1px solid ${DS.border}`,
-                background: "rgba(255,255,255,0.06)",
-                color: DS.text2,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Icon name="close" size={14} strokeWidth={2.2} />
-            </button>
-          </div>
-
-          {/* Summary chips */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-              gap: 8,
-              marginTop: 14,
-            }}
-          >
-            {[
-              ["Total visits", total, DS.primary],
-              ["First visit", first ? fmtDate(first.date) : "—", DS.info],
-              ["Last visit", latest ? fmtDate(latest.date) : "—", DS.gold],
-            ].map(([lbl, val, clr]) => (
-              <div
-                key={lbl}
-                style={{
-                  textAlign: "center",
-                  padding: "8px 6px",
-                  background: "rgba(255,255,255,0.04)",
-                  borderRadius: 8,
-                  border: `1px solid ${DS.border}`,
-                  minWidth: 0,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: DS.text3,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: 3,
-                  }}
-                >
-                  {lbl}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: clr,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {val}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              marginTop: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                padding: "3px 8px",
-                borderRadius: 4,
-                fontWeight: 600,
-                background: sc.bg,
-                color: sc.text,
-                border: `1px solid ${sc.border}44`,
-                maxWidth: "100%",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {currentStage || "No stage"}
-            </span>
-            <StageLadder stage={currentStage} size="sm" />
-          </div>
-        </div>
-
-        {/* Timeline */}
-        <div
-          className="dsr-scroll"
-          style={{ padding: 16, overflowY: "auto", flex: 1 }}
-        >
-          {total === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px 16px",
-                color: DS.text2,
-              }}
-            >
-              <div className="dsr-empty-icon">
-                <Icon
-                  name="inbox"
-                  size={26}
-                  strokeWidth={1.6}
-                  style={{ color: DS.primary }}
-                />
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: DS.text1 }}>
-                Abhi tak koi visit nahi
-              </div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>
-                Is customer ka pehla record Add Record se banao
-              </div>
-            </div>
-          ) : (
-            groups.map((g) => (
-              <div key={g.key} style={{ marginBottom: 14 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 8,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: DS.text3,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.07em",
-                  }}
-                >
-                  <span>{g.label}</span>
-                  <span style={{ color: DS.primary }}>
-                    · {g.items.length} visit{g.items.length > 1 ? "s" : ""}
-                  </span>
-                  <span style={{ flex: 1, height: 1, background: DS.border }} />
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                >
-                  {g.items.map(({ r, i }) => {
-                    const rsc = stageColor(r.stage);
-                    const isLatest = i === 0;
-                    return (
-                      <div
-                        key={r._id || r.id || i}
-                        style={{
-                          background: DS.surface,
-                          border: `1px solid ${isLatest ? DS.primary : DS.border}`,
-                          borderLeft: `4px solid ${isLatest ? DS.primary : rsc.border}`,
-                          borderRadius: 10,
-                          padding: "12px 14px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            marginBottom: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              fontSize: 12.5,
-                              fontWeight: 700,
-                              color: DS.text1,
-                            }}
-                          >
-                            <Icon
-                              name="calendar"
-                              size={13}
-                              strokeWidth={2}
-                              style={{ color: DS.primary }}
-                            />
-                            {fmtDate(r.date) || "Date missing"}
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                            }}
-                          >
-                            <span
-                              className="dsr-mono"
-                              style={{
-                                fontSize: 10,
-                                color: DS.text3,
-                                fontWeight: 700,
-                              }}
-                            >
-                              #{total - i}
-                            </span>
-                            {isLatest && (
-                              <span
-                                style={{
-                                  fontSize: 9.5,
-                                  fontWeight: 800,
-                                  color: "#06101E",
-                                  background: DS.primary,
-                                  padding: "2px 8px",
-                                  borderRadius: 20,
-                                  letterSpacing: "0.05em",
-                                }}
-                              >
-                                LATEST
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: DS.text1,
-                            lineHeight: 1.45,
-                            background: "rgba(59,130,246,0.08)",
-                            borderLeft: `3px solid ${DS.info}`,
-                            borderRadius: 6,
-                            padding: "6px 10px",
-                            marginBottom: 6,
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: DS.text3,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                              display: "block",
-                              marginBottom: 2,
-                            }}
-                          >
-                            Visit Outcome
-                          </span>
-                          {r.outcome || (
-                            <span style={{ color: DS.text3 }}>
-                              — no outcome —
-                            </span>
-                          )}
-                        </div>
-
-                        {r.objective && (
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: DS.text1,
-                              lineHeight: 1.45,
-                              background: "rgba(0,200,180,0.07)",
-                              borderLeft: `3px solid ${DS.primary}`,
-                              borderRadius: 6,
-                              padding: "6px 10px",
-                              marginBottom: 6,
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: DS.text3,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.05em",
-                                display: "block",
-                                marginBottom: 2,
-                              }}
-                            >
-                              Objective
-                            </span>
-                            {r.objective}
-                          </div>
-                        )}
-
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            marginTop: 8,
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <StageLadder stage={r.stage} size="sm" />
-                          <span
-                            className="dsr-mono"
-                            style={{
-                              fontSize: 11,
-                              color: DS.gold,
-                              fontWeight: 700,
-                            }}
-                          >
-                            YTD ₹{r.ytd ?? 0}L · {r.pct ?? 0}%
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MonthAnalysisCard = ({
-  month,
-  delta,
-  expanded,
-  onToggle,
-  onVisitsClick,
-}) => (
+const MonthAnalysisCard = ({ month, delta, onOpen }) => (
   <div
-    className="dsr-record-card"
+    className="dsr-record-card dsr-half-card"
     style={{
       background: DS.card,
       border: `1px solid ${DS.border}`,
-      borderRadius: 12,
+      borderRadius: 14,
       overflow: "hidden",
       borderLeft: `4px solid ${DS.primary}`,
     }}
   >
-    <div style={{ padding: "14px 14px 16px" }}>
+    <div
+      role="button"
+      tabIndex={0}
+      title="Full report kholo"
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{ padding: "14px 14px 16px", cursor: "pointer" }}
+    >
       <div
         style={{
           display: "flex",
@@ -3021,13 +2718,13 @@ const MonthAnalysisCard = ({
         }}
       >
         <div
+          className="dsr-display"
           style={{
-            fontSize: 14,
-            fontWeight: 700,
+            fontSize: 17,
             color: DS.text1,
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: 10,
             flexWrap: "wrap",
             minWidth: 0,
           }}
@@ -3036,6 +2733,7 @@ const MonthAnalysisCard = ({
           {delta !== null && delta !== 0 && (
             <span
               style={{
+                fontFamily: "'Manrope',sans-serif",
                 fontSize: 10,
                 fontWeight: 700,
                 color: delta > 0 ? DS.success : DS.danger,
@@ -3045,136 +2743,83 @@ const MonthAnalysisCard = ({
             </span>
           )}
         </div>
-        <button
-          className={`dsr-expand-btn${expanded ? " expanded" : ""}`}
-          onClick={onToggle}
-        >
-          {expanded ? "▲ Collapse" : "▼ Details"}
-        </button>
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4,minmax(0,1fr))",
-          gap: 8,
-        }}
-      >
-        {[
-          ["Visits", month.totalVisits, DS.info],
-          ["Customers", month.uniqueCustomers, DS.primary],
-          ["Potential", `₹${month.totalPot}L`, DS.gold],
-          ["Avg YTD/ABP", `${month.avgPct}%`, DS.purple],
-        ].map(([lbl, val, clr]) => (
-          <div
-            key={lbl}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
             style={{
-              textAlign: "center",
-              padding: "8px 4px",
-              background: DS.surface,
-              borderRadius: 8,
-              border: `1px solid ${DS.border}`,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: DS.primary,
+              background: DS.primaryDim,
+              border: "1px solid rgba(212,175,106,0.35)",
+              borderRadius: 20,
+              padding: "5px 12px",
+              whiteSpace: "nowrap",
             }}
           >
-            <div
-              style={{
-                fontSize: 9,
-                color: DS.text3,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                marginBottom: 3,
-              }}
-            >
-              {lbl}
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: clr }}>
-              {val}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-    <div className={`dsr-card-detail-section${expanded ? " open" : ""}`}>
-      <div
-        style={{
-          margin: "0 14px",
-          borderTop: `1px dashed ${DS.border}`,
-          paddingTop: 12,
-          paddingBottom: 14,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: DS.text3,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            marginBottom: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <Icon name="users" size={12} strokeWidth={2} /> Customer-wise visits
+            Full report ›
+          </span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {month.customerRows.map((c) => (
-            <div
-              key={c.name}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 10px",
-                background: DS.surface,
-                borderRadius: 8,
-                border: `1px solid ${DS.border}`,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: DS.text1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {c.name}
-                </div>
-                <div style={{ fontSize: 10, color: DS.text2, marginTop: 1 }}>
-                  {c.latest.area} · {c.latest.distributor}
-                </div>
-              </div>
-              <div style={{ flexShrink: 0 }}>
-                <StageLadder stage={c.latest.stage} size="sm" />
-              </div>
-              <button
-                type="button"
-                className="dsr-visits-btn"
-                onClick={() => onVisitsClick && onVisitsClick(c)}
-                title="Visit details dekhein"
+      </div>
+      <div style={{ display: "grid", gap: 8 }}>
+        {[
+          [
+            ["Visits", month.totalVisits, DS.info],
+            ["Customers", month.uniqueCustomers, DS.primary],
+          ],
+          [
+            ["Potential", `₹${month.totalPot}L`, DS.gold],
+            ["Avg YTD/ABP", `${month.avgPct}%`, DS.purple],
+          ],
+        ].map((row, ri) => (
+          <div
+            key={ri}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+              gap: 8,
+            }}
+          >
+            {row.map(([lbl, val, clr]) => (
+              <div
+                key={lbl}
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: DS.primary,
-                  background: DS.primaryDim,
-                  padding: "3px 9px",
-                  borderRadius: 20,
-                  flexShrink: 0,
-                  whiteSpace: "nowrap",
-                  border: "1px solid rgba(0,200,180,0.35)",
-                  cursor: "pointer",
+                  textAlign: "center",
+                  padding: ri === 0 ? "12px 6px" : "9px 6px",
+                  background:
+                    ri === 0
+                      ? `linear-gradient(160deg,${DS.surface},${DS.card})`
+                      : DS.surface,
+                  borderRadius: 10,
+                  border: `1px solid ${ri === 0 ? DS.borderHi : DS.border}`,
+                  minWidth: 0,
                 }}
               >
-                {c.visits}× visit{c.visits > 1 ? "s" : ""} ›
-              </button>
-            </div>
-          ))}
-        </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: DS.text3,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    marginBottom: 4,
+                  }}
+                >
+                  {lbl}
+                </div>
+                <div
+                  className="dsr-mono"
+                  style={{
+                    fontSize: ri === 0 ? 22 : 14,
+                    fontWeight: 700,
+                    color: clr,
+                  }}
+                >
+                  {val}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   </div>
@@ -3191,7 +2836,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
   <div
     className="dsr-sidebar"
     style={{
-      background: `linear-gradient(180deg,${DS.sidebar} 0%,#030A14 100%)`,
+      background: `linear-gradient(180deg,${DS.sidebar} 0%,#050609 100%)`,
       flexDirection: "column",
       padding: "0",
       position: "sticky",
@@ -3213,16 +2858,16 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: "linear-gradient(135deg,#00E4CC,#009A8E)",
+            background: "linear-gradient(135deg,#F2D48F,#A8823A)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 16,
             fontWeight: 900,
-            color: "#06101E",
+            color: "#0A0B10",
             flexShrink: 0,
             boxShadow:
-              "0 0 16px rgba(0,200,180,0.45),0 4px 12px -2px rgba(0,200,180,0.35)",
+              "0 0 16px rgba(212,175,106,0.45),0 4px 12px -2px rgba(212,175,106,0.35)",
           }}
         >
           D
@@ -3251,7 +2896,10 @@ const Sidebar = ({ active, onChange, recordCount }) => (
         </div>
       </div>
     </div>
-    <nav style={{ padding: "14px 10px", flex: 1 }}>
+    <div style={{ padding: "14px 14px 0" }}>
+      <HomeLink />
+    </div>
+    <nav style={{ padding: "12px 10px 14px", flex: 1 }}>
       {TABS.map((t) => (
         <button
           key={t.id}
@@ -3275,7 +2923,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             fontWeight: active === t.id ? 700 : 500,
             color: active === t.id ? DS.primary : DS.text2,
             background:
-              active === t.id ? "rgba(0,200,180,0.12)" : "transparent",
+              active === t.id ? "rgba(212,175,106,0.12)" : "transparent",
             textAlign: "left",
             transition: "background 0.2s,color 0.2s,border-color 0.2s",
           }}
@@ -3286,14 +2934,14 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             <span
               style={{
                 marginLeft: "auto",
-                background: "linear-gradient(135deg,#00E4CC,#00A89A)",
-                color: "#06101E",
+                background: "linear-gradient(135deg,#F2D48F,#A8823A)",
+                color: "#0A0B10",
                 fontSize: 10,
                 fontWeight: 900,
                 padding: "1px 7px",
                 borderRadius: 10,
                 lineHeight: "16px",
-                boxShadow: "0 2px 8px rgba(0,200,180,0.35)",
+                boxShadow: "0 2px 8px rgba(212,175,106,0.35)",
               }}
             >
               {recordCount}
@@ -3448,108 +3096,1336 @@ const SectionCard = ({ title, children, style }) => (
   </div>
 );
 
-const CustomerModal = ({
-  mode,
-  editName,
-  initialData,
-  onSave,
-  onDelete,
-  onClose,
-  saving,
+// ══════════════════════════════════════════════════════════════════════════
+//  PAGES  (popups ab full pages hain)
+//  /DailySalesReport/customer/new
+//  /DailySalesReport/customer/:name/edit
+//  /DailySalesReport/customer/:name/history
+//  /DailySalesReport/visits/:name/:monthKey
+//  /DailySalesReport/record/:id/edit
+// ══════════════════════════════════════════════════════════════════════════
+const BASE = "/DailySalesReport";
+const ROUTES = {
+  base: BASE,
+  newCustomer: `${BASE}/customer/new`,
+  editCustomer: (n) => `${BASE}/customer/${encodeURIComponent(n)}/edit`,
+  history: (n) => `${BASE}/customer/${encodeURIComponent(n)}/history`,
+  visits: (n, monthKey, half) =>
+    `${BASE}/visits/${encodeURIComponent(n)}/${encodeURIComponent(monthKey)}${half ? `?half=${half}` : ""}`,
+  period: (monthKey, period) =>
+    `${BASE}/analysis/${encodeURIComponent(monthKey)}/${period}`,
+  editRecord: (id) => `${BASE}/record/${encodeURIComponent(id)}/edit`,
+};
+
+const safeDecode = (v) => {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+};
+
+const parseRoute = (pathname) => {
+  const m = pathname
+    .replace(/\/+$/, "")
+    .match(/^\/dailysalesreport(?:\/(.*))?$/i);
+  const seg = (m && m[1] ? m[1].split("/") : []).map(safeDecode);
+  if (seg[0] === "customer" && seg[1] === "new" && seg.length === 2)
+    return { type: "customerNew" };
+  if (seg[0] === "customer" && seg[1] && seg[2] === "edit")
+    return { type: "customerEdit", name: seg[1] };
+  if (seg[0] === "customer" && seg[1] && seg[2] === "history")
+    return { type: "history", name: seg[1] };
+  if (seg[0] === "visits" && seg[1] && seg[2])
+    return { type: "visits", name: seg[1], monthKey: seg[2] };
+  if (seg[0] === "analysis" && seg[1] && seg[2])
+    return { type: "period", monthKey: seg[1], period: seg[2] };
+  if (seg[0] === "record" && seg[1] && seg[2] === "edit")
+    return { type: "recordEdit", id: seg[1] };
+  return { type: "list" };
+};
+
+const daysSince = (d) => {
+  const t = new Date(d).getTime();
+  if (isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+};
+const fmtL = (n) => `₹${Math.round((Number(n) || 0) * 10) / 10}L`;
+
+const HOME_PATH = "/";
+const HOME_LABEL = "My Office Workplace";
+
+const HomeLink = ({ compact = false }) => {
+  const navigate = useNavigate();
+  return (
+    <a
+      href={HOME_PATH}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return; // new tab still works
+        e.preventDefault();
+        navigate(HOME_PATH);
+      }}
+      title={`${HOME_LABEL} (home page)`}
+      className="dsr-home-link"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: compact ? 26 : 30,
+        padding: compact ? "0 10px 0 8px" : "0 12px 0 10px",
+        borderRadius: 999,
+        border: "1px solid rgba(212,175,106,0.30)",
+        background: "rgba(212,175,106,0.06)",
+        color: DS.primary,
+        fontSize: compact ? 10.5 : 11.5,
+        fontWeight: 700,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+        marginBottom: compact ? 8 : 0,
+        transition: "background .15s",
+      }}
+    >
+      <Icon name="home" size={compact ? 12 : 13} strokeWidth={2.2} />
+      {HOME_LABEL}
+    </a>
+  );
+};
+
+// ── PageShell — premium full page frame (top bar + hero + content/aside) ───
+const PageShell = ({
+  eyebrow,
+  title,
+  subtitle,
+  avatar,
+  badge,
+  onBack,
+  actions,
+  aside,
+  children,
+  maxWidth = 1180,
+  homeGuard = false,
 }) => {
-  const [name, setName] = useState(editName || "");
-  const [data, setData] = useState(initialData || EMPTY_CUSTOMER);
-  useEffect(() => {
-    setName(editName || "");
-    setData(initialData || EMPTY_CUSTOMER);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editName, mode]);
-  const handleChange = (e) => {
-    const { name: f, value } = e.target;
-    setData((p) => ({ ...p, [f]: value }));
+  const navigate = useNavigate();
+  const goHome = () => {
+    if (homeGuard && !window.confirm("Unsaved changes hain. Page chhodna hai?"))
+      return;
+    navigate(HOME_PATH);
   };
-  const isEdit = mode === "edit";
   return (
     <div
+      className="dsr-pages"
+      style={{ minHeight: "100vh", background: DS.bg, color: DS.text1 }}
+    >
+      <div className="dsr-pagebar">
+        <div
+          style={{
+            maxWidth,
+            margin: "0 auto",
+            padding: "10px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <button className="dsr-back-btn" onClick={onBack}>
+            <Icon name="back" size={14} strokeWidth={2.2} /> Back
+          </button>
+          <button
+            className="dsr-back-btn"
+            onClick={goHome}
+            title={`${HOME_LABEL} (home page)`}
+            aria-label={`${HOME_LABEL} home page`}
+            style={{ padding: "0 12px" }}
+          >
+            <Icon name="home" size={14} strokeWidth={2.2} />
+            <span className="dsr-home-text">{HOME_LABEL}</span>
+          </button>
+          <div
+            style={{
+              minWidth: 0,
+              flex: 1,
+              fontSize: 11.5,
+              color: DS.text2,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            <button
+              onClick={() => navigate(BASE)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "inherit",
+                font: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              Daily Sales Report
+            </button>
+            <span style={{ color: DS.text3, margin: "0 7px" }}>/</span>
+            <span style={{ color: DS.primary, fontWeight: 700 }}>
+              {eyebrow}
+            </span>
+          </div>
+          {actions && (
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              {actions}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="dsr-page-enter"
+        style={{ maxWidth, margin: "0 auto", padding: "26px 16px 72px" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            marginBottom: 20,
+            flexWrap: "wrap",
+          }}
+        >
+          {avatar && (
+            <div
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: "50%",
+                background: `linear-gradient(145deg,${DS.primaryGlow},rgba(255,255,255,0.02))`,
+                border: `1px solid ${DS.primary}`,
+                boxShadow: `0 0 0 4px ${DS.primaryDim}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                fontWeight: 800,
+                color: DS.primary,
+                flexShrink: 0,
+              }}
+            >
+              {avatar}
+            </div>
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1
+              className="dsr-display"
+              style={{
+                margin: 0,
+                fontSize: "clamp(22px,4.2vw,34px)",
+                lineHeight: 1.15,
+                color: DS.text1,
+                wordBreak: "break-word",
+              }}
+            >
+              {title}
+            </h1>
+            {subtitle && (
+              <div style={{ fontSize: 12.5, color: DS.text2, marginTop: 5 }}>
+                {subtitle}
+              </div>
+            )}
+          </div>
+          {badge}
+        </div>
+        <hr className="dsr-gold-rule" style={{ marginBottom: 22 }} />
+        <div className={`dsr-page-grid${aside ? " has-aside" : ""}`}>
+          <div style={{ minWidth: 0 }}>{children}</div>
+          {aside && <aside className="dsr-aside-sticky">{aside}</aside>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PageLoading = ({ onBack, eyebrow = "Loading" }) => (
+  <PageShell eyebrow={eyebrow} title="Loading…" onBack={onBack} maxWidth={900}>
+    <div style={{ display: "grid", gap: 14 }}>
+      <div className="dsr-skeleton" style={{ height: 110 }} />
+      <div className="dsr-skeleton" style={{ height: 220 }} />
+      <div className="dsr-skeleton" style={{ height: 160 }} />
+    </div>
+  </PageShell>
+);
+
+const PageNotFound = ({ onBack, what }) => (
+  <PageShell
+    eyebrow="Not found"
+    title={`${what} nahi mila`}
+    onBack={onBack}
+    maxWidth={900}
+  >
+    <div
+      className="dsr-glass"
+      style={{ borderRadius: 16, padding: "44px 20px", textAlign: "center" }}
+    >
+      <div className="dsr-empty-icon">
+        <Icon
+          name="alert"
+          size={26}
+          strokeWidth={1.6}
+          style={{ color: DS.primary }}
+        />
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 700 }}>
+        {what} available nahi hai
+      </div>
+      <div style={{ fontSize: 12.5, color: DS.text2, margin: "6px 0 18px" }}>
+        Ho sakta hai delete ho gaya ho, ya link galat ho.
+      </div>
+      <button className="dsr-ghost-btn" onClick={onBack}>
+        <Icon name="back" size={14} /> Wapas jao
+      </button>
+    </div>
+  </PageShell>
+);
+
+const StatTile = ({ label, value, sub, accent = DS.primary }) => (
+  <div
+    className="dsr-glass"
+    style={{ borderRadius: 14, padding: "14px 15px", minWidth: 0 }}
+  >
+    <div
       style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.82)",
+        fontSize: 9.5,
+        fontWeight: 700,
+        color: DS.text3,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        marginBottom: 6,
+      }}
+    >
+      {label}
+    </div>
+    <div
+      className="dsr-mono"
+      style={{
+        fontSize: 20,
+        fontWeight: 700,
+        color: accent,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {value}
+    </div>
+    {sub && (
+      <div style={{ fontSize: 10.5, color: DS.text2, marginTop: 3 }}>{sub}</div>
+    )}
+  </div>
+);
+
+const SubHead = ({ icon, children }) => (
+  <div
+    style={{
+      fontSize: 10,
+      fontWeight: 700,
+      color: DS.text3,
+      marginBottom: 12,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+    }}
+  >
+    {icon && <Icon name={icon} size={12} strokeWidth={2} />} {children}
+  </div>
+);
+
+const Grid2 = ({ children }) => (
+  <div
+    className="dsr-grid2"
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+      gap: 12,
+    }}
+  >
+    {children}
+  </div>
+);
+
+const SaveBar = ({ onCancel, onSave, saving, label, dirty }) => (
+  <div className="dsr-sticky-actions">
+    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      {dirty && (
+        <span
+          style={{
+            fontSize: 11,
+            color: DS.amber,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            marginRight: "auto",
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: DS.amber,
+            }}
+          />
+          Unsaved changes
+        </span>
+      )}
+      <button
+        className="dsr-ghost-btn"
+        onClick={onCancel}
+        style={{ marginLeft: dirty ? 0 : "auto", height: 42 }}
+      >
+        Cancel
+      </button>
+      <button
+        className="dsr-btn-primary"
+        onClick={onSave}
+        disabled={saving}
+        style={{
+          height: 42,
+          padding: "0 26px",
+          border: "none",
+          borderRadius: 10,
+          fontSize: 13.5,
+          fontWeight: 800,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          color: "#0A0B10",
+          minWidth: 170,
+        }}
+      >
+        {saving ? (
+          <span
+            className="dsr-spinner"
+            style={{
+              width: 14,
+              height: 14,
+              border: "2px solid rgba(0,0,0,0.2)",
+              borderTopColor: "#0A0B10",
+              margin: 0,
+            }}
+          />
+        ) : (
+          <Icon name="check" size={15} strokeWidth={2.4} />
+        )}
+        {saving ? "Saving…" : label}
+      </button>
+    </div>
+  </div>
+);
+
+const DangerZone = ({ title, text, label, onClick }) => (
+  <div
+    style={{
+      marginTop: 6,
+      border: "1px solid rgba(244,63,94,0.30)",
+      background: "rgba(244,63,94,0.05)",
+      borderRadius: 14,
+      padding: "16px 17px",
+      display: "flex",
+      alignItems: "center",
+      gap: 14,
+      flexWrap: "wrap",
+    }}
+  >
+    <div style={{ flex: 1, minWidth: 200 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: DS.danger }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 11.5, color: DS.text2, marginTop: 3 }}>
+        {text}
+      </div>
+    </div>
+    <button
+      className="dsr-btn-danger"
+      onClick={onClick}
+      style={{
+        height: 38,
+        padding: "0 16px",
+        background: "rgba(244,63,94,0.10)",
+        color: DS.danger,
+        border: "1px solid rgba(244,63,94,0.35)",
+        borderRadius: 10,
+        fontSize: 12.5,
+        fontWeight: 700,
+        cursor: "pointer",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
-        zIndex: 200,
-        padding: 16,
-        backdropFilter: "blur(6px)",
+        gap: 6,
+      }}
+    >
+      <Icon name="trash" size={13} strokeWidth={2} /> {label}
+    </button>
+  </div>
+);
+
+// unsaved-changes guard (tab close / refresh)
+const useUnsavedGuard = (dirty) => {
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const h = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
+};
+
+const confirmLeave = (dirty, fn) => () => {
+  if (dirty && !window.confirm("Unsaved changes hain. Page chhodna hai?"))
+    return;
+  fn();
+};
+
+// ── VisitCard — one visit, shared by History & Visits pages ────────────────
+const VisitCard = ({ r, index, total, onEdit }) => {
+  const sc = stageColor(r.stage);
+  const isLatest = index === 0;
+  const block = (icon, label, text, accent, tint) => (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        background: tint,
+        border: `1px solid ${accent}2E`,
+        borderRadius: 12,
+        padding: "11px 14px",
       }}
     >
       <div
-        className="dsr-modal-box"
         style={{
-          background: DS.card,
-          border: `1px solid ${DS.border}`,
-          borderRadius: 14,
-          padding: 20,
-          width: "100%",
-          maxWidth: 460,
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: `${accent}1F`,
+          color: accent,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          marginTop: 1,
+        }}
+      >
+        <Icon name={icon} size={14} strokeWidth={2.1} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          style={{
+            fontSize: 9.5,
+            fontWeight: 800,
+            color: accent,
+            textTransform: "uppercase",
+            letterSpacing: "0.12em",
+            marginBottom: 4,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: DS.text1,
+            lineHeight: 1.5,
+            wordBreak: "break-word",
+          }}
+        >
+          {text || (
+            <span style={{ color: DS.text3, fontWeight: 500 }}>— none —</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+  return (
+    <div
+      className="dsr-record-card"
+      style={{
+        background: `linear-gradient(160deg,${DS.surface},${DS.card})`,
+        border: `1px solid ${isLatest ? DS.primary + "99" : DS.border}`,
+        borderLeft: `4px solid ${isLatest ? DS.primary : sc.border}`,
+        borderRadius: 16,
+        padding: "15px 16px 16px",
+        boxShadow: isLatest
+          ? `0 0 0 1px ${DS.primaryDim},0 18px 36px -22px rgba(212,175,106,0.35)`
+          : undefined,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 13,
+          flexWrap: "wrap",
         }}
       >
         <div
-          className="dsr-edit-stripe"
           style={{
-            background: isEdit
-              ? "linear-gradient(135deg,#0E2A5A,#1A4E9E)"
-              : "linear-gradient(135deg,#050E1D,#0A2A5A)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 700,
           }}
         >
-          <div>
-            <div
+          <Icon
+            name="calendar"
+            size={15}
+            strokeWidth={2}
+            style={{ color: DS.primary }}
+          />
+          {fmtDate(r.date) || "Date missing"}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
+            className="dsr-mono"
+            style={{ fontSize: 10.5, color: DS.text3, fontWeight: 700 }}
+          >
+            #{total - index}
+          </span>
+          {isLatest && (
+            <span
               style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "#fff",
+                fontSize: 9.5,
+                fontWeight: 800,
+                color: "#0A0B10",
+                background: `linear-gradient(135deg,${DS.gold},${DS.primary})`,
+                padding: "3px 10px",
+                borderRadius: 20,
+                letterSpacing: "0.08em",
+              }}
+            >
+              LATEST
+            </span>
+          )}
+          {onEdit && (
+            <button
+              className="dsr-btn-edit"
+              onClick={() => onEdit(r)}
+              style={{
+                height: 30,
+                padding: "0 12px",
+                borderRadius: 8,
+                border: `1px solid ${DS.border}`,
+                background: "rgba(255,255,255,0.03)",
+                color: DS.text2,
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 7,
+                gap: 5,
               }}
             >
-              {isEdit && <Icon name="edit" size={14} strokeWidth={2.1} />}
-              {isEdit ? `Edit: ${editName}` : "New customer"}
-            </div>
+              <Icon name="edit" size={12} strokeWidth={2} /> Edit
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {block(
+          "pin",
+          "Objective",
+          r.objective,
+          DS.primary,
+          "rgba(212,175,106,0.06)",
+        )}
+        {block(
+          "check",
+          "Visit outcome",
+          r.outcome,
+          "#8FB4E8",
+          "rgba(143,180,232,0.06)",
+        )}
+      </div>
+    </div>
+  );
+};
+
+const downloadBlob = (blob, filename) => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+};
+
+const exportCustomerHistory = (name, customer, records) => {
+  const rows = [
+    [
+      "Date",
+      "Customer",
+      "Area",
+      "Distributor",
+      "Stage",
+      "Objective",
+      "Outcome",
+      "Potential Dyes",
+      "Potential Aux",
+      "Existing Dyes",
+      "Existing Aux",
+      "ABP AM26",
+      "YTD",
+      "YTD vs ABP %",
+    ],
+    ...records.map((r) => [
+      fmtDate(r.date),
+      name,
+      r.area || customer?.area || "",
+      r.distributor || customer?.distributor || "",
+      r.stage || "",
+      r.objective || "",
+      r.outcome || "",
+      toNum(r.potDyes),
+      toNum(r.potAux),
+      toNum(r.exDyes),
+      toNum(r.exAux),
+      toNum(r.abp),
+      toNum(r.ytd),
+      r.pct ?? 0,
+    ]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = rows[0].map((_, i) => ({ wch: i === 5 || i === 6 ? 36 : 16 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Visit history");
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  downloadBlob(
+    new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    `${name.replace(/[^\w\- ]+/g, "")}_history.xlsx`,
+  );
+};
+
+// ── Mini potential/existing meter used in side panels ─────────────────────
+const PotentialMeter = ({ pot, ex }) => {
+  const headroom = Math.max(0, pot - ex);
+  const pen = pot > 0 ? Math.min(100, (ex / pot) * 100) : 0;
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 7,
+        }}
+      >
+        <span style={{ fontSize: 11, color: DS.text2, fontWeight: 600 }}>
+          Market penetration
+        </span>
+        <span
+          className="dsr-mono"
+          style={{ fontSize: 12, fontWeight: 700, color: pctColor(pen) }}
+        >
+          {pen.toFixed(0)}%
+        </span>
+      </div>
+      <div
+        style={{
+          height: 8,
+          borderRadius: 5,
+          background: DS.border,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${pen}%`,
+            height: "100%",
+            background: `linear-gradient(90deg,${DS.primary},${DS.gold})`,
+            transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: 8,
+          fontSize: 11,
+          color: DS.text2,
+        }}
+      >
+        <span>Existing {fmtL(ex)}</span>
+        <span style={{ color: DS.gold, fontWeight: 700 }}>
+          Headroom {fmtL(headroom)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ── Contact helpers ────────────────────────────────────────────────────────
+const ActionLink = ({
+  href,
+  icon,
+  label,
+  color = DS.text1,
+  disabled,
+  external,
+}) => (
+  <a
+    href={disabled ? undefined : href}
+    target={external ? "_blank" : undefined}
+    rel={external ? "noopener noreferrer" : undefined}
+    onClick={(e) => disabled && e.preventDefault()}
+    aria-disabled={disabled}
+    className="dsr-ghost-btn"
+    style={{
+      flex: 1,
+      minWidth: 0,
+      textDecoration: "none",
+      color: disabled ? DS.text3 : color,
+      opacity: disabled ? 0.45 : 1,
+      pointerEvents: disabled ? "none" : "auto",
+    }}
+  >
+    <Icon name={icon} size={14} strokeWidth={2} /> {label}
+  </a>
+);
+
+const ContactCard = ({ data, name, onEdit }) => {
+  const mob = cleanMobile(data.mobile);
+  const alt = cleanMobile(data.altMobile);
+  const has =
+    data.contactPerson ||
+    mob ||
+    alt ||
+    data.email ||
+    data.address ||
+    data.gstin;
+  return (
+    <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <SubHead icon="user">Contact</SubHead>
+      {!has ? (
+        <div style={{ fontSize: 12, color: DS.text2, lineHeight: 1.5 }}>
+          Abhi tak koi contact detail nahi.
+          {onEdit && (
+            <button
+              className="dsr-ghost-btn"
+              style={{ width: "100%", marginTop: 12 }}
+              onClick={onEdit}
+            >
+              <Icon name="addRecord" size={14} /> Contact add karo
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 11,
+              marginBottom: 12,
+            }}
+          >
             <div
               style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.5)",
-                marginTop: 2,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: DS.primaryDim,
+                border: `1px solid ${DS.primary}55`,
+                color: DS.primary,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
             >
-              {isEdit
-                ? "Master data update karo"
-                : "Customer ka master data fill karo"}
+              <Icon name="user" size={18} strokeWidth={1.9} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {data.contactPerson || name || "—"}
+              </div>
+              {data.designation && (
+                <div style={{ fontSize: 11, color: DS.text2 }}>
+                  {data.designation}
+                </div>
+              )}
             </div>
           </div>
-          <button
-            onClick={onClose}
+          {[
+            ["phone", mob && fmtMobile(mob)],
+            ["phone", alt && `${fmtMobile(alt)} (alt)`],
+            ["mail", data.email],
+            ["pin", data.address],
+          ]
+            .filter(([, v]) => v)
+            .map(([ic, v], i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 9,
+                  alignItems: "flex-start",
+                  fontSize: 12,
+                  padding: "6px 0",
+                  borderTop: i ? `1px dashed ${DS.border}` : "none",
+                  wordBreak: "break-word",
+                }}
+              >
+                <Icon
+                  name={ic}
+                  size={13}
+                  strokeWidth={2}
+                  style={{ color: DS.primary, marginTop: 2 }}
+                />
+                <span className={ic === "phone" ? "dsr-mono" : undefined}>
+                  {v}
+                </span>
+              </div>
+            ))}
+          {data.gstin && (
+            <div style={{ marginTop: 8, fontSize: 10.5, color: DS.text2 }}>
+              GSTIN{" "}
+              <span
+                className="dsr-mono"
+                style={{ color: DS.gold, fontWeight: 700 }}
+              >
+                {data.gstin}
+              </span>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <ActionLink
+              href={`tel:+91${mob}`}
+              icon="phone"
+              label="Call"
+              color={DS.success}
+              disabled={!isValidMobile(mob)}
+            />
+            <ActionLink
+              href={`https://wa.me/91${mob}`}
+              icon="whatsapp"
+              label="WhatsApp"
+              color="#25D366"
+              external
+              disabled={!isValidMobile(mob)}
+            />
+          </div>
+          {data.email && (
+            <div style={{ display: "flex", marginTop: 8 }}>
+              <ActionLink
+                href={`mailto:${data.email}`}
+                icon="mail"
+                label="Email"
+                color={DS.info}
+                disabled={!isValidEmail(data.email)}
+              />
+            </div>
+          )}
+          {isValidMobile(mob) && (
+            <button
+              className="dsr-ghost-btn"
+              style={{ width: "100%", marginTop: 8 }}
+              onClick={() => navigator.clipboard?.writeText(mob)}
+            >
+              <Icon name="copy" size={13} /> Number copy karo
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const FieldNote = ({ type = "error", children }) =>
+  children ? (
+    <div
+      style={{
+        fontSize: 10.5,
+        marginTop: -6,
+        marginBottom: 10,
+        fontWeight: 600,
+        color:
+          type === "error"
+            ? DS.danger
+            : type === "warn"
+              ? DS.amber
+              : DS.success,
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+      }}
+    >
+      {children}
+    </div>
+  ) : null;
+
+const MobileInput = ({
+  label,
+  name,
+  value,
+  onChange,
+  required,
+  placeholder,
+}) => {
+  const ok = isValidMobile(value);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <FieldLabel required={required}>{label}</FieldLabel>
+      <div style={{ position: "relative" }}>
+        <span
+          className="dsr-mono"
+          style={{
+            position: "absolute",
+            left: 1,
+            top: 1,
+            bottom: 1,
+            width: 42,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            fontWeight: 700,
+            color: DS.primary,
+            background: DS.primaryDim,
+            borderRadius: "7px 0 0 7px",
+            borderRight: `1px solid ${DS.border}`,
+          }}
+        >
+          +91
+        </span>
+        <input
+          className="dsr-input"
+          style={{
+            ...IS,
+            paddingLeft: 54,
+            paddingRight: 34,
+            letterSpacing: "0.04em",
+          }}
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel-national"
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder || "98765 43210"}
+          maxLength={14}
+        />
+        {value && (
+          <span
             style={{
-              background: "rgba(255,255,255,0.10)",
-              border: `1px solid rgba(255,255,255,0.15)`,
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              cursor: "pointer",
-              color: "#fff",
+              position: "absolute",
+              right: 11,
+              top: 11,
+              color: ok ? DS.success : DS.danger,
+            }}
+          >
+            <Icon name={ok ? "check" : "alert"} size={15} strokeWidth={2.3} />
+          </span>
+        )}
+      </div>
+      {value && !ok && (
+        <div
+          style={{
+            fontSize: 10.5,
+            marginTop: 5,
+            color: DS.danger,
+            fontWeight: 600,
+          }}
+        >
+          {cleanMobile(value).length < 10
+            ? `${10 - cleanMobile(value).length} digit aur chahiye`
+            : "Number 6–9 se start hona chahiye"}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═════════ PAGE 1 — Customer Add / Edit ═══════════════════════════════════
+const CustomerFormPage = ({
+  mode,
+  editName,
+  initialData,
+  lastRecord,
+  visitCount,
+  allCustomers = {},
+  onOpenOther,
+  onSave,
+  onDelete,
+  onCancel,
+  onOpenHistory,
+  saving,
+}) => {
+  const isEdit = mode === "edit";
+  const [name, setName] = useState(editName || "");
+  const [data, setData] = useState(initialData || EMPTY_CUSTOMER);
+  const dirty =
+    name !== (editName || "") ||
+    JSON.stringify(data) !== JSON.stringify(initialData || EMPTY_CUSTOMER);
+  useUnsavedGuard(dirty);
+  const handleChange = (e) => {
+    const { name: f, value } = e.target;
+    let v = value;
+    if (f === "mobile" || f === "altMobile") v = cleanMobile(value);
+    if (f === "gstin")
+      v = value
+        .toUpperCase()
+        .replace(/[^0-9A-Z]/g, "")
+        .slice(0, 15);
+    setData((p) => ({ ...p, [f]: v }));
+  };
+  const pot = toNum(data.potDyes) + toNum(data.potAux);
+
+  // duplicate checks (warnings)
+  const nameKey = name.trim().toLowerCase();
+  const dupName =
+    nameKey &&
+    Object.keys(allCustomers).find(
+      (k) => k.toLowerCase() === nameKey && k !== editName,
+    );
+  const dupMobile = (m) =>
+    isValidMobile(m)
+      ? Object.entries(allCustomers).find(
+          ([k, c]) => k !== editName && (c.mobile === m || c.altMobile === m),
+        )?.[0]
+      : null;
+  const dupMob = dupMobile(data.mobile);
+  const profileFields = [
+    data.contactPerson,
+    data.designation,
+    isValidMobile(data.mobile) && data.mobile,
+    data.email,
+    data.address,
+    data.gstin,
+    data.notes,
+  ];
+  const profilePct = Math.round(
+    (profileFields.filter(Boolean).length / profileFields.length) * 100,
+  );
+  const ex = toNum(data.exDyes) + toNum(data.exAux);
+  const required = [
+    name.trim(),
+    data.area,
+    data.distributor,
+    data.stage,
+    data.potDyes !== "",
+    data.potAux !== "",
+    data.abp !== "",
+  ];
+  const done = required.filter(Boolean).length;
+  const sc = stageColor(data.stage);
+
+  const aside = (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="sparkle">Live summary</SubHead>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 11,
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: "50%",
+              background: DS.primaryDim,
+              border: `1px solid ${DS.primary}`,
+              color: DS.primary,
+              fontWeight: 800,
+              fontSize: 13,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <Icon name="close" size={14} strokeWidth={2.2} />
+            {getInitials(name || "?")}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {name || "Customer name"}
+            </div>
+            <div style={{ fontSize: 11, color: DS.text2 }}>
+              {data.area || "Area"} · {data.distributor || "Distributor"}
+            </div>
+          </div>
+        </div>
+        {data.stage && (
+          <span
+            style={{
+              display: "inline-block",
+              fontSize: 10.5,
+              padding: "3px 9px",
+              borderRadius: 5,
+              fontWeight: 600,
+              background: sc.bg,
+              color: sc.text,
+              border: `1px solid ${sc.border}55`,
+              marginBottom: 8,
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {data.stage}
+          </span>
+        )}
+        <StageLadder stage={data.stage} />
+        <div className="dsr-stat-grid" style={{ margin: "16px 0" }}>
+          <StatTile label="Potential /mth" value={fmtL(pot)} />
+          <StatTile
+            label="ABP AM26"
+            value={fmtL(toNum(data.abp))}
+            accent={DS.gold}
+          />
+        </div>
+        <PotentialMeter pot={pot} ex={ex} />
+      </div>
+
+      <ContactCard data={data} name={name} />
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="sparkle">Profile completeness</SubHead>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            marginBottom: 8,
+          }}
+        >
+          <span
+            className="dsr-mono"
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: profilePct >= 70 ? DS.success : DS.primary,
+            }}
+          >
+            {profilePct}%
+          </span>
+          <span style={{ fontSize: 10.5, color: DS.text2 }}>
+            contact · GST · notes
+          </span>
+        </div>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 4,
+            background: DS.border,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${profilePct}%`,
+              height: "100%",
+              background: `linear-gradient(90deg,${DS.primary},${DS.gold})`,
+              transition: "width .4s",
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="check">Form checklist</SubHead>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 4,
+            background: DS.border,
+            overflow: "hidden",
+            marginBottom: 8,
+          }}
+        >
+          <div
+            style={{
+              width: `${(done / required.length) * 100}%`,
+              height: "100%",
+              background: done === required.length ? DS.success : DS.primary,
+              transition: "width .3s",
+            }}
+          />
+        </div>
+        <div style={{ fontSize: 11.5, color: DS.text2 }}>
+          {done}/{required.length} required fields complete
+        </div>
+      </div>
+
+      {isEdit && (
+        <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+          <SubHead icon="clock">Activity</SubHead>
+          <div style={{ fontSize: 12.5, marginBottom: 12 }}>
+            <span
+              className="dsr-mono"
+              style={{ color: DS.primary, fontWeight: 700 }}
+            >
+              {visitCount}
+            </span>{" "}
+            visit{visitCount === 1 ? "" : "s"} recorded
+          </div>
+          <CustomerLastRecord record={lastRecord} />
+          <button
+            className="dsr-ghost-btn"
+            style={{ width: "100%" }}
+            onClick={onOpenHistory}
+          >
+            <Icon name="records" size={14} /> Full visit history dekho
           </button>
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <PageShell
+      eyebrow={isEdit ? "Edit customer" : "New customer"}
+      title={isEdit ? editName : "Naya customer"}
+      subtitle={
+        isEdit ? "Master data update karo" : "Customer ka master data fill karo"
+      }
+      avatar={isEdit ? getInitials(editName) : "+"}
+      onBack={confirmLeave(dirty, onCancel)}
+      homeGuard={dirty}
+      aside={aside}
+      maxWidth={1100}
+    >
+      <SectionCard title="Basic details">
         <div style={{ marginBottom: 12 }}>
           <FieldLabel required>Customer name</FieldLabel>
           <input
@@ -3560,15 +4436,34 @@ const CustomerModal = ({
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter full name"
           />
+          {dupName && (
+            <div
+              style={{
+                fontSize: 11,
+                marginTop: 6,
+                color: DS.amber,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <Icon name="alert" size={13} /> "{dupName}" naam se customer pehle
+              se hai.
+              {onOpenOther && (
+                <button
+                  className="dsr-ghost-btn"
+                  style={{ height: 26, padding: "0 10px", fontSize: 11 }}
+                  onClick={() => onOpenOther(dupName)}
+                >
+                  Open ›
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-          }}
-        >
+        <Grid2>
           <FormInput
             label="Area"
             required
@@ -3592,7 +4487,7 @@ const CustomerModal = ({
               </option>
             ))}
           </FormSelect>
-        </div>
+        </Grid2>
         <FormSelect
           label="Project stage"
           required
@@ -3607,30 +4502,116 @@ const CustomerModal = ({
             </option>
           ))}
         </FormSelect>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: DS.text3,
-            marginBottom: 10,
-            marginTop: 4,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹ Lakhs)
+      </SectionCard>
+
+      <SectionCard title="Contact details">
+        <Grid2>
+          <FormInput
+            label="Contact person"
+            type="text"
+            name="contactPerson"
+            value={data.contactPerson}
+            onChange={handleChange}
+            placeholder="Person ka naam"
+            autoComplete="name"
+          />
+          <div style={{ marginBottom: 12 }}>
+            <FieldLabel>Designation</FieldLabel>
+            <input
+              className="dsr-input"
+              style={IS}
+              type="text"
+              name="designation"
+              list="dsr-designations"
+              value={data.designation}
+              onChange={handleChange}
+              placeholder="Owner, Manager…"
+            />
+            <datalist id="dsr-designations">
+              {DESIGNATION_SUGGESTIONS.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          </div>
+          <MobileInput
+            label="Mobile number"
+            name="mobile"
+            value={data.mobile}
+            onChange={handleChange}
+          />
+          <MobileInput
+            label="Alternate mobile"
+            name="altMobile"
+            value={data.altMobile}
+            onChange={handleChange}
+            placeholder="Optional"
+          />
+        </Grid2>
+        {dupMob && (
+          <FieldNote type="warn">
+            <Icon name="alert" size={13} /> Yeh mobile "{dupMob}" ke saath bhi
+            saved hai.
+          </FieldNote>
+        )}
+        <FormInput
+          label="Email"
+          type="email"
+          name="email"
+          value={data.email}
+          onChange={handleChange}
+          placeholder="name@company.com"
+          autoComplete="email"
+        />
+        {data.email && !isValidEmail(data.email) && (
+          <FieldNote>Email format sahi nahi hai</FieldNote>
+        )}
+        <FormInput
+          label="Address / Location"
+          type="text"
+          name="address"
+          value={data.address}
+          onChange={handleChange}
+          placeholder="Unit no., road, city"
+        />
+        <FormInput
+          label="GSTIN"
+          type="text"
+          name="gstin"
+          value={data.gstin}
+          onChange={handleChange}
+          placeholder="22AAAAA0000A1Z5"
+          maxLength={15}
+          style={{ ...IS, textTransform: "uppercase", letterSpacing: "0.06em" }}
+        />
+        {data.gstin && (
+          <FieldNote type={isValidGSTIN(data.gstin) ? "ok" : "error"}>
+            {isValidGSTIN(data.gstin)
+              ? "GSTIN valid ✓"
+              : `${data.gstin.length}/15 — format abhi poora nahi`}
+          </FieldNote>
+        )}
+        <div style={{ marginBottom: 4 }}>
+          <FieldLabel>Notes / remarks</FieldLabel>
+          <textarea
+            className="dsr-input"
+            name="notes"
+            value={data.notes}
+            onChange={handleChange}
+            placeholder="Preferred time, decision maker, special instructions…"
+            style={{
+              ...IS,
+              height: 84,
+              padding: "10px 12px",
+              resize: "vertical",
+              lineHeight: 1.5,
+              fontFamily: "inherit",
+            }}
+          />
         </div>
-        <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-          }}
-        >
+      </SectionCard>
+
+      <SectionCard title="Numbers (₹ Lakhs)">
+        <Grid2>
           <FormInput
             label="Potential Dyes /mth"
             required
@@ -3665,108 +4646,51 @@ const CustomerModal = ({
             onChange={handleChange}
             placeholder="0"
           />
-          <div style={{ gridColumn: "1 / -1", marginBottom: 12 }}>
-            <FieldLabel required>ABP AM26</FieldLabel>
-            <input
-              className="dsr-input"
-              style={IS}
-              type="number"
-              name="abp"
-              value={data.abp}
-              onChange={handleChange}
-              placeholder="0"
-            />
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          {isEdit && (
-            <button
-              onClick={() => onDelete(editName)}
-              style={{
-                height: 40,
-                padding: "0 14px",
-                background: "rgba(244,63,94,0.10)",
-                color: DS.danger,
-                border: "1px solid rgba(244,63,94,0.30)",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                flexShrink: 0,
-              }}
-            >
-              <Icon name="trash" size={13} strokeWidth={2} /> Delete
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              height: 40,
-              background: "rgba(255,255,255,0.04)",
-              color: DS.text2,
-              border: `1px solid ${DS.border}`,
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            className="dsr-btn-primary"
-            onClick={() => onSave(name.trim(), data)}
-            disabled={saving}
-            style={{
-              flex: 2,
-              height: 40,
-              border: "none",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              color: "#06101E",
-            }}
-          >
-            {saving ? (
-              <span
-                className="dsr-spinner"
-                style={{
-                  width: 14,
-                  height: 14,
-                  border: "2px solid rgba(0,0,0,0.2)",
-                  borderTopColor: "#06101E",
-                  margin: 0,
-                }}
-              />
-            ) : (
-              <Icon name="check" size={14} strokeWidth={2.3} />
-            )}
-            {saving ? "Saving…" : isEdit ? "Update customer" : "Save customer"}
-          </button>
-        </div>
-      </div>
-    </div>
+        </Grid2>
+        <FormInput
+          label="ABP AM26"
+          required
+          type="number"
+          name="abp"
+          value={data.abp}
+          onChange={handleChange}
+          placeholder="0"
+        />
+      </SectionCard>
+
+      {isEdit && (
+        <DangerZone
+          title="Delete customer"
+          text="Customer master data hat jayega. Yeh action undo nahi hoga."
+          label="Delete customer"
+          onClick={() => onDelete(editName)}
+        />
+      )}
+
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onCancel={confirmLeave(dirty, onCancel)}
+        onSave={() => onSave(name.trim(), data)}
+        label={isEdit ? "Update customer" : "Save customer"}
+      />
+    </PageShell>
   );
 };
 
-const RecordEditModal = ({
+// ═════════ PAGE 2 — Record Edit ═══════════════════════════════════════════
+const RecordEditPage = ({
   record,
   customers,
   customerList,
+  history,
   onSave,
-  onClose,
+  onDelete,
+  onCancel,
+  onOpenHistory,
   saving,
 }) => {
-  const [data, setData] = useState({
+  const initial = {
     date: record.date ? new Date(record.date).toISOString().slice(0, 10) : "",
     area: record.area || "",
     distributor: record.distributor || "",
@@ -3780,7 +4704,10 @@ const RecordEditModal = ({
     exAux: record.exAux ?? "",
     abp: record.abp ?? "",
     ytd: record.ytd ?? "",
-  });
+  };
+  const [data, setData] = useState(initial);
+  const dirty = JSON.stringify(data) !== JSON.stringify(initial);
+  useUnsavedGuard(dirty);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setData((p) => ({ ...p, [name]: value }));
@@ -3799,88 +4726,89 @@ const RecordEditModal = ({
     } else setData((p) => ({ ...p, customer: val }));
   };
   const id = record._id || record.id;
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.82)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 200,
-        padding: 16,
-        backdropFilter: "blur(6px)",
-      }}
-    >
-      <div
-        className="dsr-modal-box"
-        style={{
-          background: DS.card,
-          border: `1px solid ${DS.border}`,
-          borderRadius: 14,
-          padding: 20,
-          width: "100%",
-          maxWidth: 480,
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
-        }}
-      >
+  const abp = toNum(data.abp);
+  const ytd = toNum(data.ytd);
+  const livePct = abp > 0 ? (ytd / abp) * 100 : 0;
+  const otherVisits = (history || []).filter((r) => (r._id || r.id) !== id);
+  const prev = otherVisits.find(
+    (r) => new Date(r.date) <= new Date(record.date),
+  );
+
+  const aside = (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="trending">YTD vs ABP (live)</SubHead>
         <div
-          className="dsr-edit-stripe"
-          style={{ background: "linear-gradient(135deg,#0E2A5A,#1A4E9E)" }}
+          className="dsr-mono"
+          style={{ fontSize: 30, fontWeight: 700, color: pctColor(livePct) }}
         >
-          <div>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-              }}
-            >
-              <Icon name="edit" size={14} strokeWidth={2.1} /> Edit record
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.5)",
-                marginTop: 2,
-              }}
-            >
-              {record.customer} · {fmtDate(record.date)}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              cursor: "pointer",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Icon name="close" size={14} strokeWidth={2.2} />
-          </button>
+          {livePct.toFixed(1)}%
         </div>
         <div
-          className="dsr-grid2"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
+            height: 8,
+            borderRadius: 5,
+            background: DS.border,
+            overflow: "hidden",
+            margin: "10px 0 8px",
           }}
         >
+          <div
+            style={{
+              width: `${Math.min(100, livePct)}%`,
+              height: "100%",
+              background: pctColor(livePct),
+              transition: "width .4s",
+            }}
+          />
+        </div>
+        <div style={{ fontSize: 11.5, color: DS.text2 }}>
+          {fmtL(ytd)} of {fmtL(abp)} ABP
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <StageLadder stage={data.stage} />
+        </div>
+      </div>
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="clock">Pichli visit</SubHead>
+        {prev ? (
+          <>
+            <CustomerLastRecord record={prev} />
+            <div style={{ fontSize: 11, color: DS.text2 }}>
+              Outcome: {prev.outcome || "—"}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: DS.text2 }}>
+            Is customer ki yeh pehli visit hai.
+          </div>
+        )}
+        <button
+          className="dsr-ghost-btn"
+          style={{ width: "100%", marginTop: 12 }}
+          onClick={onOpenHistory}
+        >
+          <Icon name="records" size={14} /> {otherVisits.length + 1} visits ·
+          history
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <PageShell
+      eyebrow="Edit record"
+      title={record.customer || "Record"}
+      subtitle={`${fmtDate(record.date)} · visit record edit`}
+      avatar={getInitials(record.customer || "?")}
+      onBack={confirmLeave(dirty, onCancel)}
+      homeGuard={dirty}
+      aside={aside}
+      maxWidth={1100}
+    >
+      <SectionCard title="Visit details">
+        <Grid2>
           <div style={{ marginBottom: 12 }}>
             <FieldLabel required>Date</FieldLabel>
             <input
@@ -3908,15 +4836,6 @@ const RecordEditModal = ({
               ))}
             </CustomSelect>
           </div>
-        </div>
-        <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-          }}
-        >
           <FormInput
             label="Area"
             required
@@ -3940,7 +4859,7 @@ const RecordEditModal = ({
               </option>
             ))}
           </FormSelect>
-        </div>
+        </Grid2>
         <FormInput
           label="Objective / Project description"
           type="text"
@@ -3970,30 +4889,10 @@ const RecordEditModal = ({
           onChange={handleChange}
           placeholder="e.g. Positive, Follow-up needed…"
         />
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: DS.text3,
-            marginBottom: 10,
-            marginTop: 4,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹ Lakhs)
-        </div>
-        <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-          }}
-        >
+      </SectionCard>
+
+      <SectionCard title="Numbers (₹ Lakhs)">
+        <Grid2>
           <FormInput
             label="Potential Dyes /mth"
             type="number"
@@ -4042,62 +4941,1414 @@ const RecordEditModal = ({
             onChange={handleChange}
             placeholder="0"
           />
+        </Grid2>
+      </SectionCard>
+
+      <DangerZone
+        title="Delete this record"
+        text="Sirf yeh visit record delete hoga. Customer master data safe rahega."
+        label="Delete record"
+        onClick={() => onDelete(id)}
+      />
+
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onCancel={confirmLeave(dirty, onCancel)}
+        onSave={() => onSave(id, data)}
+        label="Update record"
+      />
+    </PageShell>
+  );
+};
+
+// ═════════ PAGE 3 — Customer History ══════════════════════════════════════
+const CustomerHistoryPage = ({
+  name,
+  customer,
+  records,
+  onBack,
+  onEditCustomer,
+  onAddVisit,
+  onEditRecord,
+  onOpenMonth,
+}) => {
+  const [q, setQ] = useState("");
+  const total = records.length;
+  const latest = records[0];
+  const first = records[total - 1];
+  const currentStage = latest?.stage || customer?.stage || "";
+  const sc = stageColor(currentStage);
+  const avgPct = total
+    ? records.reduce((s, r) => s + (r.pct || 0), 0) / total
+    : 0;
+  const since = latest ? daysSince(latest.date) : null;
+  const pot = toNum(customer?.potDyes) + toNum(customer?.potAux);
+  const ex = toNum(customer?.exDyes) + toNum(customer?.exAux);
+
+  const journey = useMemo(() => {
+    const chrono = [...records].reverse();
+    const out = [];
+    let prev = null;
+    chrono.forEach((r) => {
+      if (r.stage && r.stage !== prev) {
+        out.push({ stage: r.stage, date: r.date });
+        prev = r.stage;
+      }
+    });
+    return out;
+  }, [records]);
+
+  const groups = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const out = [];
+    const idx = {};
+    records.forEach((r, i) => {
+      if (
+        needle &&
+        !`${r.outcome || ""} ${r.objective || ""} ${r.stage || ""}`
+          .toLowerCase()
+          .includes(needle)
+      )
+        return;
+      const d = new Date(r.date);
+      const valid = !isNaN(d.getTime());
+      const key = valid
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+        : "unknown";
+      if (idx[key] === undefined) {
+        idx[key] = out.length;
+        out.push({
+          key,
+          label: valid
+            ? d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+            : "Date missing",
+          items: [],
+        });
+      }
+      out[idx[key]].items.push({ r, i });
+    });
+    return out;
+  }, [records, q]);
+
+  const aside = (
+    <div style={{ display: "grid", gap: 14 }}>
+      <ContactCard
+        data={pickContact(customer)}
+        name={name}
+        onEdit={onEditCustomer}
+      />
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="store">Customer master</SubHead>
+        <div className="dsr-stat-grid" style={{ marginBottom: 14 }}>
+          <StatTile label="Potential /mth" value={fmtL(pot)} />
+          <StatTile label="Existing /mth" value={fmtL(ex)} accent={DS.gold} />
+          <StatTile
+            label="ABP AM26"
+            value={fmtL(customer?.abp)}
+            accent={DS.gold}
+          />
+          <StatTile label="Latest YTD" value={fmtL(latest?.ytd)} />
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button
-            onClick={onClose}
+        <PotentialMeter pot={pot} ex={ex} />
+      </div>
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="trending">Stage journey</SubHead>
+        {journey.length === 0 ? (
+          <div style={{ fontSize: 12, color: DS.text2 }}>
+            Abhi koi stage record nahi.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 0 }}>
+            {journey.map((j, i) => {
+              const c = stageColor(j.stage);
+              const isCur = i === journey.length - 1;
+              return (
+                <div
+                  key={`${j.stage}-${i}`}
+                  style={{ display: "flex", gap: 11 }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 11,
+                        height: 11,
+                        borderRadius: "50%",
+                        background: isCur ? c.border : DS.surface,
+                        border: `2px solid ${c.border}`,
+                        marginTop: 4,
+                      }}
+                    />
+                    {i < journey.length - 1 && (
+                      <span
+                        style={{
+                          flex: 1,
+                          width: 2,
+                          background: DS.border,
+                          minHeight: 22,
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ paddingBottom: 12, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: isCur ? 700 : 600,
+                        color: isCur ? c.text : DS.text1,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {j.stage}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: DS.text3 }}>
+                      {fmtDate(j.date)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <PageShell
+      eyebrow="Customer history"
+      title={name}
+      subtitle={`${customer?.area || latest?.area || "—"} · ${customer?.distributor || latest?.distributor || "—"}`}
+      avatar={getInitials(name)}
+      onBack={onBack}
+      aside={aside}
+      badge={
+        currentStage ? (
+          <span
             style={{
-              flex: 1,
-              height: 40,
-              background: "rgba(255,255,255,0.04)",
-              color: DS.text2,
-              border: `1px solid ${DS.border}`,
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
+              fontSize: 11,
+              padding: "5px 11px",
+              borderRadius: 6,
+              fontWeight: 700,
+              background: sc.bg,
+              color: sc.text,
+              border: `1px solid ${sc.border}66`,
+              maxWidth: 300,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            Cancel
+            {currentStage}
+          </span>
+        ) : null
+      }
+      actions={
+        <>
+          <button className="dsr-ghost-btn" onClick={onEditCustomer}>
+            <Icon name="edit" size={13} /> Edit
           </button>
           <button
             className="dsr-btn-primary"
-            onClick={() => onSave(id, data)}
-            disabled={saving}
+            onClick={onAddVisit}
             style={{
-              flex: 2,
-              height: 40,
+              height: 38,
+              padding: "0 16px",
               border: "none",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
+              borderRadius: 10,
+              fontSize: 12.5,
+              fontWeight: 800,
+              color: "#0A0B10",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              color: "#06101E",
+              gap: 6,
             }}
           >
-            {saving ? (
-              <span
-                className="dsr-spinner"
-                style={{
-                  width: 14,
-                  height: 14,
-                  border: "2px solid rgba(0,0,0,0.2)",
-                  borderTopColor: "#06101E",
-                  margin: 0,
-                }}
-              />
-            ) : (
-              <Icon name="check" size={14} strokeWidth={2.3} />
-            )}
-            {saving ? "Saving…" : "Update record"}
+            <Icon name="addRecord" size={14} strokeWidth={2.2} /> Add visit
           </button>
+        </>
+      }
+    >
+      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+        <StatTile
+          label="Total visits"
+          value={total}
+          sub={first ? `Since ${fmtDate(first.date)}` : ""}
+        />
+        <StatTile
+          label="Last visit"
+          value={latest ? fmtDate(latest.date) : "—"}
+          sub={since === null ? "" : since === 0 ? "Aaj" : `${since} din pehle`}
+          accent={since !== null && since > 30 ? DS.warning : DS.gold}
+        />
+        <StatTile
+          label="Avg YTD vs ABP"
+          value={`${avgPct.toFixed(1)}%`}
+          accent={pctColor(avgPct)}
+        />
+        <StatTile
+          label="Stage steps"
+          value={journey.length}
+          sub="stage changes tracked"
+          accent={DS.info}
+        />
+      </div>
+
+      <div
+        style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}
+      >
+        <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+          <Icon
+            name="search"
+            size={14}
+            style={{ position: "absolute", left: 12, top: 12, color: DS.text3 }}
+          />
+          <input
+            className="dsr-input"
+            style={{ ...IS, paddingLeft: 34, height: 40 }}
+            placeholder="Outcome / objective / stage search…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
+        <button
+          className="dsr-ghost-btn"
+          style={{ height: 40 }}
+          disabled={!total}
+          onClick={() => exportCustomerHistory(name, customer, records)}
+        >
+          <Icon name="download" size={14} /> Export Excel
+        </button>
+      </div>
+
+      {total === 0 ? (
+        <div
+          className="dsr-glass"
+          style={{
+            borderRadius: 16,
+            textAlign: "center",
+            padding: "44px 16px",
+            color: DS.text2,
+          }}
+        >
+          <div className="dsr-empty-icon">
+            <Icon
+              name="inbox"
+              size={26}
+              strokeWidth={1.6}
+              style={{ color: DS.primary }}
+            />
+          </div>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: DS.text1 }}>
+            Abhi tak koi visit nahi
+          </div>
+          <div style={{ fontSize: 12, marginTop: 4 }}>
+            Is customer ka pehla record "Add visit" se banao
+          </div>
+        </div>
+      ) : groups.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 30,
+            color: DS.text2,
+            fontSize: 13,
+          }}
+        >
+          "{q}" se koi visit match nahi hui.
+        </div>
+      ) : (
+        groups.map((g) => (
+          <div key={g.key} style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 10,
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: DS.text3,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              <span>{g.label}</span>
+              <span style={{ color: DS.primary }}>
+                · {g.items.length} visit{g.items.length > 1 ? "s" : ""}
+              </span>
+              <span style={{ flex: 1, height: 1, background: DS.border }} />
+              {g.key !== "unknown" && (
+                <button
+                  className="dsr-visits-btn"
+                  onClick={() => onOpenMonth(g.key)}
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: DS.primary,
+                    background: DS.primaryDim,
+                    border: `1px solid ${DS.primary}55`,
+                    borderRadius: 20,
+                    padding: "3px 11px",
+                    cursor: "pointer",
+                    textTransform: "none",
+                    letterSpacing: 0,
+                  }}
+                >
+                  Month view →
+                </button>
+              )}
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {g.items.map(({ r, i }) => (
+                <VisitCard
+                  key={r._id || r.id || i}
+                  r={r}
+                  index={i}
+                  total={total}
+                  onEdit={onEditRecord}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </PageShell>
+  );
+};
+
+// ═════════ PAGE 4 — Month Visits ══════════════════════════════════════════
+const VisitsPage = ({
+  name,
+  month,
+  records,
+  otherMonths,
+  currentKey,
+  onBack,
+  onOpenHistory,
+  onEditRecord,
+  onOpenMonth,
+}) => {
+  const total = records.length;
+  const latest = records[0];
+  const avgPct = total
+    ? records.reduce((s, r) => s + (r.pct || 0), 0) / total
+    : 0;
+  const sc = stageColor(latest?.stage);
+  return (
+    <PageShell
+      eyebrow="Month visits"
+      title={name}
+      subtitle={`${month} · ${total} visit${total === 1 ? "" : "s"} (latest first)`}
+      avatar={getInitials(name)}
+      onBack={onBack}
+      actions={
+        <button className="dsr-ghost-btn" onClick={onOpenHistory}>
+          <Icon name="records" size={13} /> Full history
+        </button>
+      }
+      aside={
+        otherMonths.length > 1 ? (
+          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+            <SubHead icon="calendar">Other months</SubHead>
+            <div style={{ display: "grid", gap: 8 }}>
+              {otherMonths.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => onOpenMonth(m.key)}
+                  className="dsr-filter-chip"
+                  style={{
+                    justifyContent: "space-between",
+                    borderRadius: 10,
+                    padding: "9px 12px",
+                    background: m.key === currentKey ? DS.primary : undefined,
+                    color: m.key === currentKey ? "#0A0B10" : undefined,
+                    borderColor: m.key === currentKey ? DS.primary : undefined,
+                  }}
+                >
+                  <span>{m.label}</span>
+                  <span className="dsr-mono">{m.visits}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null
+      }
+    >
+      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+        <StatTile label="Visits" value={total} sub={month} />
+        <StatTile
+          label="Latest visit"
+          value={latest ? fmtDate(latest.date) : "—"}
+          accent={DS.gold}
+        />
+        <StatTile
+          label="Avg YTD vs ABP"
+          value={`${avgPct.toFixed(1)}%`}
+          accent={pctColor(avgPct)}
+        />
+        <StatTile
+          label="Latest YTD"
+          value={fmtL(latest?.ytd)}
+          accent={DS.info}
+        />
+      </div>
+      {latest?.stage && (
+        <div
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 6,
+              fontWeight: 700,
+              background: sc.bg,
+              color: sc.text,
+              border: `1px solid ${sc.border}66`,
+            }}
+          >
+            {latest.stage}
+          </span>
+          <StageLadder stage={latest.stage} size="sm" />
+        </div>
+      )}
+      <div style={{ display: "grid", gap: 12 }}>
+        {records.map((r, i) => (
+          <VisitCard
+            key={r._id || r.id || i}
+            r={r}
+            index={i}
+            total={total}
+            onEdit={onEditRecord}
+          />
+        ))}
+      </div>
+    </PageShell>
+  );
+};
+
+// ═════════ PAGE 5 — Period / Month Analysis Report ═══════════════════════
+const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
+  if (prev === null || prev === undefined) return null;
+  const d = Number(cur) - Number(prev);
+  if (!isFinite(d) || Math.abs(d) < 0.05) {
+    return (
+      <span style={{ fontSize: 10.5, color: DS.text3, fontWeight: 700 }}>
+        — no change
+      </span>
+    );
+  }
+  const up = d > 0;
+  return (
+    <span
+      className="dsr-mono"
+      style={{
+        fontSize: 10.5,
+        fontWeight: 700,
+        color: up ? DS.success : DS.danger,
+      }}
+    >
+      {up ? "▲ +" : "▼ "}
+      {d.toFixed(digits)}
+      {suffix}
+    </span>
+  );
+};
+
+const BarRow = ({ label, value, max, color = DS.primary, right }) => (
+  <div style={{ marginBottom: 10 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        fontSize: 11.5,
+        marginBottom: 4,
+      }}
+    >
+      <span
+        style={{
+          color: DS.text1,
+          fontWeight: 600,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        className="dsr-mono"
+        style={{ color, fontWeight: 700, flexShrink: 0 }}
+      >
+        {right ?? value}
+      </span>
+    </div>
+    <div
+      style={{
+        height: 6,
+        borderRadius: 4,
+        background: DS.border,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: `${max > 0 ? (value / max) * 100 : 0}%`,
+          height: "100%",
+          background: `linear-gradient(90deg,${color}99,${color})`,
+          transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
+        }}
+      />
+    </div>
+  </div>
+);
+
+const PeriodReportPage = ({
+  month,
+  period,
+  prev,
+  onBack,
+  onOlder,
+  onNewer,
+  onSwitch,
+  onOpenCustomer,
+  onOpenVisits,
+}) => {
+  const data = period === "full" ? month : month.halves[Number(period) - 1];
+  const rows = data.customerRows;
+  const recs = useMemo(() => rows.flatMap((c) => c.records), [rows]);
+  const [yy, mm] = month.key.split("-").map(Number);
+  const lastDay = new Date(yy, mm, 0).getDate();
+  const dFrom = period === "2" ? 16 : 1;
+  const dTo = period === "1" ? 15 : lastDay;
+  const periodTitle = period === "full" ? "Full month" : data.title;
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState("visits");
+
+  const sumLatest = (key) => rows.reduce((s, c) => s + toNum(c.latest[key]), 0);
+  const totalYTD = sumLatest("ytd");
+  const totalABP = sumLatest("abp");
+  const repeat = rows.filter((c) => c.visits > 1).length;
+  const avgVisits = rows.length ? data.totalVisits / rows.length : 0;
+
+  const daily = useMemo(() => {
+    const arr = [];
+    for (let d = dFrom; d <= dTo; d++) arr.push({ d, n: 0 });
+    recs.forEach((r) => {
+      const day = new Date(r.date).getDate();
+      const slot = arr.find((x) => x.d === day);
+      if (slot) slot.n += 1;
+    });
+    return arr;
+  }, [recs, dFrom, dTo]);
+  const peak = daily.reduce((a, b) => (b.n > a.n ? b : a), { d: 0, n: 0 });
+  const maxDaily = Math.max(1, ...daily.map((x) => x.n));
+  const activeDays = daily.filter((x) => x.n > 0).length;
+
+  const stageDist = PROJECT_STAGE_OPTIONS.map((st) => ({
+    st,
+    n: rows.filter((c) => (c.latest.stage || "").trim()[0] === st[0]).length,
+  }));
+  const maxStage = Math.max(1, ...stageDist.map((x) => x.n));
+
+  const byDist = useMemo(() => {
+    const m = {};
+    recs.forEach((r) => {
+      const k = r.distributor || "—";
+      m[k] = (m[k] || 0) + 1;
+    });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [recs]);
+  const byArea = useMemo(() => {
+    const m = {};
+    rows.forEach((c) => {
+      const k = c.latest.area || "—";
+      m[k] = (m[k] || 0) + c.visits;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [rows]);
+
+  const prevNames = new Set((prev?.data.customerRows || []).map((c) => c.name));
+  const curNames = new Set(rows.map((c) => c.name));
+  const notRevisited = (prev?.data.customerRows || []).filter(
+    (c) => !curNames.has(c.name),
+  );
+  const newThisPeriod = rows.filter((c) => !prevNames.has(c.name));
+
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = rows.filter(
+      (c) =>
+        !needle ||
+        `${c.name} ${c.latest.area || ""} ${c.latest.distributor || ""} ${c.latest.stage || ""}`
+          .toLowerCase()
+          .includes(needle),
+    );
+    const pot = (c) => toNum(c.latest.potDyes) + toNum(c.latest.potAux);
+    const cmp = {
+      visits: (a, b) => b.visits - a.visits || a.name.localeCompare(b.name),
+      pot: (a, b) => pot(b) - pot(a),
+      pct: (a, b) => (b.latest.pct || 0) - (a.latest.pct || 0),
+      name: (a, b) => a.name.localeCompare(b.name),
+    }[sort];
+    return [...list].sort(cmp);
+  }, [rows, q, sort]);
+
+  const exportPeriod = () => {
+    const head = [
+      "Date",
+      "Customer",
+      "Area",
+      "Distributor",
+      "Stage",
+      "Objective",
+      "Outcome",
+      "Potential Dyes",
+      "Potential Aux",
+      "Existing Dyes",
+      "Existing Aux",
+      "ABP AM26",
+      "YTD",
+      "YTD vs ABP %",
+    ];
+    const body = [...recs]
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map((r) => [
+        fmtDate(r.date),
+        r.customer,
+        r.area || "",
+        r.distributor || "",
+        r.stage || "",
+        r.objective || "",
+        r.outcome || "",
+        toNum(r.potDyes),
+        toNum(r.potAux),
+        toNum(r.exDyes),
+        toNum(r.exAux),
+        toNum(r.abp),
+        toNum(r.ytd),
+        r.pct ?? 0,
+      ]);
+    const ws = XLSX.utils.aoa_to_sheet([head, ...body]);
+    ws["!cols"] = head.map((_, i) => ({ wch: i === 5 || i === 6 ? 36 : 16 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Period report");
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    downloadBlob(
+      new Blob([out], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `DSR_${month.key}_${period === "full" ? "full" : period === "1" ? "1-15" : `16-${lastDay}`}.xlsx`,
+    );
+  };
+
+  const pv = prev?.data;
+  const navBtn = (label, fn, dir) => (
+    <button
+      className="dsr-ghost-btn"
+      disabled={!fn}
+      onClick={fn || undefined}
+      style={{ height: 36 }}
+    >
+      {dir === "l" && <Icon name="back" size={13} />} {label}
+    </button>
+  );
+
+  const aside = (
+    <div style={{ display: "grid", gap: 14 }}>
+      {pv && (
+        <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+          <SubHead icon="trending">vs previous period</SubHead>
+          <div style={{ fontSize: 11, color: DS.text2, marginBottom: 12 }}>
+            {prev.label}
+          </div>
+          {[
+            ["Visits", data.totalVisits, pv.totalVisits, "", 0],
+            ["Customers", data.uniqueCustomers, pv.uniqueCustomers, "", 0],
+            [
+              "Potential (₹L)",
+              Number(data.totalPot),
+              Number(pv.totalPot),
+              "L",
+              1,
+            ],
+            ["Avg YTD/ABP", Number(data.avgPct), Number(pv.avgPct), "%", 1],
+          ].map(([lbl, cur, pr, suf, dg]) => (
+            <div
+              key={lbl}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "8px 0",
+                borderBottom: `1px dashed ${DS.border}`,
+              }}
+            >
+              <span style={{ fontSize: 12, color: DS.text2 }}>{lbl}</span>
+              <span
+                style={{ display: "flex", gap: 10, alignItems: "baseline" }}
+              >
+                <span
+                  className="dsr-mono"
+                  style={{ fontSize: 13, fontWeight: 700 }}
+                >
+                  {cur}
+                </span>
+                <Delta cur={cur} prev={pr} suffix={suf} digits={dg} />
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="sparkle">Stage distribution</SubHead>
+        {stageDist.map(({ st, n }) => (
+          <BarRow
+            key={st}
+            label={st.length > 28 ? `${st.slice(0, 27)}…` : st}
+            value={n}
+            max={maxStage}
+            color={stageColor(st).border}
+            right={`${n}`}
+          />
+        ))}
+      </div>
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="store">Distributor-wise visits</SubHead>
+        {byDist.length === 0 && (
+          <div style={{ fontSize: 12, color: DS.text2 }}>No data</div>
+        )}
+        {byDist.map(([k, n]) => (
+          <BarRow
+            key={k}
+            label={k}
+            value={n}
+            max={byDist[0][1]}
+            color={DS.primary}
+          />
+        ))}
+      </div>
+
+      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <SubHead icon="pin">Top areas</SubHead>
+        {byArea.map(([k, n]) => (
+          <BarRow
+            key={k}
+            label={k}
+            value={n}
+            max={byArea[0][1]}
+            color={DS.info}
+          />
+        ))}
       </div>
     </div>
+  );
+
+  return (
+    <PageShell
+      eyebrow="Period report"
+      title={month.label}
+      subtitle={
+        period === "full"
+          ? `Full month · ${month.totalVisits} visits`
+          : `${data.title} ${month.label.split(" ")[0]} · ${period === "1" ? "First half" : "Second half"}`
+      }
+      avatar={period === "full" ? "M" : period === "1" ? "1H" : "2H"}
+      onBack={onBack}
+      aside={aside}
+      actions={
+        <>
+          {navBtn("Older", onOlder, "l")}
+          <button
+            className="dsr-ghost-btn"
+            disabled={!onNewer}
+            onClick={onNewer || undefined}
+            style={{ height: 36 }}
+          >
+            Newer{" "}
+            <span style={{ transform: "rotate(180deg)", display: "flex" }}>
+              <Icon name="back" size={13} />
+            </span>
+          </button>
+          <button
+            className="dsr-ghost-btn"
+            style={{ height: 36 }}
+            onClick={exportPeriod}
+          >
+            <Icon name="download" size={13} /> Excel
+          </button>
+        </>
+      }
+    >
+      <div
+        style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}
+      >
+        {[
+          ["full", "Full month"],
+          ["1", `1 – 15`],
+          ["2", `16 – ${lastDay}`],
+        ].map(([id, lbl]) => (
+          <button
+            key={id}
+            className={`dsr-filter-chip${period === id ? " active" : ""}`}
+            onClick={() => period !== id && onSwitch(id)}
+            style={{ padding: "7px 16px", fontSize: 12.5 }}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      <div className="dsr-stat-grid cols4" style={{ marginBottom: 12 }}>
+        <StatTile
+          label="Visits"
+          value={data.totalVisits}
+          sub={pv ? undefined : periodTitle}
+          accent={DS.info}
+        />
+        <StatTile
+          label="Customers"
+          value={data.uniqueCustomers}
+          sub={`${repeat} repeat visited`}
+        />
+        <StatTile
+          label="Potential"
+          value={`₹${data.totalPot}L`}
+          sub="latest per customer"
+          accent={DS.gold}
+        />
+        <StatTile
+          label="Avg YTD/ABP"
+          value={`${data.avgPct}%`}
+          accent={DS.purple}
+        />
+      </div>
+      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+        <StatTile
+          label="Total YTD"
+          value={fmtL(totalYTD)}
+          sub={`of ${fmtL(totalABP)} ABP`}
+          accent={DS.success}
+        />
+        <StatTile label="Visits / customer" value={avgVisits.toFixed(1)} />
+        <StatTile
+          label="Active days"
+          value={`${activeDays}/${daily.length}`}
+          sub="field visit days"
+          accent={DS.info}
+        />
+        <StatTile
+          label="Busiest day"
+          value={peak.n ? `${peak.d}` : "—"}
+          sub={peak.n ? `${peak.n} visits` : ""}
+          accent={DS.primary}
+        />
+      </div>
+
+      <SectionCard title={`Month split · 1 – 15 vs 16 – ${lastDay}`}>
+        <div
+          className="dsr-grid2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 12,
+          }}
+        >
+          {month.halves.map((h) => {
+            const active = period === String(h.id);
+            const other = month.halves[h.id === 1 ? 1 : 0];
+            return (
+              <div
+                key={h.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => !active && onSwitch(String(h.id))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!active) onSwitch(String(h.id));
+                  }
+                }}
+                className="dsr-half-card"
+                style={{
+                  background: active ? DS.primaryDim : DS.surface,
+                  border: `1px solid ${active ? DS.primary : DS.border}`,
+                  borderRadius: 14,
+                  padding: 14,
+                  cursor: active ? "default" : "pointer",
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 9.5,
+                      fontWeight: 800,
+                      letterSpacing: "0.1em",
+                      color: "#0A0B10",
+                      background: `linear-gradient(135deg,${DS.gold},${DS.primary})`,
+                      padding: "3px 9px",
+                      borderRadius: 20,
+                    }}
+                  >
+                    {h.id === 1 ? "FIRST HALF" : "SECOND HALF"}
+                  </span>
+                  <span
+                    className="dsr-mono"
+                    style={{ fontSize: 13, fontWeight: 700 }}
+                  >
+                    {h.title}
+                  </span>
+                </div>
+                {h.totalVisits === 0 ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: DS.text3,
+                      textAlign: "center",
+                      padding: "12px 0",
+                    }}
+                  >
+                    Is period mein koi visit nahi
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+                      gap: 8,
+                    }}
+                  >
+                    {[
+                      [
+                        "Visits",
+                        h.totalVisits,
+                        other.totalVisits,
+                        DS.info,
+                        "",
+                        0,
+                      ],
+                      [
+                        "Customers",
+                        h.uniqueCustomers,
+                        other.uniqueCustomers,
+                        DS.primary,
+                        "",
+                        0,
+                      ],
+                      [
+                        "Potential",
+                        `₹${h.totalPot}L`,
+                        Number(other.totalPot),
+                        DS.gold,
+                        "L",
+                        1,
+                        Number(h.totalPot),
+                      ],
+                      [
+                        "Avg YTD/ABP",
+                        `${h.avgPct}%`,
+                        Number(other.avgPct),
+                        DS.purple,
+                        "%",
+                        1,
+                        Number(h.avgPct),
+                      ],
+                    ].map(([lbl, val, oth, clr, suf, dg, raw]) => (
+                      <div
+                        key={lbl}
+                        style={{
+                          background: "rgba(255,255,255,0.03)",
+                          border: `1px solid ${DS.border}`,
+                          borderRadius: 9,
+                          padding: "8px 10px",
+                          minWidth: 0,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 9,
+                            color: DS.text3,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          {lbl}
+                        </div>
+                        <div
+                          className="dsr-mono"
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: clr,
+                            margin: "2px 0",
+                          }}
+                        >
+                          {val}
+                        </div>
+                        {h.id === 2 && (
+                          <Delta
+                            cur={raw ?? val}
+                            prev={oth}
+                            suffix={suf}
+                            digits={dg}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {h.id === 2 && h.totalVisits > 0 && (
+                  <div style={{ fontSize: 10, color: DS.text3, marginTop: 8 }}>
+                    ▲▼ = first half ke comparison mein
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Daily visits">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: period === "full" ? 3 : 6,
+            height: 150,
+            paddingTop: 8,
+          }}
+        >
+          {daily.map((x) => (
+            <div
+              key={x.d}
+              title={`${x.d} ${month.label.split(" ")[0]} · ${x.n} visit${x.n === 1 ? "" : "s"}`}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                height: "100%",
+              }}
+            >
+              <span
+                className="dsr-mono"
+                style={{
+                  fontSize: 9.5,
+                  color: x.n ? DS.gold : "transparent",
+                  marginBottom: 3,
+                }}
+              >
+                {x.n || 0}
+              </span>
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 26,
+                  height: `${(x.n / maxDaily) * 100}%`,
+                  minHeight: x.n ? 4 : 2,
+                  borderRadius: "5px 5px 2px 2px",
+                  background: x.n
+                    ? x.d === peak.d
+                      ? `linear-gradient(180deg,${DS.gold},${DS.primary})`
+                      : `linear-gradient(180deg,${DS.primary}CC,${DS.primary}55)`
+                    : DS.border,
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: period === "full" ? 3 : 6,
+            marginTop: 6,
+          }}
+        >
+          {daily.map((x) => (
+            <div
+              key={x.d}
+              className="dsr-mono"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                textAlign: "center",
+                fontSize: 9,
+                color: DS.text3,
+              }}
+            >
+              {period === "full" && x.d % 5 !== 1 ? "" : x.d}
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      {pv && (notRevisited.length > 0 || newThisPeriod.length > 0) && (
+        <div
+          className="dsr-grid2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 12,
+            marginBottom: 14,
+          }}
+        >
+          {[
+            [
+              "Follow-up pending",
+              `Pichle period mein visit hui, is mein nahi (${notRevisited.length})`,
+              notRevisited,
+              DS.warning,
+            ],
+            [
+              "New this period",
+              `Pehli baar is period mein (${newThisPeriod.length})`,
+              newThisPeriod,
+              DS.success,
+            ],
+          ].map(([ttl, sub, list, clr]) => (
+            <div
+              key={ttl}
+              className="dsr-glass"
+              style={{ borderRadius: 16, padding: 16, minWidth: 0 }}
+            >
+              <div
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  color: clr,
+                  marginBottom: 3,
+                }}
+              >
+                {ttl}
+              </div>
+              <div
+                style={{ fontSize: 10.5, color: DS.text2, marginBottom: 10 }}
+              >
+                {sub}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  maxHeight: 130,
+                  overflowY: "auto",
+                }}
+                className="dsr-scroll"
+              >
+                {list.length === 0 && (
+                  <span style={{ fontSize: 11.5, color: DS.text3 }}>—</span>
+                )}
+                {list.map((c) => (
+                  <button
+                    key={c.name}
+                    onClick={() => onOpenCustomer(c.name)}
+                    className="dsr-filter-chip"
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SectionCard title={`Customers · ${shown.length}`}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+            <Icon
+              name="search"
+              size={14}
+              style={{
+                position: "absolute",
+                left: 12,
+                top: 12,
+                color: DS.text3,
+              }}
+            />
+            <input
+              className="dsr-input"
+              style={{ ...IS, paddingLeft: 34, height: 40 }}
+              placeholder="Customer / area / distributor…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[
+              ["visits", "Visits"],
+              ["pot", "Potential"],
+              ["pct", "YTD/ABP"],
+              ["name", "A–Z"],
+            ].map(([id, lbl]) => (
+              <button
+                key={id}
+                className={`dsr-filter-chip${sort === id ? " active" : ""}`}
+                onClick={() => setSort(id)}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {shown.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: 24,
+                fontSize: 12.5,
+                color: DS.text2,
+              }}
+            >
+              Koi customer match nahi hua.
+            </div>
+          )}
+          {shown.map((c, i) => {
+            const pot = toNum(c.latest.potDyes) + toNum(c.latest.potAux);
+            const pct = c.latest.pct || 0;
+            return (
+              <div
+                key={c.name}
+                className="dsr-customer-row"
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenCustomer(c.name)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenCustomer(c.name);
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "11px 13px",
+                  background: DS.surface,
+                  border: `1px solid ${DS.border}`,
+                  borderRadius: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  className="dsr-mono"
+                  style={{
+                    width: 22,
+                    fontSize: 11,
+                    color: DS.text3,
+                    fontWeight: 700,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                <div style={{ flex: 1, minWidth: 150 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.name}
+                  </div>
+                  <div
+                    style={{ fontSize: 10.5, color: DS.text2, marginTop: 2 }}
+                  >
+                    {c.latest.area} · {c.latest.distributor} · last{" "}
+                    {fmtDate(c.latest.date)}
+                  </div>
+                </div>
+                <StageLadder stage={c.latest.stage} size="sm" />
+                <div style={{ textAlign: "right", minWidth: 62 }}>
+                  <div
+                    className="dsr-mono"
+                    style={{ fontSize: 12, fontWeight: 700, color: DS.gold }}
+                  >
+                    {fmtL(pot)}
+                  </div>
+                  <div
+                    className="dsr-mono"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: pctColor(pct),
+                    }}
+                  >
+                    {pct}%
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="dsr-visits-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenVisits(c.name);
+                  }}
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: DS.primary,
+                    background: DS.primaryDim,
+                    padding: "4px 11px",
+                    borderRadius: 20,
+                    border: "1px solid rgba(212,175,106,0.35)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {c.visits}× visit{c.visits > 1 ? "s" : ""} ›
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </SectionCard>
+    </PageShell>
   );
 };
 
@@ -4113,18 +6364,41 @@ const DailySalesReport = () => {
   const [newRecord, setNewRecord] = useState({ ...EMPTY_RECORD });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ msg: "", type: "" });
-  const [modalMode, setModalMode] = useState(null);
-  const [editingCustomer, setEditingCustomer] = useState(null);
   const [modalSaving, setModalSaving] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
-  const [expandedAnalysisMonths, setExpandedAnalysisMonths] = useState({});
-  const [visitsModal, setVisitsModal] = useState(null);
-  const [historyCustomer, setHistoryCustomer] = useState(null);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [recordsLoaded, setRecordsLoaded] = useState(false);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
+
+  // ── Routing: popups ab pages hain ──────────────────────────────────────
+  const navigate = useNavigate();
+  const location = useLocation();
+  const route = useMemo(
+    () => parseRoute(location.pathname),
+    [location.pathname],
+  );
+  const goBack = useCallback(() => {
+    if (location.key !== "default") navigate(-1);
+    else navigate(BASE, { replace: true });
+  }, [location.key, navigate]);
+  const toList = useCallback(
+    () => navigate(BASE, { replace: true }),
+    [navigate],
+  );
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+  const modalMode =
+    route.type === "customerNew"
+      ? "add"
+      : route.type === "customerEdit"
+        ? "edit"
+        : null;
+  const editingCustomer = route.type === "customerEdit" ? route.name : null;
 
   const toastTimer = useRef(null);
   const showToast = useCallback((msg, type = "success") => {
@@ -4140,9 +6414,6 @@ const DailySalesReport = () => {
     [],
   );
 
-  const closeVisitsModal = useCallback(() => setVisitsModal(null), []);
-  const closeHistory = useCallback(() => setHistoryCustomer(null), []);
-
   const loadRecords = useCallback(async () => {
     try {
       setLoading(true);
@@ -4152,6 +6423,7 @@ const DailySalesReport = () => {
       showToast(err.message, "error");
     } finally {
       setLoading(false);
+      setRecordsLoaded(true);
     }
   }, [showToast]);
   const loadCustomers = useCallback(async () => {
@@ -4160,6 +6432,8 @@ const DailySalesReport = () => {
       setCustomers(res.data || {});
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setCustomersLoaded(true);
     }
   }, [showToast]);
   useEffect(() => {
@@ -4211,46 +6485,63 @@ const DailySalesReport = () => {
     return Object.values(map)
       .sort((a, b) => (a.key < b.key ? 1 : -1))
       .map((m) => {
-        const bc = {};
-        m.records.forEach((r) => {
-          if (!bc[r.customer]) bc[r.customer] = [];
-          bc[r.customer].push(r);
-        });
-        const customerRows = Object.entries(bc)
-          .map(([name, recs]) => {
-            // latest visit first
-            const sorted = [...recs].sort(
-              (a, b) => new Date(b.date) - new Date(a.date),
+        const summarize = (recs) => {
+          const bc = {};
+          recs.forEach((r) => {
+            if (!bc[r.customer]) bc[r.customer] = [];
+            bc[r.customer].push(r);
+          });
+          const customerRows = Object.entries(bc)
+            .map(([name, rs]) => {
+              // latest visit first
+              const sorted = [...rs].sort(
+                (a, b) => new Date(b.date) - new Date(a.date),
+              );
+              return {
+                name,
+                visits: rs.length,
+                latest: sorted[0],
+                records: sorted,
+              };
+            })
+            .sort(
+              (a, b) => b.visits - a.visits || a.name.localeCompare(b.name),
             );
-            return {
-              name,
-              visits: recs.length,
-              latest: sorted[0],
-              records: sorted,
-            };
-          })
-          .sort((a, b) => b.visits - a.visits || a.name.localeCompare(b.name));
-        const totalPot = customerRows.reduce(
-          (s, c) => s + toNum(c.latest.potDyes) + toNum(c.latest.potAux),
-          0,
+          const totalPot = customerRows.reduce(
+            (s, c) => s + toNum(c.latest.potDyes) + toNum(c.latest.potAux),
+            0,
+          );
+          const avgPct = recs.length
+            ? recs.reduce((s, r) => s + (r.pct || 0), 0) / recs.length
+            : 0;
+          return {
+            totalVisits: recs.length,
+            uniqueCustomers: customerRows.length,
+            avgPct: avgPct.toFixed(1),
+            totalPot: totalPot.toFixed(1),
+            customerRows,
+          };
+        };
+        const [yy, mm] = m.key.split("-").map(Number);
+        const lastDay = new Date(yy, mm, 0).getDate();
+        const firstHalf = m.records.filter(
+          (r) => new Date(r.date).getDate() <= 15,
         );
-        const avgPct = m.records.length
-          ? m.records.reduce((s, r) => s + (r.pct || 0), 0) / m.records.length
-          : 0;
+        const secondHalf = m.records.filter(
+          (r) => new Date(r.date).getDate() > 15,
+        );
         return {
           key: m.key,
           label: m.label,
-          totalVisits: m.records.length,
-          uniqueCustomers: customerRows.length,
-          avgPct: avgPct.toFixed(1),
-          totalPot: totalPot.toFixed(1),
-          customerRows,
+          ...summarize(m.records),
+          halves: [
+            { id: 1, title: "1 – 15", ...summarize(firstHalf) },
+            { id: 2, title: `16 – ${lastDay}`, ...summarize(secondHalf) },
+          ],
         };
       });
   }, [records]);
 
-  const toggleAnalysisMonth = (key) =>
-    setExpandedAnalysisMonths((p) => ({ ...p, [key]: !p[key] }));
   const selectedCustomerLastRecord = useMemo(() => {
     const name = newRecord.customer;
     if (!name || !customers[name]) return null;
@@ -4318,8 +6609,7 @@ const DailySalesReport = () => {
   const handleCustomerSelect = (e) => {
     const val = e.target.value;
     if (val === "__add__") {
-      setModalMode("add");
-      setEditingCustomer(null);
+      navigate(ROUTES.newCustomer);
       setNewRecord((p) => ({ ...p, customer: "" }));
       return;
     }
@@ -4418,9 +6708,15 @@ const DailySalesReport = () => {
       await apiFetch(`/api/dsr/records/${id}`, { method: "DELETE" });
       setRecords((p) => p.filter((r) => (r._id || r.id) !== id));
       showToast("Record delete ho gaya.");
+      return true;
     } catch (err) {
       showToast(err.message, "error");
     }
+    return false;
+  };
+  const deleteRecordAndLeave = async (id) => {
+    const ok = await deleteRecord(id);
+    if (ok) toList();
   };
   const updateRecord = async (id, data) => {
     if (!data.date || !data.area || !data.distributor || !data.customer) {
@@ -4449,7 +6745,7 @@ const DailySalesReport = () => {
       });
       setRecords((p) => p.map((r) => ((r._id || r.id) === id ? res.data : r)));
       showToast("Record update ho gaya!");
-      setEditingRecord(null);
+      goBack();
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -4567,17 +6863,12 @@ const DailySalesReport = () => {
     showToast(`Excel download ho raha hai! (${ed.length} records)`);
   };
 
-  const openAddCustomer = () => {
-    setEditingCustomer(null);
-    setModalMode("add");
-  };
-  const openEditCustomer = (name) => {
-    setEditingCustomer(name);
-    setModalMode("edit");
-  };
-  const closeModal = () => {
-    setModalMode(null);
-    setEditingCustomer(null);
+  const openAddCustomer = () => navigate(ROUTES.newCustomer);
+  const openEditCustomer = (name) => navigate(ROUTES.editCustomer(name));
+  const startVisitFor = (name) => {
+    handleCustomerSelect({ target: { value: name } });
+    setActiveTab("add");
+    navigate(BASE);
   };
 
   const handleSaveCustomer = async (name, data) => {
@@ -4617,6 +6908,31 @@ const DailySalesReport = () => {
       showToast("ABP AM26 daalo (required).", "error");
       return;
     }
+    if (data.mobile && !isValidMobile(cleanMobile(data.mobile))) {
+      showToast("Mobile number 10 digit ka sahi number daalo.", "error");
+      return;
+    }
+    if (data.altMobile && !isValidMobile(cleanMobile(data.altMobile))) {
+      showToast("Alternate mobile number sahi nahi hai.", "error");
+      return;
+    }
+    if (data.email && !isValidEmail(data.email.trim())) {
+      showToast("Email sahi format mein daalo.", "error");
+      return;
+    }
+    if (data.gstin && !isValidGSTIN(data.gstin.trim().toUpperCase())) {
+      showToast("GSTIN 15 character ka sahi daalo.", "error");
+      return;
+    }
+    if (
+      modalMode !== "edit" &&
+      Object.keys(customers).some(
+        (k) => k.trim().toLowerCase() === name.trim().toLowerCase(),
+      )
+    ) {
+      showToast("Is naam ka customer pehle se hai.", "error");
+      return;
+    }
     const payload = {
       name,
       area: data.area,
@@ -4627,6 +6943,14 @@ const DailySalesReport = () => {
       exDyes: toNum(data.exDyes),
       exAux: toNum(data.exAux),
       abp: toNum(data.abp),
+      contactPerson: (data.contactPerson || "").trim(),
+      designation: (data.designation || "").trim(),
+      mobile: cleanMobile(data.mobile),
+      altMobile: cleanMobile(data.altMobile),
+      email: (data.email || "").trim().toLowerCase(),
+      address: (data.address || "").trim(),
+      gstin: (data.gstin || "").trim().toUpperCase(),
+      notes: (data.notes || "").trim(),
     };
     try {
       setModalSaving(true);
@@ -4655,6 +6979,7 @@ const DailySalesReport = () => {
             exDyes: up.exDyes,
             exAux: up.exAux,
             abp: up.abp,
+            ...pickContact(up),
           };
           return n;
         });
@@ -4686,7 +7011,8 @@ const DailySalesReport = () => {
           }));
         showToast(`${name} add ho gaya!`);
       }
-      closeModal();
+      if (modalMode === "edit" && name !== editingCustomer) toList();
+      else goBack();
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -4710,7 +7036,7 @@ const DailySalesReport = () => {
       });
       if (newRecord.customer === name) setNewRecord({ ...EMPTY_RECORD });
       showToast(`${name} delete ho gaya.`);
-      closeModal();
+      toList();
     } catch (err) {
       showToast(err.message, "error");
     }
@@ -4723,8 +7049,219 @@ const DailySalesReport = () => {
     setShowImporter(false);
   };
   const customerList = Object.keys(customers).sort();
+  const visibleCustomerList = customerList.filter((n) => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return true;
+    const c = customers[n] || {};
+    return `${n} ${c.area || ""} ${c.distributor || ""} ${c.contactPerson || ""} ${c.mobile || ""} ${c.altMobile || ""} ${c.email || ""} ${c.gstin || ""}`
+      .toLowerCase()
+      .includes(q);
+  });
   const lr = selectedCustomerLastRecord;
   const FILTER_CHIPS = [{ id: "all", label: "All", count: records.length }];
+
+  if (route.type !== "list") {
+    let page = null;
+    if (route.type === "customerNew") {
+      page = (
+        <CustomerFormPage
+          key="new"
+          mode="add"
+          initialData={EMPTY_CUSTOMER}
+          allCustomers={customers}
+          onOpenOther={(n) => navigate(ROUTES.editCustomer(n))}
+          onSave={handleSaveCustomer}
+          onCancel={goBack}
+          saving={modalSaving}
+        />
+      );
+    } else if (route.type === "customerEdit") {
+      const c = customers[route.name];
+      if (!customersLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Edit customer" />;
+      else if (!c) page = <PageNotFound what="Customer" onBack={toList} />;
+      else
+        page = (
+          <CustomerFormPage
+            key={route.name}
+            mode="edit"
+            editName={route.name}
+            initialData={{
+              area: c.area || "",
+              distributor: c.distributor || "",
+              stage: c.stage || "",
+              potDyes: c.potDyes ?? "",
+              potAux: c.potAux ?? "",
+              exDyes: c.exDyes ?? "",
+              exAux: c.exAux ?? "",
+              abp: c.abp ?? "",
+              ...pickContact(c),
+            }}
+            allCustomers={customers}
+            onOpenOther={(n) => navigate(ROUTES.editCustomer(n))}
+            lastRecord={customerLastRecord[route.name]}
+            visitCount={(customerHistoryMap[route.name] || []).length}
+            onSave={handleSaveCustomer}
+            onDelete={handleDeleteCustomer}
+            onCancel={goBack}
+            onOpenHistory={() => navigate(ROUTES.history(route.name))}
+            saving={modalSaving}
+          />
+        );
+    } else if (route.type === "history") {
+      const c = customers[route.name];
+      if (!customersLoaded || !recordsLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Customer history" />;
+      else if (!c) page = <PageNotFound what="Customer" onBack={toList} />;
+      else
+        page = (
+          <CustomerHistoryPage
+            key={route.name}
+            name={route.name}
+            customer={c}
+            records={customerHistoryMap[route.name] || []}
+            onBack={goBack}
+            onEditCustomer={() => navigate(ROUTES.editCustomer(route.name))}
+            onAddVisit={() => startVisitFor(route.name)}
+            onEditRecord={(r) => navigate(ROUTES.editRecord(r._id || r.id))}
+            onOpenMonth={(k) => navigate(ROUTES.visits(route.name, k))}
+          />
+        );
+    } else if (route.type === "visits") {
+      const m = monthlyAnalysis.find((x) => x.key === route.monthKey);
+      const half = new URLSearchParams(location.search).get("half");
+      const hObj =
+        m && (half === "1" || half === "2") ? m.halves[Number(half) - 1] : null;
+      const row = (hObj || m)?.customerRows.find((x) => x.name === route.name);
+      if (!recordsLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Month visits" />;
+      else if (!row) page = <PageNotFound what="Visits" onBack={toList} />;
+      else
+        page = (
+          <VisitsPage
+            key={`${route.name}-${route.monthKey}-${half || "all"}`}
+            name={route.name}
+            month={hObj ? `${m.label} (${hObj.title})` : m.label}
+            currentKey={m.key}
+            records={row.records}
+            otherMonths={monthlyAnalysis
+              .map((x) => {
+                const r = x.customerRows.find((y) => y.name === route.name);
+                return r
+                  ? { key: x.key, label: x.label, visits: r.visits }
+                  : null;
+              })
+              .filter(Boolean)}
+            onBack={goBack}
+            onOpenHistory={() => navigate(ROUTES.history(route.name))}
+            onEditRecord={(r) => navigate(ROUTES.editRecord(r._id || r.id))}
+            onOpenMonth={(k) =>
+              navigate(ROUTES.visits(route.name, k), { replace: true })
+            }
+          />
+        );
+    } else if (route.type === "period") {
+      const idx = monthlyAnalysis.findIndex((x) => x.key === route.monthKey);
+      const m = monthlyAnalysis[idx];
+      const per = route.period;
+      if (!recordsLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Period report" />;
+      else if (!m || !["1", "2", "full"].includes(per))
+        page = <PageNotFound what="Report" onBack={toList} />;
+      else {
+        let prevData = null;
+        let prevLabel = "";
+        if (per === "full") {
+          const pm = monthlyAnalysis[idx + 1];
+          if (pm) {
+            prevData = pm;
+            prevLabel = pm.label;
+          }
+        } else if (per === "2") {
+          prevData = m.halves[0];
+          prevLabel = `${m.label} · ${m.halves[0].title}`;
+        } else {
+          const pm = monthlyAnalysis[idx + 1];
+          if (pm) {
+            prevData = pm.halves[1];
+            prevLabel = `${pm.label} · ${pm.halves[1].title}`;
+          }
+        }
+        const list =
+          per === "full"
+            ? monthlyAnalysis.map((x) => ({ m: x, p: "full" }))
+            : monthlyAnalysis.flatMap((x) =>
+                [
+                  { m: x, p: "2" },
+                  { m: x, p: "1" },
+                ].filter((e) => x.halves[Number(e.p) - 1].totalVisits > 0),
+              );
+        const li = list.findIndex((e) => e.m.key === m.key && e.p === per);
+        const older = li >= 0 ? list[li + 1] : null;
+        const newer = li > 0 ? list[li - 1] : null;
+        page = (
+          <PeriodReportPage
+            key={`${m.key}-${per}`}
+            month={m}
+            period={per}
+            prev={prevData ? { data: prevData, label: prevLabel } : null}
+            onBack={goBack}
+            onOlder={
+              older
+                ? () =>
+                    navigate(ROUTES.period(older.m.key, older.p), {
+                      replace: true,
+                    })
+                : null
+            }
+            onNewer={
+              newer
+                ? () =>
+                    navigate(ROUTES.period(newer.m.key, newer.p), {
+                      replace: true,
+                    })
+                : null
+            }
+            onSwitch={(p) =>
+              navigate(ROUTES.period(m.key, p), { replace: true })
+            }
+            onOpenCustomer={(n) => navigate(ROUTES.history(n))}
+            onOpenVisits={(n) =>
+              navigate(
+                ROUTES.visits(n, m.key, per === "full" ? undefined : per),
+              )
+            }
+          />
+        );
+      }
+    } else if (route.type === "recordEdit") {
+      const rec = records.find((r) => (r._id || r.id) === route.id);
+      if (!recordsLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Edit record" />;
+      else if (!rec) page = <PageNotFound what="Record" onBack={toList} />;
+      else
+        page = (
+          <RecordEditPage
+            key={route.id}
+            record={rec}
+            customers={customers}
+            customerList={customerList}
+            history={customerHistoryMap[rec.customer] || []}
+            onSave={updateRecord}
+            onDelete={deleteRecordAndLeave}
+            onCancel={goBack}
+            onOpenHistory={() => navigate(ROUTES.history(rec.customer))}
+            saving={recordSaving}
+          />
+        );
+    }
+    return (
+      <>
+        <Toast msg={toast.msg} type={toast.type} />
+        {page}
+      </>
+    );
+  }
 
   return (
     <div
@@ -4734,7 +7271,7 @@ const DailySalesReport = () => {
         fontFamily:
           "'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
         color: DS.text1,
-        backgroundImage: `radial-gradient(ellipse at 20% 10%,rgba(0,200,180,0.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(59,130,246,0.03) 0%,transparent 50%)`,
+        backgroundImage: `radial-gradient(ellipse at 20% 10%,rgba(212,175,106,0.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(59,130,246,0.03) 0%,transparent 50%)`,
       }}
     >
       <Toast msg={toast.msg} type={toast.type} />
@@ -4756,7 +7293,7 @@ const DailySalesReport = () => {
           className="dsr-header"
           style={{
             background:
-              "linear-gradient(155deg,#040D1C 0%,#092040 55%,#0B2E5A 100%)",
+              "linear-gradient(155deg,#0B0C11 0%,#161821 55%,#222532 100%)",
             borderRadius: 16,
             padding: "18px 20px",
             marginBottom: 18,
@@ -4767,7 +7304,7 @@ const DailySalesReport = () => {
               "0 1px 2px rgba(0,0,0,0.4),0 16px 32px -14px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.06)",
             position: "relative",
             overflow: "hidden",
-            border: `1px solid ${DS.border}`,
+            border: `1px solid rgba(212,175,106,0.28)`,
           }}
         >
           <div
@@ -4780,7 +7317,7 @@ const DailySalesReport = () => {
               height: 200,
               borderRadius: "50%",
               background:
-                "radial-gradient(circle,rgba(0,200,180,0.18),transparent 70%)",
+                "radial-gradient(circle,rgba(212,175,106,0.18),transparent 70%)",
               pointerEvents: "none",
             }}
           />
@@ -4799,6 +7336,7 @@ const DailySalesReport = () => {
             }}
           />
           <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+            <HomeLink compact />
             <div
               style={{
                 fontSize: 9,
@@ -4812,6 +7350,7 @@ const DailySalesReport = () => {
               Field Sales · DSR
             </div>
             <h1
+              className="dsr-display"
               style={{
                 fontSize: 17,
                 fontWeight: 800,
@@ -4848,7 +7387,7 @@ const DailySalesReport = () => {
               border: `1px solid ${DS.border}`,
               background:
                 activeTab === "records"
-                  ? "rgba(0,200,180,0.20)"
+                  ? "rgba(212,175,106,0.20)"
                   : "rgba(255,255,255,0.06)",
               color: activeTab === "records" ? DS.primary : DS.text1,
               cursor: "pointer",
@@ -4939,10 +7478,10 @@ const DailySalesReport = () => {
                   gap: 8,
                   marginBottom: 12,
                   alignItems: "center",
-                  background: "rgba(0,200,180,0.06)",
+                  background: "rgba(212,175,106,0.06)",
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: "1px solid rgba(0,200,180,0.18)",
+                  border: "1px solid rgba(212,175,106,0.18)",
                 }}
               >
                 <span
@@ -5026,7 +7565,7 @@ const DailySalesReport = () => {
                     background: DS.primaryDim,
                     padding: "2px 10px",
                     borderRadius: 20,
-                    border: "1px solid rgba(0,200,180,0.2)",
+                    border: "1px solid rgba(212,175,106,0.2)",
                   }}
                 >
                   {filteredRecords.length} records
@@ -5105,7 +7644,7 @@ const DailySalesReport = () => {
                     key={r._id || r.id}
                     record={r}
                     onDelete={deleteRecord}
-                    onEdit={setEditingRecord}
+                    onEdit={(r) => navigate(ROUTES.editRecord(r._id || r.id))}
                   />
                 ))}
               </div>
@@ -5395,7 +7934,7 @@ const DailySalesReport = () => {
                 justifyContent: "center",
                 gap: 8,
                 marginBottom: 12,
-                color: "#06101E",
+                color: "#0A0B10",
               }}
             >
               {loading ? (
@@ -5405,7 +7944,7 @@ const DailySalesReport = () => {
                     width: 15,
                     height: 15,
                     border: "2px solid rgba(0,0,0,0.2)",
-                    borderTopColor: "#06101E",
+                    borderTopColor: "#0A0B10",
                     margin: 0,
                   }}
                 />
@@ -5451,7 +7990,26 @@ const DailySalesReport = () => {
                   {customerList.length} total
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className="dsr-ghost-btn"
+                  disabled={visibleCustomerList.length === 0}
+                  title="Customers ki poori details Excel mein"
+                  onClick={() => {
+                    const n = exportCustomersXlsx(
+                      customers,
+                      visibleCustomerList,
+                      customerHistoryMap,
+                    );
+                    showToast(`Excel download ho raha hai! (${n} customers)`);
+                  }}
+                  style={{ height: 34, fontSize: 12 }}
+                >
+                  <Icon name="download" size={13} strokeWidth={2.1} /> Download
+                  {customerQuery.trim()
+                    ? ` (${visibleCustomerList.length})`
+                    : ""}
+                </button>
                 <button
                   className="ei-import-btn"
                   onClick={() => setShowImporter(true)}
@@ -5459,7 +8017,7 @@ const DailySalesReport = () => {
                     height: 34,
                     padding: "0 14px",
                     background: "#10B981",
-                    color: "#06101E",
+                    color: "#0A0B10",
                     border: "none",
                     borderRadius: 8,
                     fontSize: 12,
@@ -5472,16 +8030,16 @@ const DailySalesReport = () => {
                   }}
                 >
                   <Icon name="upload" size={13} strokeWidth={2.1} /> Excel
-                  Import
+                  Upload
                 </button>
                 <button
                   onClick={openAddCustomer}
                   style={{
                     height: 34,
                     padding: "0 14px",
-                    background: "rgba(0,200,180,0.10)",
+                    background: "rgba(212,175,106,0.10)",
                     color: DS.primary,
-                    border: "1px solid rgba(0,200,180,0.25)",
+                    border: "1px solid rgba(212,175,106,0.25)",
                     borderRadius: 8,
                     fontSize: 12,
                     fontWeight: 600,
@@ -5495,6 +8053,39 @@ const DailySalesReport = () => {
                 </button>
               </div>
             </div>
+            {customerList.length > 0 && (
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <Icon
+                  name="search"
+                  size={14}
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: 12,
+                    color: DS.text3,
+                  }}
+                />
+                <input
+                  className="dsr-input"
+                  style={{ ...IS, paddingLeft: 34, height: 40 }}
+                  placeholder="Naam, area, contact person, mobile, GSTIN…"
+                  value={customerQuery}
+                  onChange={(e) => setCustomerQuery(e.target.value)}
+                />
+              </div>
+            )}
+            {customerList.length > 0 && visibleCustomerList.length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 24,
+                  fontSize: 12.5,
+                  color: DS.text2,
+                }}
+              >
+                "{customerQuery}" se koi customer match nahi hua.
+              </div>
+            )}
             {customerList.length === 0 ? (
               <div
                 style={{
@@ -5526,7 +8117,7 @@ const DailySalesReport = () => {
                 </div>
               </div>
             ) : (
-              customerList.map((name) => {
+              visibleCustomerList.map((name) => {
                 const c = customers[name];
                 const lastR = customerLastRecord[name];
                 return (
@@ -5536,12 +8127,12 @@ const DailySalesReport = () => {
                     role="button"
                     tabIndex={0}
                     title="Visit history dekhein"
-                    onClick={() => setHistoryCustomer(name)}
+                    onClick={() => navigate(ROUTES.history(name))}
                     onKeyDown={(e) => {
                       if (e.target !== e.currentTarget) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setHistoryCustomer(name);
+                        navigate(ROUTES.history(name));
                       }
                     }}
                     style={{
@@ -5588,6 +8179,15 @@ const DailySalesReport = () => {
                         style={{ fontSize: 11, color: DS.text2, marginTop: 1 }}
                       >
                         {c.area} · {c.distributor}
+                        {(c.contactPerson || c.mobile) && (
+                          <span style={{ marginLeft: 5, color: DS.gold }}>
+                            · {c.contactPerson}
+                            {c.contactPerson && c.mobile ? " · " : ""}
+                            {c.mobile && (
+                              <span className="dsr-mono">{c.mobile}</span>
+                            )}
+                          </span>
+                        )}
                         {lastR && (
                           <span style={{ marginLeft: 5, color: DS.text3 }}>
                             · {fmtDate(lastR.date)}
@@ -5608,6 +8208,25 @@ const DailySalesReport = () => {
                       className="dsr-row-actions"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {isValidMobile(c.mobile) && (
+                        <a
+                          href={`tel:+91${c.mobile}`}
+                          aria-label={`Call ${name}`}
+                          title={`Call ${fmtMobile(c.mobile)}`}
+                          style={{
+                            height: 30,
+                            width: 30,
+                            borderRadius: 6,
+                            border: "1px solid rgba(34,197,94,0.30)",
+                            color: DS.success,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Icon name="phone" size={13} strokeWidth={2} />
+                        </a>
+                      )}
                       <button
                         className="dsr-btn-edit"
                         onClick={() => openEditCustomer(name)}
@@ -5722,24 +8341,12 @@ const DailySalesReport = () => {
                 {monthlyAnalysis.map((m, idx) => {
                   const prev = monthlyAnalysis[idx + 1];
                   const delta = prev ? m.totalVisits - prev.totalVisits : null;
-                  const isExp =
-                    expandedAnalysisMonths[m.key] !== undefined
-                      ? expandedAnalysisMonths[m.key]
-                      : idx === 0;
                   return (
                     <MonthAnalysisCard
                       key={m.key}
                       month={m}
                       delta={delta}
-                      expanded={isExp}
-                      onToggle={() => toggleAnalysisMonth(m.key)}
-                      onVisitsClick={(c) =>
-                        setVisitsModal({
-                          name: c.name,
-                          month: m.label,
-                          records: c.records,
-                        })
-                      }
+                      onOpen={() => navigate(ROUTES.period(m.key, "full"))}
                     />
                   );
                 })}
@@ -5755,32 +8362,6 @@ const DailySalesReport = () => {
         recordCount={records.length}
       />
 
-      {modalMode && (
-        <CustomerModal
-          mode={modalMode}
-          editName={editingCustomer}
-          initialData={
-            modalMode === "edit" &&
-            editingCustomer &&
-            customers[editingCustomer]
-              ? {
-                  area: customers[editingCustomer].area || "",
-                  distributor: customers[editingCustomer].distributor || "",
-                  stage: customers[editingCustomer].stage || "",
-                  potDyes: customers[editingCustomer].potDyes ?? "",
-                  potAux: customers[editingCustomer].potAux ?? "",
-                  exDyes: customers[editingCustomer].exDyes ?? "",
-                  exAux: customers[editingCustomer].exAux ?? "",
-                  abp: customers[editingCustomer].abp ?? "",
-                }
-              : EMPTY_CUSTOMER
-          }
-          onSave={handleSaveCustomer}
-          onDelete={handleDeleteCustomer}
-          onClose={closeModal}
-          saving={modalSaving}
-        />
-      )}
       {showImporter && (
         <ExcelImporter
           existingCustomers={customers}
@@ -5789,27 +8370,6 @@ const DailySalesReport = () => {
           apiBase={API}
           getToken={getToken}
         />
-      )}
-      {editingRecord && (
-        <RecordEditModal
-          record={editingRecord}
-          customers={customers}
-          customerList={customerList}
-          onSave={updateRecord}
-          onClose={() => setEditingRecord(null)}
-          saving={recordSaving}
-        />
-      )}
-      {historyCustomer && customers[historyCustomer] && (
-        <CustomerHistoryModal
-          name={historyCustomer}
-          customer={customers[historyCustomer]}
-          records={customerHistoryMap[historyCustomer] || []}
-          onClose={closeHistory}
-        />
-      )}
-      {visitsModal && (
-        <VisitsModal data={visitsModal} onClose={closeVisitsModal} />
       )}
     </div>
   );

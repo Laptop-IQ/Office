@@ -11,7 +11,6 @@ import { Footer } from "./layout/Footer";
 // Public Sections
 import HeroSection from "./sections/Hero";
 
-
 // Auth Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -25,7 +24,6 @@ import StockManager from "./components/Stockmanager";
 import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
 import PriceListApp from "./components/priceList";
 import EcofastEntry from "./components/EcofastEntry";
-
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -68,14 +66,14 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route
-            path="/DailySalesReport"
+            path="/DailySalesReport/*"
             element={
               <PrivateRoute>
                 <DailySalesReport />
               </PrivateRoute>
             }
           />
-   
+
           <Route
             path="/OverduesDashboard"
             element={
@@ -92,7 +90,7 @@ function App() {
               </PrivateRoute>
             }
           />
-        
+
           <Route
             path="/pricelist"
             element={
@@ -101,7 +99,6 @@ function App() {
               </PrivateRoute>
             }
           />
-        
 
           <Route
             path="/Ecofast"
@@ -120,7 +117,6 @@ function App() {
               </PrivateRoute>
             }
           />
-         
         </Routes>
       </BrowserRouter>
     </AuthProvider>
