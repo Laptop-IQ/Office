@@ -233,7 +233,7 @@ const TYPE_STYLES = {
   Retail: "bg-teal-500/10 text-teal-400",
 };
 const BADGE_STYLES = {
-  VIP: "bg-[#CC9A4E]/15 text-[#E8C077] ring-1 ring-[#CC9A4E]/30",
+  VIP: "bg-[#CC9A4E]/15 text-[color:var(--brass-light)] ring-1 ring-[#CC9A4E]/30",
   "New Customer": "bg-blue-500/15 text-blue-300",
   "High Value": "bg-emerald-500/15 text-emerald-300",
   "Low Credit": "bg-orange-500/15 text-orange-300",
@@ -308,7 +308,7 @@ const Badges = ({ badges = [] }) => (
 const Avatar = ({ name, size = 36 }) => (
   <div
     style={{ width: size, height: size }}
-    className="rounded-lg bg-gradient-to-br from-[#4C6FFF] to-[#1E3A8A] ring-1 ring-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md shadow-black/30"
+    className="rounded-lg bg-gradient-to-br from-[#4C6FFF] to-[color:var(--cl-d2)] ring-1 ring-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md shadow-black/30"
   >
     {initialsOf(name)}
   </div>
@@ -575,7 +575,7 @@ const ActionDropdown = ({
             />
             <div className="relative w-full max-w-sm bg-[var(--surface-2)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden animate-[popIn_.15s_ease-out]">
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-[#182036] to-[#0F1420] px-5 py-4 text-white flex items-center gap-3 overflow-hidden">
+              <div className="relative bg-gradient-to-br from-[color:var(--cl-a1)] to-[color:var(--cl-a2)] px-5 py-4 text-white flex items-center gap-3 overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
                 <Avatar name={customer.company} size={40} />
                 <div className="min-w-0 flex-1">
@@ -1197,7 +1197,7 @@ const QuickViewDrawer = ({ customerId, onClose, onFollowUpAdded }) => {
           </div>
         ) : (
           <>
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#182036] to-[#0F1420] px-5 pt-5 pb-6 text-white">
+            <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--cl-a1)] to-[color:var(--cl-a2)] px-5 pt-5 pb-6 text-white">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
               <button
                 onClick={onClose}
@@ -1476,7 +1476,7 @@ const CustomerNotesModal = ({ customerId, onClose, onNoteAdded }) => {
       />
       <div className="relative w-full max-w-lg bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[85vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#182036] to-[#0F1420] px-6 py-5 text-white shrink-0">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--cl-a1)] to-[color:var(--cl-a2)] px-6 py-5 text-white shrink-0">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
           <button
             onClick={onClose}
@@ -1721,7 +1721,7 @@ const FollowUpModal = ({ customer, open, onClose, onSaved }) => {
       />
       <div className="relative w-full max-w-lg bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-[#4A2E12] via-[#3A2410] to-[#241505] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[color:var(--cl-b3)] via-[color:var(--cl-b1)] to-[color:var(--cl-b2)] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-500/10 blur-2xl" />
           <div className="relative flex items-start justify-between">
@@ -2004,7 +2004,7 @@ const AssignSalesPersonModal = ({
       />
       <div className="relative w-full max-w-md bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[85vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]">
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#241b3d] via-[#1c1530] to-[#100c1c] px-6 py-5 text-white shrink-0">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--cl-c3)] via-[color:var(--cl-c1)] to-[color:var(--cl-c2)] px-6 py-5 text-white shrink-0">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/60 to-transparent" />
           <button
             onClick={onClose}
@@ -2337,7 +2337,7 @@ const AddCustomerModal = ({ open, onClose, onSaved }) => {
         className="relative w-full max-w-xl bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]"
       >
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-[#182036] via-[#131a2c] to-[#0F1420] px-6 pt-6 pb-8 text-white shrink-0 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[color:var(--cl-a1)] via-[color:var(--cl-a3)] to-[color:var(--cl-a2)] px-6 pt-6 pb-8 text-white shrink-0 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
           <div className="absolute top-8 right-16 w-16 h-16 rounded-full bg-white/5" />
@@ -2786,7 +2786,7 @@ const EditCustomerModal = ({ open, customer, onClose, onSaved }) => {
         className="relative w-full max-w-2xl bg-[var(--surface)] ring-1 ring-white/10 rounded-2xl shadow-2xl shadow-black/60 max-h-[92vh] overflow-hidden flex flex-col animate-[popIn_.2s_ease-out]"
       >
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-[#182036] via-[#131a2c] to-[#0F1420] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[color:var(--cl-a1)] via-[color:var(--cl-a3)] to-[color:var(--cl-a2)] px-6 pt-6 pb-5 text-white shrink-0 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
           <div className="relative flex items-start justify-between mb-4">

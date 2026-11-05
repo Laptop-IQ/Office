@@ -37,7 +37,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#080712]">
+    <main className="relative min-h-screen overflow-hidden bg-[var(--auth-bg)]">
       {/* Background */}
       <div className="absolute inset-0">
         {/* Main gradients */}
@@ -57,7 +57,7 @@ const ForgotPassword = () => {
           className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.4) 1px, transparent 1px)",
+              "linear-gradient(color-mix(in srgb, var(--wash) 40%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--wash) 40%, transparent) 1px, transparent 1px)",
             backgroundSize: "50px 50px",
           }}
         />
@@ -70,7 +70,7 @@ const ForgotPassword = () => {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <div className="absolute inset-[2px] rounded-[14px] bg-[#0d0b18]" />
+              <div className="absolute inset-[2px] rounded-[14px] bg-[var(--auth-card)]" />
 
               <div className="relative w-5 h-5 rounded-lg bg-gradient-to-br from-violet-400 to-white" />
             </div>
@@ -184,7 +184,7 @@ const ForgotPassword = () => {
             {/* Mobile Logo */}
             <div className="flex lg:hidden items-center gap-3 mb-10">
               <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <div className="absolute inset-[2px] rounded-[14px] bg-[#0d0b18]" />
+                <div className="absolute inset-[2px] rounded-[14px] bg-[var(--auth-card)]" />
 
                 <div className="relative w-5 h-5 rounded-lg bg-white" />
               </div>

@@ -21,27 +21,27 @@ import DispatchTab from "./DispatchTab";
 
 // ── Design tokens (matches SF Overdues theme) ───────────────────────────────
 const T = {
-  pageBg: "#06090F",
-  card: "#0B1120",
-  elevated: "#101828",
-  border: "#1A2640",
-  borderHi: "#2A3C60",
-  gold: "#D4A017",
-  goldDim: "#8A6A08",
-  goldGlow: "rgba(212,160,23,0.18)",
-  text1: "#E8EDF8",
-  text2: "#8895AE",
-  text3: "#475569",
-  critical: "#F43F5E",
-  urgent: "#F97316",
-  warning: "#EAB308",
-  info: "#3B82F6",
-  safe: "#10B981",
-  dangerBg: "rgba(244,63,94,0.08)",
-  urgentBg: "rgba(249,115,22,0.08)",
-  warnBg: "rgba(234,179,8,0.08)",
-  infoBg: "rgba(59,130,246,0.08)",
-  safeBg: "rgba(16,185,129,0.08)",
+  pageBg: "var(--ov-pageBg)",
+  card: "var(--ov-card)",
+  elevated: "var(--ov-elevated)",
+  border: "var(--ov-border)",
+  borderHi: "var(--ov-borderHi)",
+  gold: "var(--ov-gold)",
+  goldDim: "var(--ov-goldDim)",
+  goldGlow: "var(--ov-goldGlow)",
+  text1: "var(--ov-text1)",
+  text2: "var(--ov-text2)",
+  text3: "var(--ov-text3)",
+  critical: "var(--ov-critical)",
+  urgent: "var(--ov-urgent)",
+  warning: "var(--ov-warning)",
+  info: "var(--ov-info)",
+  safe: "var(--ov-safe)",
+  dangerBg: "var(--ov-dangerBg)",
+  urgentBg: "var(--ov-urgentBg)",
+  warnBg: "var(--ov-warnBg)",
+  infoBg: "var(--ov-infoBg)",
+  safeBg: "var(--ov-safeBg)",
 };
 
 const card = {
@@ -445,7 +445,7 @@ export default function ChemicalStockManager() {
         return;
       }
       if (saved?.loadFailed) {
-        toast("Server se connect nahi ho paya — retry karein", "error");
+        toast("Could not connect to the server — please retry", "error");
         setSyncState("load-error");
         return;
       }
@@ -455,7 +455,7 @@ export default function ChemicalStockManager() {
       setCompanyName(saved.companyName || "My Chemical Store");
       setDispatches(saved.dispatches || []);
       if (saved.offline)
-        toast("⚠ Offline — local data se chal rahe hain", "error");
+        toast("⚠ Offline — working from local data", "error");
       setIsLoaded(true);
     })();
   }, [toast]);
@@ -533,13 +533,13 @@ export default function ChemicalStockManager() {
       try {
         const d = JSON.parse(evt.target.result);
         if (!d?.stocks)
-          return toast("Invalid backup file — stocks nahi mili", "error");
+          return toast("Invalid backup file — no stocks found", "error");
         setStocksRaw(d.stocks || SEED);
         setChangeLog(d.changeLog || []);
         setLastUpdated(d.lastUpdated || {});
         setCompanyName(d.companyName || "My Chemical Store");
         setDispatches(d.dispatches || []);
-        toast("Data restore ho gaya ✓");
+        toast("Data restored ✓");
       } catch {
         toast("Invalid JSON file", "error");
       }
@@ -799,7 +799,7 @@ export default function ChemicalStockManager() {
             }}
           >
             {syncState === "load-error"
-              ? "Server se connect nahi ho paya"
+              ? "Could not connect to the server"
               : "Loading stock data…"}
           </div>
           {syncState === "load-error" && (
@@ -911,7 +911,7 @@ export default function ChemicalStockManager() {
           fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
           color: T.text1,
           backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+            "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--wash) 2.5%, transparent) 1px, transparent 0)",
           backgroundSize: "28px 28px",
         }}
       >
@@ -1555,15 +1555,13 @@ export default function ChemicalStockManager() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Aapka saara data browser ke{" "}
-                  <strong style={{ color: T.text1 }}>localStorage</strong> mein
-                  permanently save hota hai.
+                  All your data is saved permanently in your browser's{" "}
+                  <strong style={{ color: T.text1 }}>localStorage</strong>.
                   <br />
-                  Page refresh, browser restart — sab ke baad bhi data safe
-                  rehta hai.
+                  Your data stays safe after a page refresh or browser restart.
                   <br />
                   <span style={{ color: T.text3 }}>
-                    Sirf browser data clear karne se delete hoga.
+                    It is only deleted if you clear your browser data.
                   </span>
                 </p>
               </div>
@@ -1634,8 +1632,7 @@ export default function ChemicalStockManager() {
                     textAlign: "center",
                   }}
                 >
-                  JSON file mein saara data (stocks + dispatches + history) save
-                  hota hai
+                  All data (stocks + dispatches + history) is saved in the JSON file
                 </p>
               </div>
               <div style={{ marginTop: 16 }}>
@@ -1646,7 +1643,7 @@ export default function ChemicalStockManager() {
                   onClick={async () => {
                     if (
                       window.confirm(
-                        "Browser storage + server ka saara data delete hoga! Sure?",
+                        "This will delete all browser storage and server data! Are you sure?",
                       )
                     ) {
                       await clearRemoteData();
@@ -1678,7 +1675,7 @@ export default function ChemicalStockManager() {
             position: "sticky",
             top: 0,
             zIndex: 50,
-            background: "rgba(6,9,15,0.92)",
+            background: "var(--ov-headerBg)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             borderBottom: `1px solid ${T.border}`,
@@ -2393,7 +2390,7 @@ export default function ChemicalStockManager() {
                       ...card,
                       padding: "13px 16px",
                       background: T.elevated,
-                      border: `1px solid ${T.gold}40`,
+                      border: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                     }}
                   >
                     <div
@@ -2507,7 +2504,7 @@ export default function ChemicalStockManager() {
                               background:
                                 idx % 2 === 0
                                   ? "transparent"
-                                  : "rgba(255,255,255,0.012)",
+                                  : "color-mix(in srgb, var(--wash) 1.2%, transparent)",
                             }}
                             onMouseEnter={(e) =>
                               (e.currentTarget.style.background = T.elevated)
@@ -2516,7 +2513,7 @@ export default function ChemicalStockManager() {
                               (e.currentTarget.style.background =
                                 idx % 2 === 0
                                   ? "transparent"
-                                  : "rgba(255,255,255,0.012)")
+                                  : "color-mix(in srgb, var(--wash) 1.2%, transparent)")
                             }
                             onClick={() => setDetailRow(p)}
                           >
@@ -2775,7 +2772,7 @@ export default function ChemicalStockManager() {
                     style={{
                       padding: "12px 16px",
                       background: `rgba(212,160,23,0.05)`,
-                      borderTop: `1px solid ${T.gold}40`,
+                      borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                       display: "flex",
                       justifyContent: "space-between",
                       flexWrap: "wrap",
@@ -2851,7 +2848,7 @@ export default function ChemicalStockManager() {
             bottom: 0,
             left: 0,
             right: 0,
-            background: "rgba(6,9,15,0.94)",
+            background: "var(--ov-headerBg)",
             backdropFilter: "blur(16px)",
             display: "flex",
             borderTop: `1px solid ${T.border}`,

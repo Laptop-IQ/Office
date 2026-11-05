@@ -26,9 +26,9 @@ const PKG_DEFAULTS_CONFIG = [
 ];
 
 const tierInfo = {
-  DP7: { color: "#4ade80", desc: "Dealer ≥7 days" },
-  DP45: { color: "#60a5fa", desc: "Dealer 45-day" },
-  RSP: { color: "#f472b6", desc: "Retail price" },
+  DP7: { color: "var(--sf-green)", desc: "Dealer ≥7 days" },
+  DP45: { color: "var(--sf-blue)", desc: "Dealer 45-day" },
+  RSP: { color: "var(--sf-pink)", desc: "Retail price" },
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -626,11 +626,11 @@ export default function SFDyesPurchaseOrder() {
 
   const inputStyle = {
     width: "100%",
-    background: "#0d0d10",
-    border: "1px solid #1e2030",
+    background: "var(--sf-bg)",
+    border: "1px solid var(--sf-line2)",
     borderRadius: 8,
     padding: "10px 12px",
-    color: "#f1f5f9",
+    color: "var(--sf-text)",
     fontSize: 13,
     fontWeight: 500,
     outline: "none",
@@ -638,8 +638,8 @@ export default function SFDyesPurchaseOrder() {
     transition: "border-color 0.15s",
   };
 
-  const focusGreen = (e) => (e.target.style.borderColor = "#4ade80");
-  const blurNeutral = (e) => (e.target.style.borderColor = "#1e2030");
+  const focusGreen = (e) => (e.target.style.borderColor = "var(--sf-green)");
+  const blurNeutral = (e) => (e.target.style.borderColor = "var(--sf-line2)");
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -773,7 +773,7 @@ export default function SFDyesPurchaseOrder() {
       {/* ══ SCREEN UI ═══════════════════════════════════════════════════════ */}
       <div
         className="screen-only"
-        style={{ minHeight: "100vh", background: "#09090b", color: "#e2e8f0" }}
+        style={{ minHeight: "100vh", background: "var(--sf-bg0)", color: "var(--sf-text3)" }}
       >
         {/* TOP BAR */}
         <div
@@ -781,9 +781,9 @@ export default function SFDyesPurchaseOrder() {
             position: "sticky",
             top: 0,
             zIndex: 50,
-            background: "rgba(9,9,11,0.97)",
+            background: "color-mix(in srgb, var(--sf-bg0) 97%, transparent)",
             backdropFilter: "blur(16px)",
-            borderBottom: "1px solid #18181e",
+            borderBottom: "1px solid var(--sf-line)",
             padding: "0 24px",
           }}
         >
@@ -821,7 +821,7 @@ export default function SFDyesPurchaseOrder() {
                   style={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: "#f1f5f9",
+                    color: "var(--sf-text)",
                     letterSpacing: "-0.02em",
                   }}
                 >
@@ -830,7 +830,7 @@ export default function SFDyesPurchaseOrder() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: "#3f4254",
+                    color: "var(--sf-dim)",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
                     fontWeight: 600,
@@ -846,8 +846,8 @@ export default function SFDyesPurchaseOrder() {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  background: "#111116",
-                  border: "1px solid #18181e",
+                  background: "var(--sf-surface)",
+                  border: "1px solid var(--sf-line)",
                   borderRadius: 6,
                   padding: "4px 10px",
                 }}
@@ -899,8 +899,8 @@ export default function SFDyesPurchaseOrder() {
           {/* ORDER META */}
           <div
             style={{
-              background: "#111116",
-              border: "1px solid #18181e",
+              background: "var(--sf-surface)",
+              border: "1px solid var(--sf-line)",
               borderRadius: 14,
               padding: "18px 20px",
               marginBottom: 14,
@@ -910,7 +910,7 @@ export default function SFDyesPurchaseOrder() {
               style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: "#3f4254",
+                color: "var(--sf-dim)",
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
                 marginBottom: 14,
@@ -957,7 +957,7 @@ export default function SFDyesPurchaseOrder() {
                       display: "block",
                       fontSize: 10,
                       fontWeight: 700,
-                      color: "#3f4254",
+                      color: "var(--sf-dim)",
                       marginBottom: 6,
                       letterSpacing: "0.08em",
                       textTransform: "uppercase",
@@ -1000,7 +1000,7 @@ export default function SFDyesPurchaseOrder() {
                   display: "block",
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   marginBottom: 6,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
@@ -1020,10 +1020,10 @@ export default function SFDyesPurchaseOrder() {
                       borderRadius: 8,
                       border: "1px solid",
                       borderColor:
-                        priceTier === t ? tierInfo[t].color : "#18181e",
+                        priceTier === t ? tierInfo[t].color : "var(--sf-line)",
                       background:
-                        priceTier === t ? `${tierInfo[t].color}18` : "#0d0d10",
-                      color: priceTier === t ? tierInfo[t].color : "#3f4254",
+                        priceTier === t ? `color-mix(in srgb, ${tierInfo[t].color} 9.4%, transparent)` : "var(--sf-bg)",
+                      color: priceTier === t ? tierInfo[t].color : "var(--sf-dim)",
                       fontSize: 11,
                       fontWeight: 800,
                       cursor: "pointer",
@@ -1038,7 +1038,7 @@ export default function SFDyesPurchaseOrder() {
               <div
                 style={{
                   fontSize: 10,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   marginTop: 5,
                   paddingLeft: 2,
                 }}
@@ -1054,7 +1054,7 @@ export default function SFDyesPurchaseOrder() {
                   display: "block",
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   marginBottom: 6,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
@@ -1066,11 +1066,11 @@ export default function SFDyesPurchaseOrder() {
                 onClick={() => fileInputRef.current?.click()}
                 style={{
                   width: "100%",
-                  background: "#0d0d10",
-                  border: `1px solid ${uploadedFile ? "#4ade8040" : "#18181e"}`,
+                  background: "var(--sf-bg)",
+                  border: `1px solid ${uploadedFile ? "#4ade8040" : "var(--sf-line)"}`,
                   borderRadius: 8,
                   padding: "9px 12px",
-                  color: uploadedFile ? "#4ade80" : "#6b7280",
+                  color: uploadedFile ? "var(--sf-green)" : "#6b7280",
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -1086,7 +1086,7 @@ export default function SFDyesPurchaseOrder() {
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.borderColor = uploadedFile
                     ? "#4ade8040"
-                    : "#18181e")
+                    : "var(--sf-line)")
                 }
               >
                 <span style={{ fontSize: 14 }}>{uploadedFile ? "✓" : "↑"}</span>
@@ -1112,7 +1112,7 @@ export default function SFDyesPurchaseOrder() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: "#3f4254",
+                    color: "var(--sf-dim)",
                     marginTop: 5,
                     paddingLeft: 2,
                   }}
@@ -1129,7 +1129,7 @@ export default function SFDyesPurchaseOrder() {
                   display: "block",
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   marginBottom: 6,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
@@ -1144,7 +1144,7 @@ export default function SFDyesPurchaseOrder() {
                     left: 12,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "#3f4254",
+                    color: "var(--sf-dim)",
                     fontSize: 15,
                     pointerEvents: "none",
                   }}
@@ -1173,9 +1173,9 @@ export default function SFDyesPurchaseOrder() {
                     cursor: uploadedFile ? "text" : "not-allowed",
                   }}
                   onFocus={(e) => {
-                    if (uploadedFile) e.target.style.borderColor = "#4ade80";
+                    if (uploadedFile) e.target.style.borderColor = "var(--sf-green)";
                   }}
-                  onBlur={(e) => (e.target.style.borderColor = "#1e2030")}
+                  onBlur={(e) => (e.target.style.borderColor = "var(--sf-line2)")}
                 />
                 {searchQuery && (
                   <button
@@ -1212,8 +1212,8 @@ export default function SFDyesPurchaseOrder() {
                     top: "calc(100% + 4px)",
                     left: 0,
                     right: 0,
-                    background: "#111116",
-                    border: "1px solid #1e2030",
+                    background: "var(--sf-surface)",
+                    border: "1px solid var(--sf-line2)",
                     borderRadius: 12,
                     overflow: "hidden",
                     maxHeight: 320,
@@ -1226,7 +1226,7 @@ export default function SFDyesPurchaseOrder() {
                       style={{
                         padding: "18px 16px",
                         textAlign: "center",
-                        color: "#3f4254",
+                        color: "var(--sf-dim)",
                         fontSize: 13,
                       }}
                     >
@@ -1237,25 +1237,25 @@ export default function SFDyesPurchaseOrder() {
                       <div
                         style={{
                           padding: "7px 12px",
-                          borderBottom: "1px solid #18181e",
+                          borderBottom: "1px solid var(--sf-line)",
                           display: "flex",
                           justifyContent: "space-between",
                           position: "sticky",
                           top: 0,
-                          background: "#111116",
+                          background: "var(--sf-surface)",
                         }}
                       >
                         <span
                           style={{
                             fontSize: 10,
-                            color: "#3f4254",
+                            color: "var(--sf-dim)",
                             fontWeight: 600,
                           }}
                         >
                           {filteredProducts.length} result
                           {filteredProducts.length !== 1 ? "s" : ""}
                         </span>
-                        <span style={{ fontSize: 10, color: "#3f4254" }}>
+                        <span style={{ fontSize: 10, color: "var(--sf-dim)" }}>
                           Click to add
                         </span>
                       </div>
@@ -1280,12 +1280,12 @@ export default function SFDyesPurchaseOrder() {
                               display: "flex",
                               alignItems: "center",
                               gap: 12,
-                              borderBottom: "1px solid #09090b",
+                              borderBottom: "1px solid var(--sf-bg0)",
                               transition: "background 0.1s",
                               textAlign: "left",
                             }}
                             onMouseEnter={(e) =>
-                              (e.currentTarget.style.background = "#18181e")
+                              (e.currentTarget.style.background = "var(--sf-line)")
                             }
                             onMouseLeave={(e) =>
                               (e.currentTarget.style.background = "none")
@@ -1309,7 +1309,7 @@ export default function SFDyesPurchaseOrder() {
                               <div
                                 style={{
                                   fontSize: 13,
-                                  color: "#f1f5f9",
+                                  color: "var(--sf-text)",
                                   fontWeight: 500,
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
@@ -1328,7 +1328,7 @@ export default function SFDyesPurchaseOrder() {
                               >
                                 {p.category && p.category !== "General" && (
                                   <span
-                                    style={{ fontSize: 9, color: "#3f4254" }}
+                                    style={{ fontSize: 9, color: "var(--sf-dim)" }}
                                   >
                                     {p.category}
                                   </span>
@@ -1344,7 +1344,7 @@ export default function SFDyesPurchaseOrder() {
                                       padding: "1px 6px",
                                       fontSize: 9,
                                       fontWeight: 800,
-                                      color: "#67e8f9",
+                                      color: "var(--sf-cyan)",
                                     }}
                                   >
                                     {pkgKg}kg
@@ -1357,7 +1357,7 @@ export default function SFDyesPurchaseOrder() {
                                 style={{
                                   fontSize: 14,
                                   fontWeight: 800,
-                                  color: "#4ade80",
+                                  color: "var(--sf-green)",
                                 }}
                               >
                                 ₹
@@ -1365,7 +1365,7 @@ export default function SFDyesPurchaseOrder() {
                                   "en-IN",
                                 )}
                               </div>
-                              <div style={{ fontSize: 9, color: "#3f4254" }}>
+                              <div style={{ fontSize: 9, color: "var(--sf-dim)" }}>
                                 per kg
                               </div>
                               {isInOrder && (
@@ -1373,7 +1373,7 @@ export default function SFDyesPurchaseOrder() {
                                   style={{
                                     fontSize: 8,
                                     fontWeight: 700,
-                                    color: "#4ade80",
+                                    color: "var(--sf-green)",
                                     background: "#4ade8015",
                                     borderRadius: 4,
                                     padding: "1px 6px",
@@ -1411,20 +1411,20 @@ export default function SFDyesPurchaseOrder() {
                   uploadStatus.type === "success"
                     ? "#14532d"
                     : uploadStatus.type === "error"
-                      ? "#7f1d1d"
-                      : "#18181e",
+                      ? "var(--sf-redline)"
+                      : "var(--sf-line)",
                 background:
                   uploadStatus.type === "success"
                     ? "#081410"
                     : uploadStatus.type === "error"
                       ? "#150a0a"
-                      : "#111116",
+                      : "var(--sf-surface)",
                 color:
                   uploadStatus.type === "success"
-                    ? "#4ade80"
+                    ? "var(--sf-green)"
                     : uploadStatus.type === "error"
                       ? "#f87171"
-                      : "#94a3b8",
+                      : "var(--sf-text2)",
               }}
             >
               <span>
@@ -1442,8 +1442,8 @@ export default function SFDyesPurchaseOrder() {
           {uploadedFile && (
             <div
               style={{
-                background: "#111116",
-                border: "1px solid #18181e",
+                background: "var(--sf-surface)",
+                border: "1px solid var(--sf-line)",
                 borderRadius: 12,
                 padding: "14px 16px",
                 marginBottom: 14,
@@ -1453,7 +1453,7 @@ export default function SFDyesPurchaseOrder() {
                 style={{
                   fontSize: 9,
                   fontWeight: 700,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   marginBottom: 10,
@@ -1478,8 +1478,8 @@ export default function SFDyesPurchaseOrder() {
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      background: "#0d0d10",
-                      border: "1px solid #18181e",
+                      background: "var(--sf-bg)",
+                      border: "1px solid var(--sf-line)",
                       borderRadius: 8,
                       padding: "8px 11px",
                     }}
@@ -1494,7 +1494,7 @@ export default function SFDyesPurchaseOrder() {
                         padding: "2px 7px",
                         fontSize: 10,
                         fontWeight: 800,
-                        color: "#67e8f9",
+                        color: "var(--sf-cyan)",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -1510,11 +1510,11 @@ export default function SFDyesPurchaseOrder() {
                       }
                       style={{
                         width: 60,
-                        background: "#09090b",
-                        border: "1px solid #1e2030",
+                        background: "var(--sf-bg0)",
+                        border: "1px solid var(--sf-line2)",
                         borderRadius: 6,
                         padding: "5px 8px",
-                        color: "#a78bfa",
+                        color: "var(--sf-violet)",
                         fontSize: 13,
                         fontWeight: 700,
                         textAlign: "center",
@@ -1524,7 +1524,7 @@ export default function SFDyesPurchaseOrder() {
                     <span
                       style={{
                         fontSize: 11,
-                        color: "#3f4254",
+                        color: "var(--sf-dim)",
                         fontWeight: 600,
                       }}
                     >
@@ -1533,7 +1533,7 @@ export default function SFDyesPurchaseOrder() {
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 10, color: "#3f4254", marginTop: 8 }}>
+              <div style={{ fontSize: 10, color: "var(--sf-dim)", marginTop: 8 }}>
                 Auto-detected per product · Override per row below
               </div>
             </div>
@@ -1543,8 +1543,8 @@ export default function SFDyesPurchaseOrder() {
           {!uploadedFile && (
             <div
               style={{
-                background: "#111116",
-                border: "1.5px dashed #18181e",
+                background: "var(--sf-surface)",
+                border: "1.5px dashed var(--sf-line)",
                 borderRadius: 14,
                 padding: "56px 24px",
                 textAlign: "center",
@@ -1554,7 +1554,7 @@ export default function SFDyesPurchaseOrder() {
                 style={{
                   width: 56,
                   height: 56,
-                  border: "1.5px dashed #1e2030",
+                  border: "1.5px dashed var(--sf-line2)",
                   borderRadius: 14,
                   margin: "0 auto 18px",
                   display: "flex",
@@ -1562,13 +1562,13 @@ export default function SFDyesPurchaseOrder() {
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: 26, color: "#1e2030" }}>↑</span>
+                <span style={{ fontSize: 26, color: "var(--sf-line2)" }}>↑</span>
               </div>
               <div
                 style={{
                   fontSize: 15,
                   fontWeight: 700,
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   marginBottom: 6,
                 }}
               >
@@ -1577,7 +1577,7 @@ export default function SFDyesPurchaseOrder() {
               <div
                 style={{
                   fontSize: 12,
-                  color: "#1e2030",
+                  color: "var(--sf-line2)",
                   maxWidth: 320,
                   margin: "0 auto",
                 }}
@@ -1592,8 +1592,8 @@ export default function SFDyesPurchaseOrder() {
           {uploadedFile && (
             <div
               style={{
-                background: "#111116",
-                border: "1px solid #18181e",
+                background: "var(--sf-surface)",
+                border: "1px solid var(--sf-line)",
                 borderRadius: 14,
                 overflow: "hidden",
               }}
@@ -1605,8 +1605,8 @@ export default function SFDyesPurchaseOrder() {
                   gridTemplateColumns: "28px 78px 1fr 100px 90px 120px 32px",
                   gap: 8,
                   padding: "9px 16px",
-                  background: "#0d0d10",
-                  borderBottom: "1px solid #18181e",
+                  background: "var(--sf-bg)",
+                  borderBottom: "1px solid var(--sf-line)",
                 }}
               >
                 {[
@@ -1625,7 +1625,7 @@ export default function SFDyesPurchaseOrder() {
                       fontWeight: 800,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: i === 4 ? "#a78bfa" : "#3f4254",
+                      color: i === 4 ? "var(--sf-violet)" : "var(--sf-dim)",
                       textAlign:
                         i >= 3 ? (i === 4 ? "center" : "right") : "left",
                     }}
@@ -1639,7 +1639,7 @@ export default function SFDyesPurchaseOrder() {
               <style>{`
                 .sf-qty::-webkit-outer-spin-button,.sf-qty::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
                 .sf-qty{-moz-appearance:textfield}
-                .sf-row:hover{background:#13131a!important}
+                .sf-row:hover{background:var(--sf-hover)!important}
               `}</style>
 
               {orderItems.length === 0 ? (
@@ -1648,7 +1648,7 @@ export default function SFDyesPurchaseOrder() {
                     style={{
                       width: 44,
                       height: 44,
-                      border: "1.5px dashed #1e2030",
+                      border: "1.5px dashed var(--sf-line2)",
                       borderRadius: 10,
                       margin: "0 auto 14px",
                       display: "flex",
@@ -1656,14 +1656,14 @@ export default function SFDyesPurchaseOrder() {
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: 20, color: "#1e2030" }}>+</span>
+                    <span style={{ fontSize: 20, color: "var(--sf-line2)" }}>+</span>
                   </div>
                   <div
-                    style={{ color: "#3f4254", fontSize: 13, fontWeight: 600 }}
+                    style={{ color: "var(--sf-dim)", fontSize: 13, fontWeight: 600 }}
                   >
                     No products added
                   </div>
-                  <div style={{ color: "#1e2030", fontSize: 11, marginTop: 4 }}>
+                  <div style={{ color: "var(--sf-line2)", fontSize: 11, marginTop: 4 }}>
                     Search a product above to add it to the order
                   </div>
                 </div>
@@ -1685,7 +1685,7 @@ export default function SFDyesPurchaseOrder() {
                             "28px 78px 1fr 100px 90px 120px 32px",
                           gap: 8,
                           padding: "12px 16px",
-                          borderBottom: "1px solid #0d0d10",
+                          borderBottom: "1px solid var(--sf-bg)",
                           alignItems: "center",
                           transition: "background 0.1s",
                         }}
@@ -1694,7 +1694,7 @@ export default function SFDyesPurchaseOrder() {
                           style={{
                             fontSize: 10,
                             fontWeight: 600,
-                            color: "#1e2030",
+                            color: "var(--sf-line2)",
                           }}
                         >
                           {idx + 1}
@@ -1720,7 +1720,7 @@ export default function SFDyesPurchaseOrder() {
                             style={{
                               fontSize: 13,
                               fontWeight: 500,
-                              color: "#e2e8f0",
+                              color: "var(--sf-text3)",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
@@ -1732,7 +1732,7 @@ export default function SFDyesPurchaseOrder() {
                             <div
                               style={{
                                 fontSize: 9,
-                                color: "#3f4254",
+                                color: "var(--sf-dim)",
                                 marginTop: 1,
                               }}
                             >
@@ -1747,7 +1747,7 @@ export default function SFDyesPurchaseOrder() {
                             style={{
                               fontSize: 14,
                               fontWeight: 800,
-                              color: "#f1f5f9",
+                              color: "var(--sf-text)",
                             }}
                           >
                             ₹{price.toLocaleString("en-IN")}
@@ -1755,7 +1755,7 @@ export default function SFDyesPurchaseOrder() {
                           <div
                             style={{
                               fontSize: 9,
-                              color: "#3f4254",
+                              color: "var(--sf-dim)",
                               marginTop: 1,
                             }}
                           >
@@ -1784,23 +1784,23 @@ export default function SFDyesPurchaseOrder() {
                             title="Package size (kg per package)"
                             style={{
                               width: 62,
-                              background: "#0d0d10",
-                              border: `1px solid ${cat ? "#7c3aed40" : "#18181e"}`,
+                              background: "var(--sf-bg)",
+                              border: `1px solid ${cat ? "#7c3aed40" : "var(--sf-line)"}`,
                               borderRadius: 6,
                               padding: "5px 7px",
-                              color: "#a78bfa",
+                              color: "var(--sf-violet)",
                               fontSize: 12,
                               fontWeight: 700,
                               textAlign: "center",
                               outline: "none",
                             }}
                             onFocus={(e) =>
-                              (e.target.style.borderColor = "#a78bfa")
+                              (e.target.style.borderColor = "var(--sf-violet)")
                             }
                             onBlur={(e) =>
                               (e.target.style.borderColor = cat
                                 ? "#7c3aed40"
-                                : "#18181e")
+                                : "var(--sf-line)")
                             }
                           />
                           <span
@@ -1835,13 +1835,13 @@ export default function SFDyesPurchaseOrder() {
                             className="sf-qty"
                             style={{
                               width: "100%",
-                              background: "#0d0d10",
-                              border: `1px solid ${qtyErrors[item._id] ? "#f87171" : "#18181e"}`,
+                              background: "var(--sf-bg)",
+                              border: `1px solid ${qtyErrors[item._id] ? "var(--sf-red)" : "var(--sf-line)"}`,
                               borderRadius: 6,
                               padding: "5px 8px",
                               color: qtyErrors[item._id]
-                                ? "#f87171"
-                                : "#f1f5f9",
+                                ? "var(--sf-red)"
+                                : "var(--sf-text)",
                               fontSize: 13,
                               fontWeight: 700,
                               textAlign: "right",
@@ -1851,13 +1851,13 @@ export default function SFDyesPurchaseOrder() {
                             }}
                             onFocus={(e) =>
                               (e.target.style.borderColor = qtyErrors[item._id]
-                                ? "#f87171"
+                                ? "var(--sf-red)"
                                 : "#4ade80")
                             }
                             onBlur={(e) =>
                               (e.target.style.borderColor = qtyErrors[item._id]
-                                ? "#f87171"
-                                : "#18181e")
+                                ? "var(--sf-red)"
+                                : "var(--sf-line)")
                             }
                           />
                           {qtyErrors[item._id] ? (
@@ -1872,7 +1872,7 @@ export default function SFDyesPurchaseOrder() {
                               <span
                                 style={{
                                   fontSize: 9,
-                                  color: "#f87171",
+                                  color: "var(--sf-red)",
                                   fontWeight: 700,
                                 }}
                               >
@@ -1889,7 +1889,7 @@ export default function SFDyesPurchaseOrder() {
                                   style={{
                                     fontSize: 9,
                                     fontWeight: 800,
-                                    color: "#4ade80",
+                                    color: "var(--sf-green)",
                                     background: "#4ade8015",
                                     border: "1px solid #4ade8040",
                                     borderRadius: 4,
@@ -1911,7 +1911,7 @@ export default function SFDyesPurchaseOrder() {
                                   style={{
                                     fontSize: 9,
                                     fontWeight: 800,
-                                    color: "#60a5fa",
+                                    color: "var(--sf-blue)",
                                     background: "#60a5fa15",
                                     border: "1px solid #60a5fa40",
                                     borderRadius: 4,
@@ -1930,7 +1930,7 @@ export default function SFDyesPurchaseOrder() {
                               style={{
                                 fontSize: 11,
                                 fontWeight: 800,
-                                color: "#4ade80",
+                                color: "var(--sf-green)",
                               }}
                             >
                               ₹{fmtMoney(total)}
@@ -1945,7 +1945,7 @@ export default function SFDyesPurchaseOrder() {
                           style={{
                             background: "none",
                             border: "none",
-                            color: "#1e2030",
+                            color: "var(--sf-line2)",
                             cursor: "pointer",
                             fontSize: 18,
                             padding: 0,
@@ -1957,10 +1957,10 @@ export default function SFDyesPurchaseOrder() {
                             borderRadius: 4,
                           }}
                           onMouseEnter={(e) =>
-                            (e.currentTarget.style.color = "#f87171")
+                            (e.currentTarget.style.color = "var(--sf-red)")
                           }
                           onMouseLeave={(e) =>
-                            (e.currentTarget.style.color = "#1e2030")
+                            (e.currentTarget.style.color = "var(--sf-line2)")
                           }
                         >
                           ×
@@ -1977,8 +1977,8 @@ export default function SFDyesPurchaseOrder() {
                         "28px 78px 1fr 100px 90px 120px 32px",
                       gap: 8,
                       padding: "12px 16px",
-                      background: "#0d0d10",
-                      borderTop: "1px solid #18181e",
+                      background: "var(--sf-bg)",
+                      borderTop: "1px solid var(--sf-line)",
                       alignItems: "center",
                     }}
                   >
@@ -1987,7 +1987,7 @@ export default function SFDyesPurchaseOrder() {
                     <span
                       style={{
                         fontSize: 11,
-                        color: "#3f4254",
+                        color: "var(--sf-dim)",
                         fontWeight: 600,
                       }}
                     >
@@ -1998,7 +1998,7 @@ export default function SFDyesPurchaseOrder() {
                       style={{
                         textAlign: "center",
                         fontSize: 11,
-                        color: "#a78bfa",
+                        color: "var(--sf-violet)",
                         fontWeight: 700,
                       }}
                     >
@@ -2029,9 +2029,9 @@ export default function SFDyesPurchaseOrder() {
             bottom: 0,
             left: 0,
             right: 0,
-            background: "rgba(7,7,9,0.98)",
+            background: "color-mix(in srgb, var(--sf-bg0) 98%, transparent)",
             backdropFilter: "blur(20px)",
-            borderTop: "1px solid #18181e",
+            borderTop: "1px solid var(--sf-line)",
             zIndex: 50,
           }}
         >
@@ -2044,13 +2044,13 @@ export default function SFDyesPurchaseOrder() {
                   alignItems: "center",
                   gap: 8,
                   padding: "7px 20px",
-                  background: "#1a0a0a",
-                  borderBottom: "1px solid #7f1d1d",
+                  background: "var(--sf-errbg)",
+                  borderBottom: "1px solid var(--sf-redline)",
                 }}
               >
-                <span style={{ fontSize: 13, color: "#f87171" }}>⚠</span>
+                <span style={{ fontSize: 13, color: "var(--sf-red)" }}>⚠</span>
                 <span
-                  style={{ fontSize: 11, color: "#f87171", fontWeight: 700 }}
+                  style={{ fontSize: 11, color: "var(--sf-red)", fontWeight: 700 }}
                 >
                   {Object.keys(qtyErrors).length} item
                   {Object.keys(qtyErrors).length !== 1 ? "s have" : " has"} qty
@@ -2063,32 +2063,32 @@ export default function SFDyesPurchaseOrder() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr",
-                borderBottom: "1px solid #111116",
+                borderBottom: "1px solid var(--sf-surface)",
               }}
             >
               {[
                 {
                   label: "Products",
                   value: totalItems,
-                  color: "#94a3b8",
+                  color: "var(--sf-text2)",
                   large: false,
                 },
                 {
                   label: "Total Weight",
                   value: `${fmtQty(totalQty)} kg`,
-                  color: "#60a5fa",
+                  color: "var(--sf-blue)",
                   large: false,
                 },
                 {
                   label: "Packages",
                   value: `${Math.round(totalPkgs * 10) / 10} pkg`,
-                  color: "#a78bfa",
+                  color: "var(--sf-violet)",
                   large: false,
                 },
                 {
                   label: "Subtotal",
                   value: `₹${fmtMoney(orderValue)}`,
-                  color: "#94a3b8",
+                  color: "var(--sf-text2)",
                   large: false,
                 },
                 {
@@ -2100,7 +2100,7 @@ export default function SFDyesPurchaseOrder() {
                 {
                   label: "Grand Total",
                   value: `₹${fmtMoney(grandTotal)}`,
-                  color: "#4ade80",
+                  color: "var(--sf-green)",
                   large: true,
                 },
               ].map((s, i) => (
@@ -2108,14 +2108,14 @@ export default function SFDyesPurchaseOrder() {
                   key={i}
                   style={{
                     padding: "10px 14px",
-                    borderRight: i < 5 ? "1px solid #111116" : "none",
+                    borderRight: i < 5 ? "1px solid var(--sf-surface)" : "none",
                   }}
                 >
                   <div
                     style={{
                       fontSize: 9,
                       fontWeight: 800,
-                      color: "#3f4254",
+                      color: "var(--sf-dim)",
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
                       marginBottom: 2,
@@ -2152,21 +2152,21 @@ export default function SFDyesPurchaseOrder() {
                 style={{
                   padding: "10px 0",
                   borderRadius: 8,
-                  border: "1px solid #18181e",
+                  border: "1px solid var(--sf-line)",
                   background: "none",
-                  color: "#3f4254",
+                  color: "var(--sf-dim)",
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#7f1d1d";
-                  e.currentTarget.style.color = "#f87171";
+                  e.currentTarget.style.borderColor = "var(--sf-redline)";
+                  e.currentTarget.style.color = "var(--sf-red)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#18181e";
-                  e.currentTarget.style.color = "#3f4254";
+                  e.currentTarget.style.borderColor = "var(--sf-line)";
+                  e.currentTarget.style.color = "var(--sf-dim)";
                 }}
               >
                 Clear Order
@@ -2177,9 +2177,9 @@ export default function SFDyesPurchaseOrder() {
                 style={{
                   padding: "10px 0",
                   borderRadius: 8,
-                  border: "1px solid #18181e",
+                  border: "1px solid var(--sf-line)",
                   background: "none",
-                  color: "#94a3b8",
+                  color: "var(--sf-text2)",
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: "pointer",
@@ -2187,11 +2187,11 @@ export default function SFDyesPurchaseOrder() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "#60a5fa50";
-                  e.currentTarget.style.color = "#60a5fa";
+                  e.currentTarget.style.color = "var(--sf-blue)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#18181e";
-                  e.currentTarget.style.color = "#94a3b8";
+                  e.currentTarget.style.borderColor = "var(--sf-line)";
+                  e.currentTarget.style.color = "var(--sf-text2)";
                 }}
               >
                 🖨 Print / Save PDF
@@ -2206,12 +2206,12 @@ export default function SFDyesPurchaseOrder() {
                   background:
                     orderItems.length > 0 && !hasQtyErrors
                       ? "#4ade80"
-                      : "#18181e",
+                      : "var(--sf-line)",
                   border: "1px solid transparent",
                   color:
                     orderItems.length > 0 && !hasQtyErrors
-                      ? "#09090b"
-                      : "#1e2030",
+                      ? "var(--sf-bg0)"
+                      : "var(--sf-line2)",
                   fontSize: 12,
                   fontWeight: 800,
                   cursor:

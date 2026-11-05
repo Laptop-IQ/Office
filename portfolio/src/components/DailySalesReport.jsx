@@ -11,27 +11,27 @@ import { useNavigate, useLocation } from "react-router-dom";
 const API = import.meta.env.VITE_API_BASE_URL;
 
 const DS = {
-  bg: "#0A0B10",
-  sidebar: "#07080B",
-  card: "#12141B",
-  surface: "#191C25",
-  border: "#272B38",
-  borderHi: "#3C4153",
-  primary: "#D4AF6A",
-  primaryGlow: "rgba(212,175,106,0.20)",
-  primaryDim: "rgba(212,175,106,0.08)",
-  gold: "#E9CF98",
-  goldGlow: "rgba(233,207,152,0.20)",
-  goldDim: "rgba(233,207,152,0.08)",
-  text1: "#F4EFE6",
-  text2: "#A9A396",
-  text3: "#6E6B63",
-  success: "#22C55E",
-  danger: "#F43F5E",
-  warning: "#F97316",
-  amber: "#F59E0B",
-  info: "#3B82F6",
-  purple: "#A855F7",
+  bg: "var(--ds-bg)",
+  sidebar: "var(--ds-sidebar)",
+  card: "var(--ds-card)",
+  surface: "var(--ds-surface)",
+  border: "var(--ds-border)",
+  borderHi: "var(--ds-borderHi)",
+  primary: "var(--ds-primary)",
+  primaryGlow: "var(--ds-primaryGlow)",
+  primaryDim: "var(--ds-primaryDim)",
+  gold: "var(--ds-gold)",
+  goldGlow: "var(--ds-goldGlow)",
+  goldDim: "var(--ds-goldDim)",
+  text1: "var(--ds-text1)",
+  text2: "var(--ds-text2)",
+  text3: "var(--ds-text3)",
+  success: "var(--ds-success)",
+  danger: "var(--ds-danger)",
+  warning: "var(--ds-warning)",
+  amber: "var(--ds-amber)",
+  info: "var(--ds-info)",
+  purple: "var(--ds-purple)",
 };
 
 const DISTRIBUTOR_OPTIONS = ["Supple", "Shree Jee Traders"];
@@ -48,14 +48,14 @@ const PROJECT_STAGE_OPTIONS = [
 ];
 
 const STAGE_COLOR = {
-  A: { bg: "#071830", text: "#60A5FA", border: "#3B82F6" },
-  B: { bg: "#062218", text: "#34D399", border: "#10B981" },
-  C: { bg: "#241800", text: "#FCD34D", border: "#F59E0B" },
-  D: { bg: "#240E00", text: "#FB923C", border: "#F97316" },
-  E: { bg: "#1A0830", text: "#C084FC", border: "#A855F7" },
-  F: { bg: "#042018", text: "#2DD4BF", border: "#14B8A6" },
-  G: { bg: "#240412", text: "#FB7185", border: "#F43F5E" },
-  H: { bg: "#042A18", text: "#4ADE80", border: "#22C55E" },
+  A: { bg: "var(--st-A-bg)", text: "var(--st-A-text)", border: "#3B82F6" },
+  B: { bg: "var(--st-B-bg)", text: "var(--st-B-text)", border: "#10B981" },
+  C: { bg: "var(--st-C-bg)", text: "var(--st-C-text)", border: "#F59E0B" },
+  D: { bg: "var(--st-D-bg)", text: "var(--st-D-text)", border: "#F97316" },
+  E: { bg: "var(--st-E-bg)", text: "var(--st-E-text)", border: "#A855F7" },
+  F: { bg: "var(--st-F-bg)", text: "var(--st-F-text)", border: "#14B8A6" },
+  G: { bg: "var(--st-G-bg)", text: "var(--st-G-text)", border: "#F43F5E" },
+  H: { bg: "var(--st-H-bg)", text: "var(--st-H-text)", border: "#22C55E" },
 };
 
 const stageColor = (stage) => {
@@ -98,7 +98,7 @@ const StageLadder = ({ stage, size = "md" }) => {
               background: i <= idx ? sc.border : DS.border,
               boxShadow:
                 i <= idx
-                  ? `0 0 7px ${sc.border}BB, 0 0 2px ${sc.border}`
+                  ? `0 0 7px color-mix(in srgb, ${sc.border} 73.3%, transparent), 0 0 2px ${sc.border}`
                   : "none",
             }}
           />
@@ -504,36 +504,72 @@ const injectGlobalStyles = () => {
       -webkit-font-smoothing: antialiased;
     }
     .dsr-mono { font-family: 'IBM Plex Mono','SF Mono',ui-monospace,Consolas,monospace; font-feature-settings:"tnum" 1,"zero" 1; letter-spacing:-0.01em; }
-    .dsr-layout ::selection { background:rgba(212,175,106,0.28); color:#F4EFE6; }
-    .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid #D4AF6A; outline-offset:2px; border-radius:6px; }
+    .dsr-layout ::selection { background:rgba(212,175,106,0.28); color:var(--ds-text1); }
+    .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
     @media(prefers-reduced-motion:reduce){.dsr-layout *,.dsr-layout *::before,.dsr-layout *::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important;}}
 
     .dsr-display { font-family:'Playfair Display','Times New Roman',serif!important; letter-spacing:0.005em; font-weight:600; }
-    .dsr-pages ::selection { background:rgba(212,175,106,0.30); color:#F4EFE6; }
-    .dsr-pages button:focus-visible,.dsr-pages input:focus-visible,.dsr-pages select:focus-visible { outline:2px solid #D4AF6A; outline-offset:2px; border-radius:6px; }
+    .dsr-pages ::selection { background:rgba(212,175,106,0.30); color:var(--ds-text1); }
+    .dsr-pages button:focus-visible,.dsr-pages input:focus-visible,.dsr-pages select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
     .dsr-layout, .dsr-pages { background-image:radial-gradient(ellipse at 15% 0%,rgba(212,175,106,0.07) 0%,transparent 45%),radial-gradient(ellipse at 90% 100%,rgba(212,175,106,0.04) 0%,transparent 50%)!important; }
     .dsr-half-card { transition:border-color .2s,box-shadow .2s,transform .2s; }
-    .dsr-half-card:hover { border-color:rgba(212,175,106,0.55)!important; box-shadow:0 14px 30px -18px rgba(212,175,106,0.45); transform:translateY(-1px); }
-    .dsr-half-open { font-size:11px; font-weight:700; color:#D4AF6A; opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
+    .dsr-half-card:hover { border-color:rgba(212,175,106,0.55)!important; box-shadow:var(--ds-shadow-gold); transform:translateY(-1px); }
+    .dsr-half-open { font-size:11px; font-weight:700; color:var(--ds-primary); opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
     .dsr-half-card:hover .dsr-half-open, .dsr-half-card:focus-within .dsr-half-open { opacity:1; transform:none; }
     @media(max-width:767px){ .dsr-half-open{opacity:1;transform:none;} }
     @media(max-width:640px){ .dsr-home-text{display:none;} }
     .dsr-home-link:hover { background:rgba(212,175,106,0.15)!important; }
     .dsr-gold-rule { height:1px; border:0; background:linear-gradient(90deg,transparent,rgba(212,175,106,0.55),transparent); margin:0; }
-    .dsr-glass { background:linear-gradient(160deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))!important; backdrop-filter:blur(14px); border:1px solid rgba(212,175,106,0.16)!important; box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,0 18px 40px -20px rgba(0,0,0,0.7)!important; }
-    .dsr-pagebar { position:sticky; top:0; z-index:60; background:rgba(10,11,16,0.82); backdrop-filter:blur(16px) saturate(1.3); border-bottom:1px solid rgba(212,175,106,0.18); }
-    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:999px; border:1px solid rgba(212,175,106,0.30); background:rgba(212,175,106,0.06); color:#D4AF6A; font-size:12.5px; font-weight:700; cursor:pointer; transition:background .15s,transform .15s; }
+    .dsr-glass { background:var(--ds-glass-bg)!important; backdrop-filter:blur(14px); border:1px solid var(--ds-glass-border)!important; box-shadow:var(--ds-shadow-glass)!important; }
+    .dsr-pagebar { position:sticky; top:0; z-index:60; background:var(--ds-pagebar); backdrop-filter:blur(16px) saturate(1.3); border-bottom:1px solid var(--ds-glass-border); }
+    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:999px; border:1px solid rgba(212,175,106,0.30); background:rgba(212,175,106,0.06); color:var(--ds-primary); font-size:12.5px; font-weight:700; cursor:pointer; transition:background .15s,transform .15s; }
     .dsr-back-btn:hover { background:rgba(212,175,106,0.14); transform:translateX(-2px); }
     .dsr-page-enter { animation:dsr-page-in .45s cubic-bezier(0.16,1,0.3,1) both; }
     @keyframes dsr-page-in { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
     .dsr-page-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
     .dsr-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .dsr-ghost-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:38px; padding:0 14px; border-radius:10px; border:1px solid #272B38; background:rgba(255,255,255,0.03); color:#F4EFE6; font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s,color .15s,background .15s; }
-    .dsr-ghost-btn:hover:not(:disabled) { border-color:#D4AF6A; color:#D4AF6A; background:rgba(212,175,106,0.08); }
+    .dsr-bar-row { cursor:pointer; border-radius:10px; padding:7px 9px 8px; margin:0 -9px 4px; transition:background .15s, transform .15s; }
+    .dsr-bar-row:hover { background:color-mix(in srgb, var(--ds-primary) 9%, transparent); transform:translateX(2px); }
+    .dsr-bar-row:focus-visible { outline:2px solid var(--ds-primary); outline-offset:1px; }
+    .dsr-viewall { display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 9px; border-radius:999px; border:1px solid var(--ds-glass-border); background:transparent; color:var(--ds-primary); font-size:10.5px; font-weight:700; letter-spacing:.03em; cursor:pointer; transition:background .15s,border-color .15s; }
+    .dsr-viewall:hover { background:var(--ds-primaryDim); border-color:var(--ds-primary); }
+    .dsr-seg { display:flex; gap:4px; padding:4px; border-radius:12px; background:var(--ds-surface); border:1px solid var(--ds-border); margin-bottom:14px; }
+    .dsr-seg button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:30px; border:0; border-radius:9px; background:transparent; color:var(--ds-text2); font-weight:600; font-size:11.5px; font-family:inherit; cursor:pointer; transition:background .15s,color .15s; }
+    .dsr-seg button:hover { color:var(--ds-text1); }
+    .dsr-seg button.active { background:var(--ds-card); color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
+    .dsr-rank-row { text-align:left; width:100%; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1px solid transparent; background:transparent; color:var(--ds-text1); font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s,transform .15s; }
+    .dsr-rank-row:hover { background:var(--ds-surface); }
+    .dsr-rank-row.on { background:var(--ds-card); border-color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
+    .dsr-rank-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; font-weight:600; margin-bottom:6px; }
+    .dsr-rank-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dsr-rank-bar { height:5px; border-radius:4px; background:var(--ds-border); overflow:hidden; }
+    .dsr-rank-bar > div { height:100%; border-radius:4px; transition:width .5s cubic-bezier(0.16,1,0.3,1); }
+    .dsr-rank-sub { font-size:10.5px; color:var(--ds-text3); margin-top:6px; }
+    .dsr-trend { display:flex; align-items:flex-end; gap:3px; height:120px; }
+    .dsr-trend-col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; font-size:9px; color:var(--ds-text3); }
+    .dsr-trend-col > div { width:100%; border-radius:4px 4px 2px 2px; }
+    .dsr-trend-bar { background:linear-gradient(180deg,color-mix(in srgb, var(--ds-info) 85%, transparent),color-mix(in srgb, var(--ds-info) 35%, transparent)); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
+    .dsr-trend-col.peak .dsr-trend-bar { background:linear-gradient(180deg,var(--ds-gold),var(--ds-primary)); }
+    .dsr-trend-col span { height:11px; line-height:11px; }
+    .dsr-mini-row { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; padding:8px 10px; margin-bottom:4px; border:1px solid var(--ds-border); border-radius:10px; background:var(--ds-surface); color:var(--ds-text1); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; text-align:left; transition:border-color .15s,transform .15s; }
+    .dsr-mini-row:hover { border-color:var(--ds-primary); transform:translateX(2px); }
+    .dsr-itable-wrap { overflow-x:auto; border:1px solid var(--ds-border); border-radius:12px; }
+    .dsr-itable { min-width:680px; }
+    .dsr-irow { display:grid; grid-template-columns:minmax(170px,2.2fr) 60px 70px 90px 120px 100px; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--ds-border); font-size:12.5px; }
+    .dsr-irow:last-child { border-bottom:0; }
+    .dsr-irow:not(.head):hover { background:var(--ds-surface); }
+    .dsr-irow.head { position:sticky; top:0; font-size:9.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ds-text3); background:var(--ds-surface); }
+    .dsr-link { display:flex; flex-direction:column; gap:2px; align-items:flex-start; background:none; border:0; padding:0; font-weight:600; font-size:13px; font-family:inherit; color:var(--ds-text1); cursor:pointer; text-align:left; }
+    .dsr-link:hover { color:var(--ds-primary); }
+    .dsr-link small { font-size:10.5px; font-weight:500; color:var(--ds-text3); }
+    .dsr-link.mono { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:700; color:var(--ds-info); }
+    .dsr-stage-chip { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px; border:1px solid; font-style:normal; font-size:11px; font-weight:800; }
+    .dsr-ghost-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:38px; padding:0 14px; border-radius:10px; border:1px solid var(--ds-border); background:color-mix(in srgb, var(--wash) 3.0%, transparent); color:var(--ds-text1); font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s,color .15s,background .15s; }
+    .dsr-ghost-btn:hover:not(:disabled) { border-color:var(--ds-primary); color:var(--ds-primary); background:rgba(212,175,106,0.08); }
     .dsr-ghost-btn:disabled { opacity:.45; cursor:not-allowed; }
-    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:linear-gradient(180deg,rgba(10,11,16,0),rgba(10,11,16,0.94) 35%); backdrop-filter:blur(8px); }
+    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:linear-gradient(180deg,transparent,color-mix(in srgb, var(--ds-bg) 94%, transparent) 35%); backdrop-filter:blur(8px); }
     @keyframes dsr-shimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
-    .dsr-skeleton { border-radius:12px; background:linear-gradient(90deg,#14161d 25%,#1c1f29 37%,#14161d 63%); background-size:800px 100%; animation:dsr-shimmer 1.4s infinite linear; }
+    .dsr-skeleton { border-radius:12px; background:linear-gradient(90deg,var(--ds-sk1) 25%,var(--ds-sk2) 37%,var(--ds-sk1) 63%); background-size:800px 100%; animation:dsr-shimmer 1.4s infinite linear; }
     @media(min-width:960px){
       .dsr-page-grid.has-aside { grid-template-columns:minmax(0,1fr) 340px; }
       .dsr-aside-sticky { position:sticky; top:84px; }
@@ -544,90 +580,90 @@ const injectGlobalStyles = () => {
     .dsr-modal-box { animation:dsr-modal-in 0.28s cubic-bezier(0.16,1,0.3,1) both; }
     .dsr-ladder-seg { transition:background-color 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s ease; }
     @keyframes dsr-spin { to{transform:rotate(360deg);} }
-    .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid rgba(255,255,255,0.08);border-top-color:#D4AF6A;animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
+    .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid color-mix(in srgb, var(--wash) 8.0%, transparent);border-top-color:var(--ds-primary);animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
     .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(212,175,106,0.12),rgba(59,130,246,0.12));border:1px solid rgba(212,175,106,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
-    .dsr-input:focus { outline:none;border-color:#D4AF6A!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
+    .dsr-input:focus { outline:none;border-color:var(--ds-primary)!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
     .dsr-input-highlight { border-color:#F59E0B!important;background:rgba(245,158,11,0.06)!important;box-shadow:0 0 0 2px rgba(245,158,11,0.15)!important; }
     .dsr-input-highlight:focus { border-color:#D97706!important;box-shadow:0 0 0 3px rgba(217,119,6,0.22)!important; }
-    .dsr-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A)!important;border:none!important;box-shadow:0 1px 2px rgba(0,0,0,0.25),0 8px 20px -6px rgba(212,175,106,0.50);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
-    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px);box-shadow:0 2px 4px rgba(0,0,0,0.3),0 12px 24px -6px rgba(212,175,106,0.60); }
+    .dsr-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A)!important;border:none!important;box-shadow:var(--ds-shadow-btn);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
+    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px);box-shadow:var(--ds-shadow-btn-hover); }
     .dsr-btn-primary:active:not(:disabled) { transform:translateY(0);filter:brightness(0.97); }
     .dsr-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
     .dsr-btn-danger:hover { background:rgba(244,63,94,0.15)!important;color:#FB7185!important;border-color:rgba(244,63,94,0.4)!important; }
     .dsr-btn-edit:hover { background:rgba(59,130,246,0.12)!important;color:#60A5FA!important;border-color:rgba(59,130,246,0.35)!important; }
-    .dsr-btn-export { background:linear-gradient(135deg,#0D9B72,#047857)!important;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 18px -6px rgba(4,120,87,0.45);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
+    .dsr-btn-export { background:linear-gradient(135deg,#0D9B72,#047857)!important;box-shadow:var(--ds-shadow-btn-green);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
     .dsr-btn-export:hover { filter:brightness(1.08);transform:translateY(-1.5px); }
-    .dsr-record-card { transition:box-shadow 0.25s cubic-bezier(0.16,1,0.3,1),transform 0.25s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 1px 1px rgba(0,0,0,0.15); }
-    .dsr-record-card:hover { box-shadow:0 4px 8px rgba(0,0,0,0.3),0 16px 32px -12px rgba(212,175,106,0.20)!important;transform:translateY(-2px);border-color:#3C4153!important; }
+    .dsr-record-card { transition:box-shadow 0.25s cubic-bezier(0.16,1,0.3,1),transform 0.25s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;box-shadow:var(--ds-shadow-card-sm); }
+    .dsr-record-card:hover { box-shadow:var(--ds-shadow-hover)!important;transform:translateY(-2px);border-color:var(--ds-borderHi)!important; }
     .dsr-customer-row { transition:background 0.12s;cursor:pointer; }
-    .dsr-customer-row:focus-visible { outline:2px solid #D4AF6A;outline-offset:-2px; }
+    .dsr-customer-row:focus-visible { outline:2px solid var(--ds-primary);outline-offset:-2px; }
     .dsr-customer-row:hover { background:rgba(212,175,106,0.06)!important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
     .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
     @media(max-width:767px){.dsr-row-actions{opacity:1!important;}}
-    .dsr-nav-item:hover { background:rgba(255,255,255,0.05)!important; }
-    .dsr-nav-item.active { background:rgba(212,175,106,0.14)!important;color:#D4AF6A!important; }
-    .dsr-topbar-btn:hover { background:rgba(255,255,255,0.12)!important; }
-    .dsr-topbar-btn:active { background:rgba(255,255,255,0.20)!important; }
+    .dsr-nav-item:hover { background:color-mix(in srgb, var(--wash) 5.0%, transparent)!important; }
+    .dsr-nav-item.active { background:rgba(212,175,106,0.14)!important;color:var(--ds-primary)!important; }
+    .dsr-topbar-btn:hover { background:color-mix(in srgb, var(--wash) 12.0%, transparent)!important; }
+    .dsr-topbar-btn:active { background:color-mix(in srgb, var(--wash) 20.0%, transparent)!important; }
     .dsr-visits-btn { transition:background 0.15s,border-color 0.15s,transform 0.15s; }
-    .dsr-visits-btn:hover { background:rgba(212,175,106,0.18)!important;border-color:#D4AF6A!important;transform:translateY(-1px); }
+    .dsr-visits-btn:hover { background:rgba(212,175,106,0.18)!important;border-color:var(--ds-primary)!important;transform:translateY(-1px); }
     .dsr-export-dropdown { position:relative;display:inline-flex;flex-shrink:0; }
-    .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:#12141B;border:1px solid #272B38;border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3); }
-    .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:#F4EFE6;border:none;background:transparent;width:100%;text-align:left; }
-    .dsr-export-menu-item:hover { background:rgba(212,175,106,0.10);color:#D4AF6A; }
-    .dsr-export-menu-item.active { background:rgba(212,175,106,0.12);color:#D4AF6A;font-weight:700; }
-    .dsr-export-divider { height:1px;background:#272B38;margin:6px 0; }
+    .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:var(--ds-shadow-menu); }
+    .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:var(--ds-text1);border:none;background:transparent;width:100%;text-align:left; }
+    .dsr-export-menu-item:hover { background:rgba(212,175,106,0.10);color:var(--ds-primary); }
+    .dsr-export-menu-item.active { background:rgba(212,175,106,0.12);color:var(--ds-primary);font-weight:700; }
+    .dsr-export-divider { height:1px;background:var(--ds-border);margin:6px 0; }
     .dsr-export-custom-row { padding:10px 12px 4px;display:flex;flex-direction:column;gap:6px; }
-    .dsr-export-custom-row label { font-size:11px;font-weight:700;color:#A9A396;text-transform:uppercase;letter-spacing:0.05em; }
+    .dsr-export-custom-row label { font-size:11px;font-weight:700;color:var(--ds-text2);text-transform:uppercase;letter-spacing:0.05em; }
     .dsr-export-custom-inputs { display:flex;gap:6px;align-items:center; }
-    .dsr-card-expanded { border:1.5px solid #D4AF6A!important;box-shadow:0 4px 8px rgba(0,0,0,0.25),0 16px 40px -10px rgba(212,175,106,0.22)!important; }
-    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid #272B38;background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:#A9A396;transition:all 0.15s;display:flex;align-items:center;gap:4px; }
+    .dsr-card-expanded { border:1.5px solid var(--ds-primary)!important;box-shadow:var(--ds-shadow-expanded)!important; }
+    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--ds-border);background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:var(--ds-text2);transition:all 0.15s;display:flex;align-items:center;gap:4px; }
     .dsr-expand-btn:hover,.dsr-expand-btn.expanded { background:rgba(59,130,246,0.10);color:#60A5FA;border-color:rgba(59,130,246,0.35); }
     .dsr-card-detail-section { overflow:hidden;transition:max-height 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.2s ease;max-height:0;opacity:0; }
     .dsr-card-detail-section.open { max-height:800px;opacity:1; }
-    .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid #272B38;background:rgba(255,255,255,0.03);font-size:12px;font-weight:600;color:#A9A396;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
-    .dsr-filter-chip:hover { border-color:#D4AF6A;color:#D4AF6A;background:rgba(212,175,106,0.08); }
-    .dsr-filter-chip.active { background:#D4AF6A;color:#0A0B10;border-color:#D4AF6A; }
-    .dsr-cust-banner { background:rgba(212,175,106,0.06);border:1px solid rgba(212,175,106,0.20);border-left:4px solid #D4AF6A;border-radius:10px;padding:12px 14px;margin-bottom:14px; }
-    .dsr-cust-banner-title { font-size:10px;font-weight:700;color:#D4AF6A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px; }
+    .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid var(--ds-border);background:color-mix(in srgb, var(--wash) 3.0%, transparent);font-size:12px;font-weight:600;color:var(--ds-text2);cursor:pointer;transition:all 0.15s;white-space:nowrap; }
+    .dsr-filter-chip:hover { border-color:var(--ds-primary);color:var(--ds-primary);background:rgba(212,175,106,0.08); }
+    .dsr-filter-chip.active { background:var(--ds-primary);color:#0A0B10;border-color:var(--ds-primary); }
+    .dsr-cust-banner { background:rgba(212,175,106,0.06);border:1px solid rgba(212,175,106,0.20);border-left:4px solid var(--ds-primary);border-radius:10px;padding:12px 14px;margin-bottom:14px; }
+    .dsr-cust-banner-title { font-size:10px;font-weight:700;color:var(--ds-primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px; }
     .dsr-cust-banner-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px 14px; }
     .dsr-cust-banner-item { display:flex;flex-direction:column;gap:1px; }
-    .dsr-cust-banner-key { font-size:9px;color:#6E6B63;font-weight:600;text-transform:uppercase;letter-spacing:0.05em; }
-    .dsr-cust-banner-val { font-size:12px;font-weight:700;color:#E9CF98; }
-    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);font-size:11px;color:#E9CF98;line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
+    .dsr-cust-banner-key { font-size:9px;color:var(--ds-text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em; }
+    .dsr-cust-banner-val { font-size:12px;font-weight:700;color:var(--ds-gold); }
+    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);font-size:11px;color:var(--ds-gold);line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
     .dsr-last-hint:hover { background:rgba(245,158,11,0.15); }
     .dsr-last-hint .hint-text { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:700;color:#E9CF98;margin-left:3px; }
+    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:700;color:var(--ds-gold);margin-left:3px; }
     .dsr-edit-stripe { background:linear-gradient(135deg,#1B1D28,#2C3042);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
     .dsr-modal-box::-webkit-scrollbar { width:4px; }
-    .dsr-modal-box::-webkit-scrollbar-track { background:#191C25; }
-    .dsr-modal-box::-webkit-scrollbar-thumb { background:#272B38;border-radius:2px; }
+    .dsr-modal-box::-webkit-scrollbar-track { background:var(--ds-surface); }
+    .dsr-modal-box::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
     .dsr-scroll::-webkit-scrollbar { width:4px; }
-    .dsr-scroll::-webkit-scrollbar-track { background:#191C25; }
-    .dsr-scroll::-webkit-scrollbar-thumb { background:#272B38;border-radius:2px; }
+    .dsr-scroll::-webkit-scrollbar-track { background:var(--ds-surface); }
+    .dsr-scroll::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
     @keyframes ei-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.45);}70%{box-shadow:0 0 0 7px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);} }
     .ei-import-btn { animation:ei-pulse 2s ease-out 1; }
     .ei-import-btn:hover { background:#059669!important; }
     .ei-input { transition:border-color 0.15s,box-shadow 0.15s;outline:none; }
-    .ei-input:focus { border-color:#D4AF6A!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
+    .ei-input:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
     .ei-row-new { background:rgba(212,175,106,0.05); }
     .ei-row-dup { background:rgba(245,158,11,0.05); }
-    .ei-row-new td:first-child { border-left:3px solid #D4AF6A; }
+    .ei-row-new td:first-child { border-left:3px solid var(--ds-primary); }
     .ei-row-dup td:first-child { border-left:3px solid #F59E0B; }
-    .ei-check:checked { accent-color:#D4AF6A; }
+    .ei-check:checked { accent-color:var(--ds-primary); }
     .ei-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A);color:#0A0B10;border:none;border-radius:8px;cursor:pointer;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 20px -6px rgba(212,175,106,0.45);transition:filter 0.18s,transform 0.18s; }
     .ei-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px); }
     .ei-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
-    .ei-btn-secondary { background:rgba(255,255,255,0.05);color:#F4EFE6;border:1px solid #272B38;border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
-    .ei-btn-secondary:hover { background:rgba(255,255,255,0.08); }
-    .ei-dropzone { border:2px dashed #272B38;border-radius:12px;background:rgba(255,255,255,0.02);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
-    .ei-dropzone.dragover { border-color:#D4AF6A;background:rgba(212,175,106,0.06); }
+    .ei-btn-secondary { background:color-mix(in srgb, var(--wash) 5.0%, transparent);color:var(--ds-text1);border:1px solid var(--ds-border);border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
+    .ei-btn-secondary:hover { background:color-mix(in srgb, var(--wash) 8.0%, transparent); }
+    .ei-dropzone { border:2px dashed var(--ds-border);border-radius:12px;background:color-mix(in srgb, var(--wash) 2.0%, transparent);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
+    .ei-dropzone.dragover { border-color:var(--ds-primary);background:rgba(212,175,106,0.06); }
     .ei-table { border-collapse:collapse;width:100%;font-size:12px; }
-    .ei-table th { background:#191C25;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#A9A396;padding:8px 10px;border-bottom:1px solid #272B38;position:sticky;top:0;z-index:1; }
-    .ei-table td { padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;color:#F4EFE6; }
+    .ei-table th { background:var(--ds-surface);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ds-text2);padding:8px 10px;border-bottom:1px solid var(--ds-border);position:sticky;top:0;z-index:1; }
+    .ei-table td { padding:8px 10px;border-bottom:1px solid color-mix(in srgb, var(--wash) 4.0%, transparent);vertical-align:middle;color:var(--ds-text1); }
     .ei-badge { display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700; }
-    .ei-badge-new { background:rgba(212,175,106,0.15);color:#D4AF6A;border:1px solid rgba(212,175,106,0.3); }
-    .ei-badge-dup { background:rgba(245,158,11,0.12);color:#E9CF98;border:1px solid rgba(245,158,11,0.3); }
+    .ei-badge-new { background:rgba(212,175,106,0.15);color:var(--ds-primary);border:1px solid rgba(212,175,106,0.3); }
+    .ei-badge-dup { background:rgba(245,158,11,0.12);color:var(--ds-gold);border:1px solid rgba(245,158,11,0.3); }
     .ei-toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;align-items:center;gap:8px; }
     @media(max-width:640px){.ei-desktop-only{display:none!important;}}
     @media(min-width:768px){
@@ -808,19 +844,19 @@ const downloadCustomerTemplate = () => {
     [
       "Project Stage",
       "Yes",
-      "Stage letter ya poora naam. Example: D ya D. Bulk Trials Complete",
+      "Stage letter or full name. Example: D or D. Bulk Trials Complete",
     ],
     [
       "Potential / Existing / ABP",
       "Numbers",
-      "Rs Lakhs, sirf number. Example: 2.5",
+      "Rs Lakhs, numbers only. Example: 2.5",
     ],
     ["Contact Person", "No", "Example: Ramesh Gupta"],
     ["Designation", "No", "Example: Owner, Purchase Manager"],
     [
       "Mobile / Alternate Mobile",
       "No",
-      "10 digit, 6-9 se start. +91 ya 0 laga ho to bhi chalega. Example: 9876543210",
+      "10 digits, starting with 6-9. A +91 or leading 0 is fine. Example: 9876543210",
     ],
     ["Email", "No", "Example: name@company.com"],
     ["Address", "No", "Free text"],
@@ -863,11 +899,11 @@ const IS = {
   width: "100%",
   height: 38,
   padding: "0 12px",
-  border: `1px solid #272B38`,
+  border: `1px solid var(--ds-border)`,
   borderRadius: 8,
   fontSize: 13,
-  color: "#F4EFE6",
-  background: "rgba(255,255,255,0.04)",
+  color: "var(--ds-text1)",
+  background: "color-mix(in srgb, var(--wash) 4.0%, transparent)",
   boxSizing: "border-box",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
@@ -985,7 +1021,7 @@ const ExcelImporter = ({
           setSelected(sel);
           setDone(false);
         } catch (err) {
-          showEiToast("File parse nahi hua: " + err.message, "error");
+          showEiToast("Could not parse file: " + err.message, "error");
         }
       };
       reader.readAsArrayBuffer(file);
@@ -1024,7 +1060,7 @@ const ExcelImporter = ({
   const dupCount = rows.filter((r) => r._isDup).length;
   const handleImport = async () => {
     if (!selectedRows.length) {
-      showEiToast("Koi customer select nahi kiya.", "error");
+      showEiToast("No customer selected.", "error");
       return;
     }
     setImporting(true);
@@ -1100,7 +1136,7 @@ const ExcelImporter = ({
         `${ok} customer${ok > 1 ? "s" : ""} import ho gaye!${fail > 0 ? ` (${fail} fail)` : ""}`,
       );
       if (onImportDone) onImportDone(imported);
-    } else showEiToast("Import fail ho gaya.", "error");
+    } else showEiToast("Import failed.", "error");
   };
   return (
     <div
@@ -1143,13 +1179,13 @@ const ExcelImporter = ({
           display: "flex",
           flexDirection: "column",
           boxShadow:
-            "0 8px 16px rgba(0,0,0,0.5),0 32px 64px -16px rgba(0,0,0,0.6)",
+            "var(--ds-shadow-modal)",
           overflow: "hidden",
         }}
       >
         <div
           style={{
-            background: "linear-gradient(135deg,#0B0C11,#1B1D28)",
+            background: "var(--ds-banner)",
             padding: "18px 20px",
             display: "flex",
             alignItems: "center",
@@ -1163,7 +1199,7 @@ const ExcelImporter = ({
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: "linear-gradient(135deg,#D4AF6A,#A8823A)",
+              background: "linear-gradient(135deg,var(--ds-primary),#A8823A)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1180,10 +1216,10 @@ const ExcelImporter = ({
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: DS.text1 }}>
-              Excel se Customers Import karo
+              Import Customers from Excel
             </div>
             <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
-              DVR.xlsx ya koi bhi DSR format
+              DVR.xlsx or any DSR format
             </div>
           </div>
           <button
@@ -1193,7 +1229,7 @@ const ExcelImporter = ({
               height: 32,
               borderRadius: 8,
               border: `1px solid ${DS.border}`,
-              background: "rgba(255,255,255,0.06)",
+              background: "color-mix(in srgb, var(--wash) 6.0%, transparent)",
               color: DS.text2,
               cursor: "pointer",
               display: "flex",
@@ -1246,10 +1282,10 @@ const ExcelImporter = ({
                   marginBottom: 6,
                 }}
               >
-                Excel file yahan drop karo
+                Drop the Excel file here
               </div>
               <div style={{ fontSize: 13, color: DS.text2, marginBottom: 16 }}>
-                ya click karke select karo (.xlsx, .xls)
+                or click to select (.xlsx, .xls)
               </div>
               <div
                 style={{
@@ -1266,8 +1302,7 @@ const ExcelImporter = ({
                   boxShadow: "0 4px 12px rgba(212,175,106,0.35)",
                 }}
               >
-                <Icon name="upload" size={13} strokeWidth={2.1} /> File Browse
-                karo
+                <Icon name="upload" size={13} strokeWidth={2.1} /> Browse File
               </div>
               <input
                 ref={fileInputRef}
@@ -1308,8 +1343,8 @@ const ExcelImporter = ({
                   }}
                 >
                   Customer, Area, Distributor, Stage, numbers + Contact Person,
-                  Mobile, Email, Address, GSTIN, Notes columns. Download kiya
-                  hua customers file bhi seedha wapas upload ho sakta hai.
+                  Mobile, Email, Address, GSTIN, Notes columns. A previously
+                  downloaded customers file can be uploaded back as-is.
                 </div>
               </div>
               <button
@@ -1395,8 +1430,8 @@ const ExcelImporter = ({
                       gap: 5,
                     }}
                   >
-                    <Icon name="alert" size={12} strokeWidth={2} /> Duplicates
-                    ke liye:
+                    <Icon name="alert" size={12} strokeWidth={2} /> For
+                    duplicates:
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {["skip", "overwrite"].map((val) => (
@@ -1444,7 +1479,7 @@ const ExcelImporter = ({
                     gap: 4,
                   }}
                 >
-                  <Icon name="check" size={11} strokeWidth={2.3} /> Sirf naye
+                  <Icon name="check" size={11} strokeWidth={2.3} /> New only
                 </button>
                 <button
                   className="ei-btn-secondary"
@@ -1644,7 +1679,6 @@ const ExcelImporter = ({
               }}
             >
               <Icon name="check" size={14} strokeWidth={2.3} /> Done — Close
-              karo
             </button>
           ) : (
             <>
@@ -1684,10 +1718,10 @@ const ExcelImporter = ({
                   <Icon name="upload" size={14} strokeWidth={2.1} />
                 )}
                 {importing
-                  ? "Import ho raha hai…"
+                  ? "Importing…"
                   : !rows.length
-                    ? "Pehle file upload karo"
-                    : `${selectedRows.length} Customers Import karo`}
+                    ? "Upload a file first"
+                    : `${selectedRows.length} Customers`}
               </button>
             </>
           )}
@@ -1904,7 +1938,7 @@ const CustomerLastRecord = ({ record }) => {
               fontWeight: 600,
               background: sc.bg,
               color: sc.text,
-              border: `1px solid ${sc.border}44`,
+              border: `1px solid color-mix(in srgb, ${sc.border} 26.7%, transparent)`,
             }}
           >
             {record.stage}
@@ -1960,7 +1994,7 @@ const MetricCard = ({ label, value, sub, accent }) => (
       borderRadius: 14,
       padding: "15px 16px 14px",
       border: `1px solid ${DS.border}`,
-      boxShadow: "0 1px 2px rgba(0,0,0,0.2),0 8px 20px -12px rgba(0,0,0,0.3)",
+      boxShadow: "var(--ds-shadow-card)",
       position: "relative",
       overflow: "hidden",
     }}
@@ -1973,7 +2007,7 @@ const MetricCard = ({ label, value, sub, accent }) => (
         left: 0,
         right: 0,
         height: 2,
-        background: `linear-gradient(90deg,${accent || DS.primary},${accent || DS.primary}55)`,
+        background: `linear-gradient(90deg,${accent || DS.primary},color-mix(in srgb, ${accent || DS.primary} 33.3%, transparent))`,
       }}
     />
     <div
@@ -2158,7 +2192,7 @@ const CustomSelect = ({
             maxHeight: 260,
             overflowY: "auto",
             boxShadow:
-              "0 20px 48px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)",
+              "var(--ds-shadow-pop)",
             scrollbarWidth: "thin",
             scrollbarColor: `${DS.border} transparent`,
           }}
@@ -2192,7 +2226,7 @@ const CustomSelect = ({
                 }}
                 onMouseEnter={(e) => {
                   if (!isSel && !isEmptyOpt)
-                    e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                    e.currentTarget.style.background = "color-mix(in srgb, var(--wash) 5.0%, transparent)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = isSel
@@ -2208,7 +2242,7 @@ const CustomSelect = ({
                       borderRadius: 2,
                       flexShrink: 0,
                       background: sc.border,
-                      boxShadow: `0 0 6px ${sc.border}AA`,
+                      boxShadow: `0 0 6px color-mix(in srgb, ${sc.border} 66.7%, transparent)`,
                     }}
                   />
                 )}
@@ -2276,7 +2310,7 @@ const Toast = ({ msg, type }) => {
         fontWeight: 600,
         zIndex: 1000,
         whiteSpace: "nowrap",
-        boxShadow: "0 4px 8px rgba(0,0,0,0.4),0 16px 32px -8px rgba(0,0,0,0.5)",
+        boxShadow: "var(--ds-shadow-raised)",
         background: type === "error" ? "#BE123C" : "#047857",
         display: "flex",
         alignItems: "center",
@@ -2449,7 +2483,7 @@ const RecordCard = ({ record, onDelete, onEdit }) => {
                   fontWeight: 600,
                   background: sc.bg,
                   color: sc.text,
-                  border: `1px solid ${sc.border}44`,
+                  border: `1px solid color-mix(in srgb, ${sc.border} 26.7%, transparent)`,
                   maxWidth: 200,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -2697,7 +2731,7 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
     <div
       role="button"
       tabIndex={0}
-      title="Full report kholo"
+      title="Open full report"
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
@@ -2836,7 +2870,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
   <div
     className="dsr-sidebar"
     style={{
-      background: `linear-gradient(180deg,${DS.sidebar} 0%,#050609 100%)`,
+      background: `linear-gradient(180deg,${DS.sidebar} 0%,var(--ds-sidebarEnd) 100%)`,
       flexDirection: "column",
       padding: "0",
       position: "sticky",
@@ -2973,7 +3007,7 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
       zIndex: 50,
       background: DS.card,
       borderTop: `1px solid ${DS.border}`,
-      boxShadow: "0 -4px 16px rgba(0,0,0,0.3)",
+      boxShadow: "var(--ds-shadow-bar)",
       padding: "6px 0 calc(6px + env(safe-area-inset-bottom))",
       justifyContent: "space-around",
     }}
@@ -3074,7 +3108,7 @@ const SectionCard = ({ title, children, style }) => (
       borderRadius: 14,
       padding: "17px",
       marginBottom: 14,
-      boxShadow: "0 1px 2px rgba(0,0,0,0.2),0 8px 20px -12px rgba(0,0,0,0.3)",
+      boxShadow: "var(--ds-shadow-card)",
       ...style,
     }}
   >
@@ -3102,6 +3136,7 @@ const SectionCard = ({ title, children, style }) => (
 //  /DailySalesReport/customer/:name/edit
 //  /DailySalesReport/customer/:name/history
 //  /DailySalesReport/visits/:name/:monthKey
+//  /DailySalesReport/analysis/:monthKey/:period/by/:stage|distributor|area[/:value]
 //  /DailySalesReport/record/:id/edit
 // ══════════════════════════════════════════════════════════════════════════
 const BASE = "/DailySalesReport";
@@ -3114,6 +3149,10 @@ const ROUTES = {
     `${BASE}/visits/${encodeURIComponent(n)}/${encodeURIComponent(monthKey)}${half ? `?half=${half}` : ""}`,
   period: (monthKey, period) =>
     `${BASE}/analysis/${encodeURIComponent(monthKey)}/${period}`,
+  insight: (monthKey, period, kind, value) =>
+    `${BASE}/analysis/${encodeURIComponent(monthKey)}/${period}/by/${kind}${
+      value ? `/${encodeURIComponent(value)}` : ""
+    }`,
   editRecord: (id) => `${BASE}/record/${encodeURIComponent(id)}/edit`,
 };
 
@@ -3138,7 +3177,21 @@ const parseRoute = (pathname) => {
     return { type: "history", name: seg[1] };
   if (seg[0] === "visits" && seg[1] && seg[2])
     return { type: "visits", name: seg[1], monthKey: seg[2] };
-  if (seg[0] === "analysis" && seg[1] && seg[2])
+  if (
+    seg[0] === "analysis" &&
+    seg[1] &&
+    seg[2] &&
+    seg[3] === "by" &&
+    INSIGHT_KINDS[seg[4]]
+  )
+    return {
+      type: "insight",
+      monthKey: seg[1],
+      period: seg[2],
+      kind: seg[4],
+      value: seg[5],
+    };
+  if (seg[0] === "analysis" && seg[1] && seg[2] && !seg[3])
     return { type: "period", monthKey: seg[1], period: seg[2] };
   if (seg[0] === "record" && seg[1] && seg[2] === "edit")
     return { type: "recordEdit", id: seg[1] };
@@ -3207,7 +3260,7 @@ const PageShell = ({
 }) => {
   const navigate = useNavigate();
   const goHome = () => {
-    if (homeGuard && !window.confirm("Unsaved changes hain. Page chhodna hai?"))
+    if (homeGuard && !window.confirm("You have unsaved changes. Leave this page?"))
       return;
     navigate(HOME_PATH);
   };
@@ -3296,7 +3349,7 @@ const PageShell = ({
                 width: 58,
                 height: 58,
                 borderRadius: "50%",
-                background: `linear-gradient(145deg,${DS.primaryGlow},rgba(255,255,255,0.02))`,
+                background: `linear-gradient(145deg,${DS.primaryGlow},color-mix(in srgb, var(--wash) 2.0%, transparent))`,
                 border: `1px solid ${DS.primary}`,
                 boxShadow: `0 0 0 4px ${DS.primaryDim}`,
                 display: "flex",
@@ -3355,7 +3408,7 @@ const PageLoading = ({ onBack, eyebrow = "Loading" }) => (
 const PageNotFound = ({ onBack, what }) => (
   <PageShell
     eyebrow="Not found"
-    title={`${what} nahi mila`}
+    title={`${what} not found`}
     onBack={onBack}
     maxWidth={900}
   >
@@ -3372,13 +3425,13 @@ const PageNotFound = ({ onBack, what }) => (
         />
       </div>
       <div style={{ fontSize: 15, fontWeight: 700 }}>
-        {what} available nahi hai
+        {what} is not available
       </div>
       <div style={{ fontSize: 12.5, color: DS.text2, margin: "6px 0 18px" }}>
-        Ho sakta hai delete ho gaya ho, ya link galat ho.
+        It may have been deleted, or the link is incorrect.
       </div>
       <button className="dsr-ghost-btn" onClick={onBack}>
-        <Icon name="back" size={14} /> Wapas jao
+        <Icon name="back" size={14} /> Go back
       </button>
     </div>
   </PageShell>
@@ -3583,7 +3636,7 @@ const useUnsavedGuard = (dirty) => {
 };
 
 const confirmLeave = (dirty, fn) => () => {
-  if (dirty && !window.confirm("Unsaved changes hain. Page chhodna hai?"))
+  if (dirty && !window.confirm("You have unsaved changes. Leave this page?"))
     return;
   fn();
 };
@@ -3599,7 +3652,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
         gap: 12,
         alignItems: "flex-start",
         background: tint,
-        border: `1px solid ${accent}2E`,
+        border: `1px solid color-mix(in srgb, ${accent} 18.0%, transparent)`,
         borderRadius: 12,
         padding: "11px 14px",
       }}
@@ -3609,7 +3662,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
           width: 28,
           height: 28,
           borderRadius: 8,
-          background: `${accent}1F`,
+          background: `color-mix(in srgb, ${accent} 12.2%, transparent)`,
           color: accent,
           display: "flex",
           alignItems: "center",
@@ -3721,7 +3774,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
                 padding: "0 12px",
                 borderRadius: 8,
                 border: `1px solid ${DS.border}`,
-                background: "rgba(255,255,255,0.03)",
+                background: "color-mix(in srgb, var(--wash) 3.0%, transparent)",
                 color: DS.text2,
                 fontSize: 11.5,
                 fontWeight: 600,
@@ -3917,14 +3970,14 @@ const ContactCard = ({ data, name, onEdit }) => {
       <SubHead icon="user">Contact</SubHead>
       {!has ? (
         <div style={{ fontSize: 12, color: DS.text2, lineHeight: 1.5 }}>
-          Abhi tak koi contact detail nahi.
+          No contact details yet.
           {onEdit && (
             <button
               className="dsr-ghost-btn"
               style={{ width: "100%", marginTop: 12 }}
               onClick={onEdit}
             >
-              <Icon name="addRecord" size={14} /> Contact add karo
+              <Icon name="addRecord" size={14} /> Add contact
             </button>
           )}
         </div>
@@ -3944,7 +3997,7 @@ const ContactCard = ({ data, name, onEdit }) => {
                 height: 40,
                 borderRadius: 12,
                 background: DS.primaryDim,
-                border: `1px solid ${DS.primary}55`,
+                border: `1px solid color-mix(in srgb, ${DS.primary} 33%, transparent)`,
                 color: DS.primary,
                 display: "flex",
                 alignItems: "center",
@@ -4049,7 +4102,7 @@ const ContactCard = ({ data, name, onEdit }) => {
               style={{ width: "100%", marginTop: 8 }}
               onClick={() => navigator.clipboard?.writeText(mob)}
             >
-              <Icon name="copy" size={13} /> Number copy karo
+              <Icon name="copy" size={13} /> Copy number
             </button>
           )}
         </>
@@ -4155,7 +4208,7 @@ const MobileInput = ({
           }}
         >
           {cleanMobile(value).length < 10
-            ? `${10 - cleanMobile(value).length} digit aur chahiye`
+            ? `${10 - cleanMobile(value).length} more digit(s) needed`
             : "Number 6–9 se start hona chahiye"}
         </div>
       )}
@@ -4294,7 +4347,7 @@ const CustomerFormPage = ({
               fontWeight: 600,
               background: sc.bg,
               color: sc.text,
-              border: `1px solid ${sc.border}55`,
+              border: `1px solid color-mix(in srgb, ${sc.border} 33.3%, transparent)`,
               marginBottom: 8,
               maxWidth: "100%",
               overflow: "hidden",
@@ -4405,7 +4458,7 @@ const CustomerFormPage = ({
             style={{ width: "100%" }}
             onClick={onOpenHistory}
           >
-            <Icon name="records" size={14} /> Full visit history dekho
+            <Icon name="records" size={14} /> View full visit history
           </button>
         </div>
       )}
@@ -4417,7 +4470,7 @@ const CustomerFormPage = ({
       eyebrow={isEdit ? "Edit customer" : "New customer"}
       title={isEdit ? editName : "Naya customer"}
       subtitle={
-        isEdit ? "Master data update karo" : "Customer ka master data fill karo"
+        isEdit ? "Update master data" : "Fill in the customer master data"
       }
       avatar={isEdit ? getInitials(editName) : "+"}
       onBack={confirmLeave(dirty, onCancel)}
@@ -4449,8 +4502,8 @@ const CustomerFormPage = ({
                 flexWrap: "wrap",
               }}
             >
-              <Icon name="alert" size={13} /> "{dupName}" naam se customer pehle
-              se hai.
+              <Icon name="alert" size={13} /> A customer named "{dupName}" already
+              exists.
               {onOpenOther && (
                 <button
                   className="dsr-ghost-btn"
@@ -4512,7 +4565,7 @@ const CustomerFormPage = ({
             name="contactPerson"
             value={data.contactPerson}
             onChange={handleChange}
-            placeholder="Person ka naam"
+            placeholder="Person name"
             autoComplete="name"
           />
           <div style={{ marginBottom: 12 }}>
@@ -4549,8 +4602,8 @@ const CustomerFormPage = ({
         </Grid2>
         {dupMob && (
           <FieldNote type="warn">
-            <Icon name="alert" size={13} /> Yeh mobile "{dupMob}" ke saath bhi
-            saved hai.
+            <Icon name="alert" size={13} /> This mobile is also saved with
+            "{dupMob}".
           </FieldNote>
         )}
         <FormInput
@@ -4563,7 +4616,7 @@ const CustomerFormPage = ({
           autoComplete="email"
         />
         {data.email && !isValidEmail(data.email) && (
-          <FieldNote>Email format sahi nahi hai</FieldNote>
+          <FieldNote>Invalid email format</FieldNote>
         )}
         <FormInput
           label="Address / Location"
@@ -4587,7 +4640,7 @@ const CustomerFormPage = ({
           <FieldNote type={isValidGSTIN(data.gstin) ? "ok" : "error"}>
             {isValidGSTIN(data.gstin)
               ? "GSTIN valid ✓"
-              : `${data.gstin.length}/15 — format abhi poora nahi`}
+              : `${data.gstin.length}/15 — format incomplete`}
           </FieldNote>
         )}
         <div style={{ marginBottom: 4 }}>
@@ -4661,7 +4714,7 @@ const CustomerFormPage = ({
       {isEdit && (
         <DangerZone
           title="Delete customer"
-          text="Customer master data hat jayega. Yeh action undo nahi hoga."
+          text="The customer master data will be removed. This action cannot be undone."
           label="Delete customer"
           onClick={() => onDelete(editName)}
         />
@@ -4781,7 +4834,7 @@ const RecordEditPage = ({
           </>
         ) : (
           <div style={{ fontSize: 12, color: DS.text2 }}>
-            Is customer ki yeh pehli visit hai.
+            This is the customer's first visit.
           </div>
         )}
         <button
@@ -4946,7 +4999,7 @@ const RecordEditPage = ({
 
       <DangerZone
         title="Delete this record"
-        text="Sirf yeh visit record delete hoga. Customer master data safe rahega."
+        text="Only this visit record will be deleted. The customer master data stays safe."
         label="Delete record"
         onClick={() => onDelete(id)}
       />
@@ -5057,7 +5110,7 @@ const CustomerHistoryPage = ({
         <SubHead icon="trending">Stage journey</SubHead>
         {journey.length === 0 ? (
           <div style={{ fontSize: 12, color: DS.text2 }}>
-            Abhi koi stage record nahi.
+            No stage records yet.
           </div>
         ) : (
           <div style={{ display: "grid", gap: 0 }}>
@@ -5139,7 +5192,7 @@ const CustomerHistoryPage = ({
               fontWeight: 700,
               background: sc.bg,
               color: sc.text,
-              border: `1px solid ${sc.border}66`,
+              border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
               maxWidth: 300,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -5186,7 +5239,7 @@ const CustomerHistoryPage = ({
         <StatTile
           label="Last visit"
           value={latest ? fmtDate(latest.date) : "—"}
-          sub={since === null ? "" : since === 0 ? "Aaj" : `${since} din pehle`}
+          sub={since === null ? "" : since === 0 ? "Today" : `${since} days ago`}
           accent={since !== null && since > 30 ? DS.warning : DS.gold}
         />
         <StatTile
@@ -5248,10 +5301,10 @@ const CustomerHistoryPage = ({
             />
           </div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: DS.text1 }}>
-            Abhi tak koi visit nahi
+            No visits yet
           </div>
           <div style={{ fontSize: 12, marginTop: 4 }}>
-            Is customer ka pehla record "Add visit" se banao
+            Create this customer's first record with "Add visit"
           </div>
         </div>
       ) : groups.length === 0 ? (
@@ -5263,7 +5316,7 @@ const CustomerHistoryPage = ({
             fontSize: 13,
           }}
         >
-          "{q}" se koi visit match nahi hui.
+          No visits match "{q}".
         </div>
       ) : (
         groups.map((g) => (
@@ -5295,7 +5348,7 @@ const CustomerHistoryPage = ({
                     fontWeight: 700,
                     color: DS.primary,
                     background: DS.primaryDim,
-                    border: `1px solid ${DS.primary}55`,
+                    border: `1px solid color-mix(in srgb, ${DS.primary} 33%, transparent)`,
                     borderRadius: 20,
                     padding: "3px 11px",
                     cursor: "pointer",
@@ -5419,7 +5472,7 @@ const VisitsPage = ({
               fontWeight: 700,
               background: sc.bg,
               color: sc.text,
-              border: `1px solid ${sc.border}66`,
+              border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
             }}
           >
             {latest.stage}
@@ -5470,8 +5523,46 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
   );
 };
 
-const BarRow = ({ label, value, max, color = DS.primary, right }) => (
-  <div style={{ marginBottom: 10 }}>
+const PanelHead = ({ icon, children, onOpen }) => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 8,
+    }}
+  >
+    <SubHead icon={icon}>{children}</SubHead>
+    {onOpen && (
+      <button className="dsr-viewall" onClick={onOpen}>
+        Details
+        <span style={{ transform: "rotate(45deg)", display: "flex" }}>
+          <Icon name="arrowUp" size={11} strokeWidth={2.2} />
+        </span>
+      </button>
+    )}
+  </div>
+);
+
+const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
+  <div
+    className={onClick ? "dsr-bar-row" : undefined}
+    style={onClick ? undefined : { marginBottom: 10 }}
+    {...(onClick
+      ? {
+          role: "button",
+          tabIndex: 0,
+          onClick,
+          onKeyDown: (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onClick();
+            }
+          },
+          title: "Open details",
+        }
+      : {})}
+  >
     <div
       style={{
         display: "flex",
@@ -5511,13 +5602,643 @@ const BarRow = ({ label, value, max, color = DS.primary, right }) => (
         style={{
           width: `${max > 0 ? (value / max) * 100 : 0}%`,
           height: "100%",
-          background: `linear-gradient(90deg,${color}99,${color})`,
+          background: `linear-gradient(90deg,color-mix(in srgb, ${color} 60.0%, transparent),${color})`,
           transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
         }}
       />
     </div>
   </div>
 );
+
+// ══════════════════════════════════════════════════════════════════════════
+//  INSIGHT PAGE  –  Stage / Distributor / Area deep-dive
+//  /DailySalesReport/analysis/:monthKey/:period/by/:kind[/:value]
+//  Period report ke side panels (Stage distribution, Distributor-wise visits,
+//  Top areas) par click karne se yahan aate hain.
+// ══════════════════════════════════════════════════════════════════════════
+const INSIGHT_KINDS = {
+  stage: { label: "Stage distribution", short: "Stage", icon: "sparkle" },
+  distributor: {
+    label: "Distributor-wise visits",
+    short: "Distributor",
+    icon: "store",
+  },
+  area: { label: "Top areas", short: "Area", icon: "pin" },
+};
+
+// customer ko uske LATEST visit ke hisaab se group mein daalte hain
+const insightId = (kind, c) => {
+  const l = c.latest || {};
+  if (kind === "stage") return (l.stage || "").trim()[0]?.toUpperCase() || "-";
+  if (kind === "distributor") return (l.distributor || "").trim() || "—";
+  return (l.area || "").trim() || "—";
+};
+const insightLabel = (kind, id) => {
+  if (kind !== "stage") return id;
+  return PROJECT_STAGE_OPTIONS.find((s) => s[0] === id) || "Not staged";
+};
+const custPot = (c) => toNum(c.latest.potDyes) + toNum(c.latest.potAux);
+const custEx = (c) => toNum(c.latest.exDyes) + toNum(c.latest.exAux);
+const custHeadroom = (c) => Math.max(0, custPot(c) - custEx(c));
+
+const buildInsightGroups = (rows, kind) => {
+  const m = new Map();
+  if (kind === "stage")
+    PROJECT_STAGE_OPTIONS.forEach((s) =>
+      m.set(s[0], { id: s[0], customers: [] }),
+    );
+  rows.forEach((c) => {
+    const id = insightId(kind, c);
+    if (!m.has(id)) m.set(id, { id, customers: [] });
+    m.get(id).customers.push(c);
+  });
+  const out = [...m.values()].map((g) => {
+    const cs = g.customers;
+    const sum = (fn) => cs.reduce((s, c) => s + fn(c), 0);
+    return {
+      ...g,
+      label: insightLabel(kind, g.id),
+      visits: sum((c) => c.visits),
+      n: cs.length,
+      repeat: cs.filter((c) => c.visits > 1).length,
+      pot: sum(custPot),
+      headroom: sum(custHeadroom),
+      ytd: sum((c) => toNum(c.latest.ytd)),
+      abp: sum((c) => toNum(c.latest.abp)),
+      pct: cs.length ? sum((c) => c.latest.pct || 0) / cs.length : 0,
+    };
+  });
+  return kind === "stage"
+    ? out
+    : out.sort((a, b) => b.visits - a.visits || a.label.localeCompare(b.label));
+};
+
+const InsightPage = ({
+  kind,
+  selected,
+  month,
+  period,
+  prev,
+  onBack,
+  onSelect,
+  onSwitchKind,
+  onOpenCustomer,
+  onOpenVisits,
+}) => {
+  const data = period === "full" ? month : month.halves[Number(period) - 1];
+  const rows = data.customerRows;
+  const pv = prev?.data;
+  const [yy, mm] = month.key.split("-").map(Number);
+  const lastDay = new Date(yy, mm, 0).getDate();
+  const dFrom = period === "2" ? 16 : 1;
+  const dTo = period === "1" ? 15 : lastDay;
+  const periodTitle = period === "full" ? "Full month" : data.title;
+  const meta = INSIGHT_KINDS[kind];
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState("visits");
+
+  const groups = useMemo(() => buildInsightGroups(rows, kind), [rows, kind]);
+  const prevGroups = useMemo(
+    () => (pv ? buildInsightGroups(pv.customerRows, kind) : null),
+    [pv, kind],
+  );
+  const periodVisits = Math.max(1, data.totalVisits);
+  const maxVisits = Math.max(1, ...groups.map((g) => g.visits));
+
+  const active = selected
+    ? groups.find((g) => g.id === selected) || null
+    : groups.find((g) => g.visits > 0) || groups[0] || null;
+  const pg = active && prevGroups?.find((g) => g.id === active.id);
+
+  // daily trend of the selected group
+  const daily = useMemo(() => {
+    const arr = [];
+    for (let d = dFrom; d <= dTo; d++) arr.push({ d, n: 0 });
+    (active?.customers || []).forEach((c) =>
+      c.records.forEach((r) => {
+        const slot = arr.find((x) => x.d === new Date(r.date).getDate());
+        if (slot) slot.n += 1;
+      }),
+    );
+    return arr;
+  }, [active, dFrom, dTo]);
+  const maxDaily = Math.max(1, ...daily.map((x) => x.n));
+  const peak = daily.reduce((a, b) => (b.n > a.n ? b : a), { d: 0, n: 0 });
+  const activeDays = daily.filter((x) => x.n > 0).length;
+
+  // cross breakdowns (e.g. area ke andar kaun se stage / distributor)
+  const cross = useMemo(() => {
+    if (!active) return [];
+    return Object.keys(INSIGHT_KINDS)
+      .filter((k) => k !== kind)
+      .map((k) => {
+        const m = {};
+        active.customers.forEach((c) => {
+          const id = insightId(k, c);
+          m[id] = (m[id] || 0) + c.visits;
+        });
+        const list = Object.entries(m)
+          .map(([id, n]) => ({ id, n, label: insightLabel(k, id) }))
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 6);
+        return { k, list };
+      });
+  }, [active, kind]);
+
+  // follow-up gap is measured against the end of the period (or today)
+  const refEnd = useMemo(() => {
+    const e = new Date(yy, mm - 1, dTo, 23, 59, 59);
+    return e > new Date() ? new Date() : e;
+  }, [yy, mm, dTo]);
+  const gapOf = (c) =>
+    Math.max(0, Math.floor((refEnd - new Date(c.latest.date)) / 86400000));
+
+  const shown = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = (active?.customers || []).filter(
+      (c) =>
+        !needle ||
+        `${c.name} ${c.latest.area || ""} ${c.latest.distributor || ""} ${c.latest.stage || ""}`
+          .toLowerCase()
+          .includes(needle),
+    );
+    const cmp = {
+      visits: (a, b) => b.visits - a.visits || a.name.localeCompare(b.name),
+      pot: (a, b) => custPot(b) - custPot(a),
+      headroom: (a, b) => custHeadroom(b) - custHeadroom(a),
+      pct: (a, b) => (b.latest.pct || 0) - (a.latest.pct || 0),
+      recent: (a, b) => new Date(b.latest.date) - new Date(a.latest.date),
+      name: (a, b) => a.name.localeCompare(b.name),
+    }[sort];
+    return [...list].sort(cmp);
+  }, [active, q, sort]);
+
+  const silent = (active?.customers || []).filter((c) => gapOf(c) >= 10);
+  const opportunity = [...(active?.customers || [])]
+    .filter((c) => custHeadroom(c) > 0)
+    .sort((a, b) => custHeadroom(b) - custHeadroom(a))
+    .slice(0, 4);
+
+  const exportGroup = () => {
+    if (!active) return;
+    const head = [
+      "Date",
+      "Customer",
+      "Area",
+      "Distributor",
+      "Stage",
+      "Objective",
+      "Outcome",
+      "Potential Dyes",
+      "Potential Aux",
+      "ABP AM26",
+      "YTD",
+      "YTD vs ABP %",
+    ];
+    const body = active.customers
+      .flatMap((c) => c.records)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map((r) => [
+        fmtDate(r.date),
+        r.customer,
+        r.area || "",
+        r.distributor || "",
+        r.stage || "",
+        r.objective || "",
+        r.outcome || "",
+        toNum(r.potDyes),
+        toNum(r.potAux),
+        toNum(r.abp),
+        toNum(r.ytd),
+        r.pct ?? 0,
+      ]);
+    const ws = XLSX.utils.aoa_to_sheet([head, ...body]);
+    ws["!cols"] = head.map((_, i) => ({ wch: i === 5 || i === 6 ? 36 : 16 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, meta.short.slice(0, 28));
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const safe = String(active.id).replace(/[^\w-]+/g, "_").slice(0, 30);
+    downloadBlob(
+      new Blob([out], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `DSR_${month.key}_${period}_${kind}_${safe}.xlsx`,
+    );
+  };
+
+  const withDelta = (text, cur, p, suffix = "", digits = 0) => (
+    <span style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>
+      <span>{text}</span>
+      {pg && <Delta cur={cur} prev={p} suffix={suffix} digits={digits} />}
+    </span>
+  );
+
+  // ── aside: kind switch + ranked list ────────────────────────────────────
+  const aside = (
+    <div className="dsr-glass" style={{ borderRadius: 16, padding: 16 }}>
+      <div className="dsr-seg" role="tablist" aria-label="Breakdown type">
+        {Object.entries(INSIGHT_KINDS).map(([k, v]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={k === kind}
+            className={k === kind ? "active" : ""}
+            onClick={() => k !== kind && onSwitchKind(k)}
+          >
+            <Icon name={v.icon} size={12} strokeWidth={2} /> {v.short}
+          </button>
+        ))}
+      </div>
+      <SubHead>
+        {groups.length} {meta.short.toLowerCase()}
+        {groups.length === 1 ? "" : "s"} · {periodTitle}
+      </SubHead>
+      <div style={{ display: "grid", gap: 6, gridTemplateColumns: "minmax(0,1fr)" }}>
+        {groups.map((g) => {
+          const on = active && g.id === active.id;
+          const sc = kind === "stage" ? stageColor(g.id) : null;
+          const color = sc ? sc.border : kind === "area" ? DS.info : DS.primary;
+          return (
+            <button
+              key={g.id}
+              className={`dsr-rank-row${on ? " on" : ""}`}
+              onClick={() => onSelect(g.id)}
+              aria-pressed={on}
+              style={{ opacity: g.visits === 0 && !on ? 0.55 : 1 }}
+            >
+              <div className="dsr-rank-top">
+                <span className="dsr-rank-name">{g.label}</span>
+                <span className="dsr-mono" style={{ color, fontWeight: 700 }}>
+                  {g.visits}
+                </span>
+              </div>
+              <div className="dsr-rank-bar">
+                <div
+                  style={{
+                    width: `${(g.visits / maxVisits) * 100}%`,
+                    background: `linear-gradient(90deg,color-mix(in srgb, ${color} 55%, transparent),${color})`,
+                  }}
+                />
+              </div>
+              <div className="dsr-rank-sub">
+                {g.n} customer{g.n === 1 ? "" : "s"} ·{" "}
+                {Math.round((g.visits / periodVisits) * 100)}% of visits
+              </div>
+            </button>
+          );
+        })}
+        {groups.length === 0 && (
+          <div style={{ fontSize: 12, color: DS.text2 }}>No data</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const title = active ? active.label : meta.label;
+
+  return (
+    <PageShell
+      eyebrow={`${meta.short} insights`}
+      title={title.length > 44 ? `${title.slice(0, 43)}…` : title}
+      subtitle={`${periodTitle} · ${month.label}${
+        active ? ` · ${Math.round((active.visits / periodVisits) * 100)}% of period visits` : ""
+      }`}
+      avatar={meta.short[0]}
+      onBack={onBack}
+      aside={aside}
+      actions={
+        <button
+          className="dsr-ghost-btn"
+          style={{ height: 36 }}
+          disabled={!active || active.n === 0}
+          onClick={exportGroup}
+        >
+          <Icon name="download" size={13} /> Excel
+        </button>
+      }
+    >
+      {!active ? (
+        <div
+          className="dsr-glass"
+          style={{ borderRadius: 16, padding: 36, textAlign: "center" }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+            This {meta.short.toLowerCase()} was not found in this period
+          </div>
+          <div style={{ fontSize: 12, color: DS.text2 }}>
+            Pick another {meta.short.toLowerCase()} from the list.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0,1fr)" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,170px),1fr))",
+              gap: 12,
+            }}
+          >
+            <MetricCard
+              label="Visits"
+              value={active.visits}
+              accent={DS.info}
+              sub={withDelta(
+                `${Math.round((active.visits / periodVisits) * 100)}% of period`,
+                active.visits,
+                pg?.visits,
+              )}
+            />
+            <MetricCard
+              label="Customers"
+              value={active.n}
+              sub={withDelta(
+                `${active.repeat} repeat visited`,
+                active.n,
+                pg?.n,
+              )}
+            />
+            <MetricCard
+              label="Potential"
+              value={fmtL(active.pot)}
+              sub={withDelta(
+                "latest per customer",
+                Number(active.pot.toFixed(1)),
+                pg ? Number(pg.pot.toFixed(1)) : undefined,
+                "L",
+                1,
+              )}
+            />
+            <MetricCard
+              label="Headroom"
+              value={fmtL(active.headroom)}
+              accent={DS.success}
+              sub="potential − existing"
+            />
+            <MetricCard
+              label="Total YTD"
+              value={fmtL(active.ytd)}
+              sub={`of ${fmtL(active.abp)} ABP`}
+            />
+            <MetricCard
+              label="Avg YTD/ABP"
+              value={`${active.pct.toFixed(1)}%`}
+              accent={DS.purple}
+              sub={withDelta(
+                "customer average",
+                Number(active.pct.toFixed(1)),
+                pg ? Number(pg.pct.toFixed(1)) : undefined,
+                "%",
+                1,
+              )}
+            />
+          </div>
+
+          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+            <SubHead icon="trending">Visit trend · {periodTitle}</SubHead>
+            <div className="dsr-trend" role="img" aria-label="Daily visits">
+              {daily.map((x) => (
+                <div
+                  key={x.d}
+                  className={`dsr-trend-col${x.d === peak.d && x.n > 0 ? " peak" : ""}`}
+                  title={`${x.d} ${month.label.split(" ")[0]} · ${x.n} visit${x.n === 1 ? "" : "s"}`}
+                >
+                  <div
+                    className="dsr-trend-bar"
+                    style={{ height: `${Math.max(x.n ? 8 : 3, (x.n / maxDaily) * 100)}%` }}
+                  />
+                  <span>{x.d % 5 === 0 || x.d === dFrom ? x.d : ""}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11.5, color: DS.text2, marginTop: 10 }}>
+              {activeDays} active day{activeDays === 1 ? "" : "s"}
+              {peak.n > 0 && (
+                <>
+                  {" "}
+                  · busiest <b style={{ color: DS.text1 }}>{peak.d}</b> (
+                  {peak.n} visit{peak.n === 1 ? "" : "s"})
+                </>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))",
+              gap: 16,
+            }}
+          >
+            {cross.map(({ k, list }) => (
+              <div
+                key={k}
+                className="dsr-glass"
+                style={{ borderRadius: 16, padding: 18 }}
+              >
+                <SubHead icon={INSIGHT_KINDS[k].icon}>
+                  By {INSIGHT_KINDS[k].short.toLowerCase()}
+                </SubHead>
+                {list.map((x) => (
+                  <BarRow
+                    key={x.id}
+                    label={x.label.length > 30 ? `${x.label.slice(0, 29)}…` : x.label}
+                    value={x.n}
+                    max={list[0].n}
+                    color={
+                      k === "stage"
+                        ? stageColor(x.id).border
+                        : k === "area"
+                          ? DS.info
+                          : DS.primary
+                    }
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {(silent.length > 0 || opportunity.length > 0) && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))",
+                gap: 16,
+              }}
+            >
+              <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+                <SubHead icon="clock">Follow-up due · 10+ days silent</SubHead>
+                {silent.length === 0 ? (
+                  <div style={{ fontSize: 12, color: DS.text2 }}>
+                    All customers were visited recently 👌
+                  </div>
+                ) : (
+                  silent
+                    .sort((a, b) => gapOf(b) - gapOf(a))
+                    .slice(0, 5)
+                    .map((c) => (
+                      <button
+                        key={c.name}
+                        className="dsr-mini-row"
+                        onClick={() => onOpenCustomer(c.name)}
+                      >
+                        <span>{c.name}</span>
+                        <span
+                          className="dsr-mono"
+                          style={{ color: DS.warning, fontWeight: 700 }}
+                        >
+                          {gapOf(c)}d
+                        </span>
+                      </button>
+                    ))
+                )}
+              </div>
+              <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+                <SubHead icon="lightbulb">Biggest headroom</SubHead>
+                {opportunity.length === 0 ? (
+                  <div style={{ fontSize: 12, color: DS.text2 }}>
+                    No headroom data
+                  </div>
+                ) : (
+                  opportunity.map((c) => (
+                    <button
+                      key={c.name}
+                      className="dsr-mini-row"
+                      onClick={() => onOpenCustomer(c.name)}
+                    >
+                      <span>{c.name}</span>
+                      <span
+                        className="dsr-mono"
+                        style={{ color: DS.success, fontWeight: 700 }}
+                      >
+                        {fmtL(custHeadroom(c))}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: 12,
+              }}
+            >
+              <SubHead icon="users">Customers · {shown.length}</SubHead>
+              <div style={{ flex: 1 }} />
+              <input
+                className="dsr-input"
+                placeholder="Search customer…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                style={{ ...IS, height: 34, width: 200, maxWidth: "100%" }}
+                aria-label="Search customers"
+              />
+              <select
+                className="dsr-input"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                style={{ ...IS, height: 34, width: "auto" }}
+                aria-label="Sort customers"
+              >
+                <option value="visits">Most visits</option>
+                <option value="recent">Latest visit</option>
+                <option value="pot">Potential</option>
+                <option value="headroom">Headroom</option>
+                <option value="pct">YTD / ABP %</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+            <div className="dsr-itable-wrap">
+              <div className="dsr-itable">
+                <div className="dsr-irow head">
+                  <span>Customer</span>
+                  <span>Stage</span>
+                  <span>Visits</span>
+                  <span>Potential</span>
+                  <span>YTD / ABP</span>
+                  <span>Last visit</span>
+                </div>
+                {shown.map((c) => {
+                  const sc = stageColor(c.latest.stage);
+                  const gap = gapOf(c);
+                  return (
+                    <div key={c.name} className="dsr-irow">
+                      <button
+                        className="dsr-link"
+                        onClick={() => onOpenCustomer(c.name)}
+                        title="Open customer history"
+                      >
+                        {c.name}
+                        <small>
+                          {[c.latest.area, c.latest.distributor]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </small>
+                      </button>
+                      <span>
+                        {c.latest.stage ? (
+                          <em
+                            className="dsr-stage-chip"
+                            style={{
+                              background: sc.bg,
+                              color: sc.text,
+                              borderColor: sc.border,
+                            }}
+                          >
+                            {c.latest.stage.trim()[0]}
+                          </em>
+                        ) : (
+                          "—"
+                        )}
+                      </span>
+                      <button
+                        className="dsr-link mono"
+                        onClick={() => onOpenVisits(c.name)}
+                        title="View visits in this period"
+                      >
+                        {c.visits}
+                      </button>
+                      <span className="dsr-mono">{fmtL(custPot(c))}</span>
+                      <span
+                        className="dsr-mono"
+                        style={{ color: pctColor(c.latest.pct || 0) }}
+                      >
+                        {fmtL(toNum(c.latest.ytd))}{" "}
+                        <small>{(c.latest.pct || 0).toFixed(0)}%</small>
+                      </span>
+                      <span style={{ fontSize: 11.5 }}>
+                        {new Date(c.latest.date).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                        {gap >= 10 && (
+                          <small style={{ color: DS.warning, marginLeft: 6 }}>
+                            {gap}d
+                          </small>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+                {shown.length === 0 && (
+                  <div style={{ padding: 18, fontSize: 12, color: DS.text2 }}>
+                    No customers found
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageShell>
+  );
+};
 
 const PeriodReportPage = ({
   month,
@@ -5529,6 +6250,7 @@ const PeriodReportPage = ({
   onSwitch,
   onOpenCustomer,
   onOpenVisits,
+  onOpenInsight,
 }) => {
   const data = period === "full" ? month : month.halves[Number(period) - 1];
   const rows = data.customerRows;
@@ -5720,7 +6442,9 @@ const PeriodReportPage = ({
       )}
 
       <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
-        <SubHead icon="sparkle">Stage distribution</SubHead>
+        <PanelHead icon="sparkle" onOpen={() => onOpenInsight("stage")}>
+          Stage distribution
+        </PanelHead>
         {stageDist.map(({ st, n }) => (
           <BarRow
             key={st}
@@ -5729,12 +6453,15 @@ const PeriodReportPage = ({
             max={maxStage}
             color={stageColor(st).border}
             right={`${n}`}
+            onClick={() => onOpenInsight("stage", st[0])}
           />
         ))}
       </div>
 
       <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
-        <SubHead icon="store">Distributor-wise visits</SubHead>
+        <PanelHead icon="store" onOpen={() => onOpenInsight("distributor")}>
+          Distributor-wise visits
+        </PanelHead>
         {byDist.length === 0 && (
           <div style={{ fontSize: 12, color: DS.text2 }}>No data</div>
         )}
@@ -5745,12 +6472,15 @@ const PeriodReportPage = ({
             value={n}
             max={byDist[0][1]}
             color={DS.primary}
+            onClick={() => onOpenInsight("distributor", k)}
           />
         ))}
       </div>
 
       <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
-        <SubHead icon="pin">Top areas</SubHead>
+        <PanelHead icon="pin" onOpen={() => onOpenInsight("area")}>
+          Top areas
+        </PanelHead>
         {byArea.map(([k, n]) => (
           <BarRow
             key={k}
@@ -5758,6 +6488,7 @@ const PeriodReportPage = ({
             value={n}
             max={byArea[0][1]}
             color={DS.info}
+            onClick={() => onOpenInsight("area", k)}
           />
         ))}
       </div>
@@ -5937,7 +6668,7 @@ const PeriodReportPage = ({
                       padding: "12px 0",
                     }}
                   >
-                    Is period mein koi visit nahi
+                    No visits in this period
                   </div>
                 ) : (
                   <div
@@ -5986,7 +6717,7 @@ const PeriodReportPage = ({
                       <div
                         key={lbl}
                         style={{
-                          background: "rgba(255,255,255,0.03)",
+                          background: "color-mix(in srgb, var(--wash) 3.0%, transparent)",
                           border: `1px solid ${DS.border}`,
                           borderRadius: 9,
                           padding: "8px 10px",
@@ -6029,7 +6760,7 @@ const PeriodReportPage = ({
                 )}
                 {h.id === 2 && h.totalVisits > 0 && (
                   <div style={{ fontSize: 10, color: DS.text3, marginTop: 8 }}>
-                    ▲▼ = first half ke comparison mein
+                    ▲▼ = compared with the first half
                   </div>
                 )}
               </div>
@@ -6082,7 +6813,7 @@ const PeriodReportPage = ({
                   background: x.n
                     ? x.d === peak.d
                       ? `linear-gradient(180deg,${DS.gold},${DS.primary})`
-                      : `linear-gradient(180deg,${DS.primary}CC,${DS.primary}55)`
+                      : `linear-gradient(180deg,color-mix(in srgb, ${DS.primary} 80%, transparent),color-mix(in srgb, ${DS.primary} 33%, transparent))`
                     : DS.border,
                 }}
               />
@@ -6127,13 +6858,13 @@ const PeriodReportPage = ({
           {[
             [
               "Follow-up pending",
-              `Pichle period mein visit hui, is mein nahi (${notRevisited.length})`,
+              `Visited last period, not this one (${notRevisited.length})`,
               notRevisited,
               DS.warning,
             ],
             [
               "New this period",
-              `Pehli baar is period mein (${newThisPeriod.length})`,
+              `First visit in this period (${newThisPeriod.length})`,
               newThisPeriod,
               DS.success,
             ],
@@ -6242,7 +6973,7 @@ const PeriodReportPage = ({
                 color: DS.text2,
               }}
             >
-              Koi customer match nahi hua.
+              No matching customers.
             </div>
           )}
           {shown.map((c, i) => {
@@ -6633,11 +7364,11 @@ const DailySalesReport = () => {
   const addRecord = async () => {
     const { date, area, distributor, customer } = newRecord;
     if (!date) {
-      showToast("Date fill karo (required).", "error");
+      showToast("Please fill in the date (required).", "error");
       return;
     }
     if (!area || !distributor || !customer) {
-      showToast("Date, Area, Distributor aur Customer zaroori hain.", "error");
+      showToast("Date, Area, Distributor and Customer are required.", "error");
       return;
     }
     try {
@@ -6694,7 +7425,7 @@ const DailySalesReport = () => {
       }
       setNewRecord({ ...EMPTY_RECORD });
       setActiveTab("records");
-      showToast("Record save ho gaya!");
+      showToast("Record saved!");
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -6703,11 +7434,11 @@ const DailySalesReport = () => {
   };
 
   const deleteRecord = async (id) => {
-    if (!window.confirm("Yeh record delete karein?")) return;
+    if (!window.confirm("Delete this record?")) return;
     try {
       await apiFetch(`/api/dsr/records/${id}`, { method: "DELETE" });
       setRecords((p) => p.filter((r) => (r._id || r.id) !== id));
-      showToast("Record delete ho gaya.");
+      showToast("Record deleted.");
       return true;
     } catch (err) {
       showToast(err.message, "error");
@@ -6720,7 +7451,7 @@ const DailySalesReport = () => {
   };
   const updateRecord = async (id, data) => {
     if (!data.date || !data.area || !data.distributor || !data.customer) {
-      showToast("Date, Area, Distributor aur Customer zaroori hain.", "error");
+      showToast("Date, Area, Distributor and Customer are required.", "error");
       return;
     }
     try {
@@ -6744,7 +7475,7 @@ const DailySalesReport = () => {
         }),
       });
       setRecords((p) => p.map((r) => ((r._id || r.id) === id ? res.data : r)));
-      showToast("Record update ho gaya!");
+      showToast("Record updated!");
       goBack();
     } catch (err) {
       showToast(err.message, "error");
@@ -6803,7 +7534,7 @@ const DailySalesReport = () => {
       "YTD vs ABP %": r.pct || 0,
     }));
     if (!ed.length) {
-      showToast("Is range mein koi record nahi hai.", "error");
+      showToast("There are no records in this range.", "error");
       return;
     }
     const ck = Object.keys(ed[0]);
@@ -6860,7 +7591,7 @@ const DailySalesReport = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-    showToast(`Excel download ho raha hai! (${ed.length} records)`);
+    showToast(`Downloading Excel! (${ed.length} records)`);
   };
 
   const openAddCustomer = () => navigate(ROUTES.newCustomer);
@@ -6873,19 +7604,19 @@ const DailySalesReport = () => {
 
   const handleSaveCustomer = async (name, data) => {
     if (!name) {
-      showToast("Customer naam daalo.", "error");
+      showToast("Enter the customer name.", "error");
       return;
     }
     if (!data.area) {
-      showToast("Area daalo.", "error");
+      showToast("Enter the area.", "error");
       return;
     }
     if (!data.distributor) {
-      showToast("Distributor select karo.", "error");
+      showToast("Please select a distributor.", "error");
       return;
     }
     if (!data.stage) {
-      showToast("Project stage select karo.", "error");
+      showToast("Please select a project stage.", "error");
       return;
     }
     if (
@@ -6893,7 +7624,7 @@ const DailySalesReport = () => {
       data.potDyes === null ||
       data.potDyes === undefined
     ) {
-      showToast("Potential Dyes /mth daalo (required).", "error");
+      showToast("Enter Potential Dyes /mth (required).", "error");
       return;
     }
     if (
@@ -6901,27 +7632,27 @@ const DailySalesReport = () => {
       data.potAux === null ||
       data.potAux === undefined
     ) {
-      showToast("Potential Aux /mth daalo (required).", "error");
+      showToast("Enter Potential Aux /mth (required).", "error");
       return;
     }
     if (data.abp === "" || data.abp === null || data.abp === undefined) {
-      showToast("ABP AM26 daalo (required).", "error");
+      showToast("Enter ABP AM26 (required).", "error");
       return;
     }
     if (data.mobile && !isValidMobile(cleanMobile(data.mobile))) {
-      showToast("Mobile number 10 digit ka sahi number daalo.", "error");
+      showToast("Enter a valid 10-digit mobile number.", "error");
       return;
     }
     if (data.altMobile && !isValidMobile(cleanMobile(data.altMobile))) {
-      showToast("Alternate mobile number sahi nahi hai.", "error");
+      showToast("The alternate mobile number is invalid.", "error");
       return;
     }
     if (data.email && !isValidEmail(data.email.trim())) {
-      showToast("Email sahi format mein daalo.", "error");
+      showToast("Enter the email in a valid format.", "error");
       return;
     }
     if (data.gstin && !isValidGSTIN(data.gstin.trim().toUpperCase())) {
-      showToast("GSTIN 15 character ka sahi daalo.", "error");
+      showToast("Enter a valid 15-character GSTIN.", "error");
       return;
     }
     if (
@@ -6930,7 +7661,7 @@ const DailySalesReport = () => {
         (k) => k.trim().toLowerCase() === name.trim().toLowerCase(),
       )
     ) {
-      showToast("Is naam ka customer pehle se hai.", "error");
+      showToast("A customer with this name already exists.", "error");
       return;
     }
     const payload = {
@@ -6958,7 +7689,7 @@ const DailySalesReport = () => {
         const nameChanged = name !== editingCustomer;
         const oid = customers[editingCustomer]?._id;
         if (!oid) {
-          showToast("Customer ID nahi mila.", "error");
+          showToast("Customer ID not found.", "error");
           return;
         }
         const res = await apiFetch(`/api/dsr/customers/${oid}`, {
@@ -6986,7 +7717,7 @@ const DailySalesReport = () => {
         showToast(
           nameChanged
             ? `Naam update: ${editingCustomer} → ${up.name}`
-            : `${name} update ho gaya!`,
+            : `${name} updated!`,
         );
       } else {
         const res = await apiFetch("/api/dsr/customers", {
@@ -7009,7 +7740,7 @@ const DailySalesReport = () => {
             exAux: cd.exAux,
             abp: cd.abp,
           }));
-        showToast(`${name} add ho gaya!`);
+        showToast(`${name} added!`);
       }
       if (modalMode === "edit" && name !== editingCustomer) toList();
       else goBack();
@@ -7021,10 +7752,10 @@ const DailySalesReport = () => {
   };
 
   const handleDeleteCustomer = async (name) => {
-    if (!window.confirm(`"${name}" ko delete karein?`)) return;
+    if (!window.confirm(`Delete "${name}"?`)) return;
     const id = customers[name]?._id;
     if (!id) {
-      showToast("Customer ID nahi mila.", "error");
+      showToast("Customer ID not found.", "error");
       return;
     }
     try {
@@ -7035,7 +7766,7 @@ const DailySalesReport = () => {
         return n;
       });
       if (newRecord.customer === name) setNewRecord({ ...EMPTY_RECORD });
-      showToast(`${name} delete ho gaya.`);
+      showToast(`${name} deleted.`);
       toList();
     } catch (err) {
       showToast(err.message, "error");
@@ -7231,6 +7962,60 @@ const DailySalesReport = () => {
                 ROUTES.visits(n, m.key, per === "full" ? undefined : per),
               )
             }
+            onOpenInsight={(k, v) => navigate(ROUTES.insight(m.key, per, k, v))}
+          />
+        );
+      }
+    } else if (route.type === "insight") {
+      const idx = monthlyAnalysis.findIndex((x) => x.key === route.monthKey);
+      const m = monthlyAnalysis[idx];
+      const per = route.period;
+      if (!recordsLoaded)
+        page = <PageLoading onBack={goBack} eyebrow="Insights" />;
+      else if (!m || !["1", "2", "full"].includes(per))
+        page = <PageNotFound what="Report" onBack={toList} />;
+      else {
+        let prevData = null;
+        let prevLabel = "";
+        if (per === "full") {
+          const pm = monthlyAnalysis[idx + 1];
+          if (pm) {
+            prevData = pm;
+            prevLabel = pm.label;
+          }
+        } else if (per === "2") {
+          prevData = m.halves[0];
+          prevLabel = `${m.label} · ${m.halves[0].title}`;
+        } else {
+          const pm = monthlyAnalysis[idx + 1];
+          if (pm) {
+            prevData = pm.halves[1];
+            prevLabel = `${pm.label} · ${pm.halves[1].title}`;
+          }
+        }
+        page = (
+          <InsightPage
+            key={`${m.key}-${per}-${route.kind}`}
+            kind={route.kind}
+            selected={route.value}
+            month={m}
+            period={per}
+            prev={prevData ? { data: prevData, label: prevLabel } : null}
+            onBack={goBack}
+            onSelect={(v) =>
+              navigate(ROUTES.insight(m.key, per, route.kind, v), {
+                replace: true,
+              })
+            }
+            onSwitchKind={(k) =>
+              navigate(ROUTES.insight(m.key, per, k), { replace: true })
+            }
+            onOpenCustomer={(n) => navigate(ROUTES.history(n))}
+            onOpenVisits={(n) =>
+              navigate(
+                ROUTES.visits(n, m.key, per === "full" ? undefined : per),
+              )
+            }
           />
         );
       }
@@ -7293,7 +8078,7 @@ const DailySalesReport = () => {
           className="dsr-header"
           style={{
             background:
-              "linear-gradient(155deg,#0B0C11 0%,#161821 55%,#222532 100%)",
+              "var(--ds-banner)",
             borderRadius: 16,
             padding: "18px 20px",
             marginBottom: 18,
@@ -7301,7 +8086,7 @@ const DailySalesReport = () => {
             alignItems: "center",
             gap: 12,
             boxShadow:
-              "0 1px 2px rgba(0,0,0,0.4),0 16px 32px -14px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.06)",
+              "var(--ds-shadow-banner)",
             position: "relative",
             overflow: "hidden",
             border: `1px solid rgba(212,175,106,0.28)`,
@@ -7388,7 +8173,7 @@ const DailySalesReport = () => {
               background:
                 activeTab === "records"
                   ? "rgba(212,175,106,0.20)"
-                  : "rgba(255,255,255,0.06)",
+                  : "color-mix(in srgb, var(--wash) 6.0%, transparent)",
               color: activeTab === "records" ? DS.primary : DS.text1,
               cursor: "pointer",
               display: "flex",
@@ -7680,7 +8465,7 @@ const DailySalesReport = () => {
                       borderColor: !newRecord.date ? DS.amber : DS.border,
                       background: !newRecord.date
                         ? "rgba(245,158,11,0.06)"
-                        : "rgba(255,255,255,0.04)",
+                        : "color-mix(in srgb, var(--wash) 4.0%, transparent)",
                     }}
                     type="date"
                     name="date"
@@ -7699,7 +8484,7 @@ const DailySalesReport = () => {
                       }}
                     >
                       <Icon name="calendar" size={11} strokeWidth={2} />
-                      <span>Date manually select karo</span>
+                      <span>Select date manually</span>
                     </div>
                   )}
                 </div>
@@ -7912,7 +8697,7 @@ const DailySalesReport = () => {
                   style={{ marginTop: 1, color: DS.info }}
                 />
                 <span>
-                  Saved customer select karoge toh fields auto-fill ho jaayenge.
+                  Select a saved customer and the fields will auto-fill.
                 </span>
               </div>
             </SectionCard>
@@ -7994,14 +8779,14 @@ const DailySalesReport = () => {
                 <button
                   className="dsr-ghost-btn"
                   disabled={visibleCustomerList.length === 0}
-                  title="Customers ki poori details Excel mein"
+                  title="Full customer details in Excel"
                   onClick={() => {
                     const n = exportCustomersXlsx(
                       customers,
                       visibleCustomerList,
                       customerHistoryMap,
                     );
-                    showToast(`Excel download ho raha hai! (${n} customers)`);
+                    showToast(`Downloading Excel! (${n} customers)`);
                   }}
                   style={{ height: 34, fontSize: 12 }}
                 >
@@ -8083,7 +8868,7 @@ const DailySalesReport = () => {
                   color: DS.text2,
                 }}
               >
-                "{customerQuery}" se koi customer match nahi hua.
+                No customers match "{customerQuery}".
               </div>
             )}
             {customerList.length === 0 ? (
@@ -8113,7 +8898,7 @@ const DailySalesReport = () => {
                   No customers yet
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
-                  Excel Import ya manual Add karo
+                  Import from Excel or add manually
                 </div>
               </div>
             ) : (
@@ -8327,10 +9112,10 @@ const DailySalesReport = () => {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  Koi data nahi hai
+                  No data available
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
-                  Records add karo, monthly analysis yahan dikhega
+                  Add records and the monthly analysis will appear here
                 </div>
               </div>
             ) : (

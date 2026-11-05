@@ -40,15 +40,15 @@ async function readApiJson(response) {
   const raw = await response.text();
   if (!raw.trim()) {
     throw new Error(
-      `Server ne empty response bheja (HTTP ${response.status}). Backend server aur route check karein.`,
+      `The server returned an empty response (HTTP ${response.status}). Please check the backend server and route.`,
     );
   }
   try {
     return JSON.parse(raw);
   } catch {
     const hint = raw.trim().startsWith("<")
-      ? "API ke badle HTML page mila. Frontend proxy/backend URL check karein."
-      : "Server ka response valid JSON nahi hai. Backend logs check karein.";
+      ? "Received an HTML page instead of the API response. Please check the frontend proxy / backend URL."
+      : "The server response is not valid JSON. Please check the backend logs.";
     throw new Error(`${hint} (HTTP ${response.status})`);
   }
 }
@@ -325,12 +325,12 @@ export default function App() {
       if (!res.ok) throw new Error("Could not load saved entries.");
       const data = await readApiJson(res);
       if (!Array.isArray(data))
-        throw new Error("Saved entries API ne list return nahi ki.");
+        throw new Error("The saved entries API did not return a list.");
       setSaved(data);
     } catch {
       setNotice({
         type: "error",
-        text: "Server se connect nahi ho raha. Backend start karein.",
+        text: "Cannot connect to the server. Please start the backend.",
       });
     }
   }
@@ -490,7 +490,7 @@ export default function App() {
         // FIX: form se download karte waqt hamesha pehle latest changes save karo,
         // warna purana saved version export hota tha.
         if (!entry.report.customer.trim())
-          throw new Error("Excel download se pehle Customer name bharein.");
+          throw new Error("Enter the customer name before downloading the Excel file.");
         id = await persistEntry();
         customer = entry.report.customer;
         await loadEntries();
@@ -509,7 +509,7 @@ export default function App() {
       const blob = await res.blob();
       if (!blob.size)
         throw new Error(
-          "Excel file empty hai. Server restart karke dobara try karein.",
+          "The Excel file is empty. Restart the server and try again.",
         );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -522,7 +522,7 @@ export default function App() {
       window.setTimeout(() => URL.revokeObjectURL(url), 1500);
       setNotice({
         type: "success",
-        text: "Excel download start ho gayi. Browser Downloads folder check karein.",
+        text: "Excel download started. Please check your browser's Downloads folder.",
       });
     } catch (e) {
       setNotice({ type: "error", text: e.message });
@@ -532,7 +532,7 @@ export default function App() {
   }
 
   async function deleteEntry(id) {
-    if (!window.confirm("Is saved entry ko permanently delete karna hai?"))
+    if (!window.confirm("Permanently delete this saved entry?"))
       return;
     try {
       const res = await ecofastFetch(`/api/ecofast/entries/${id}`, {

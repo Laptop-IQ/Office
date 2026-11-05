@@ -479,10 +479,10 @@ export default function App() {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 0)
     return (
-      <div className="min-h-screen bg-[#080b12] flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-[var(--pl-bg)] flex flex-col items-center justify-center p-6 font-sans">
         <div className="w-full max-w-lg">
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 text-[#4f8ef7] mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 text-[var(--pl-accent)] mb-4">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -513,7 +513,7 @@ export default function App() {
             onDrop={onDrop}
             onClick={() => fileRef.current.click()}
             className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200
-            ${dragging ? "border-[#4f8ef7] bg-[#4f8ef7]/8 scale-[1.02]" : "border-slate-700 hover:border-slate-500 bg-[#0e1220] hover:bg-[#111827]"}`}
+            ${dragging ? "border-[#4f8ef7] bg-[#4f8ef7]/8 scale-[1.02]" : "border-slate-700 hover:border-slate-500 bg-[var(--pl-surface)] hover:bg-[var(--pl-hover)]"}`}
           >
             <input
               ref={fileRef}
@@ -524,7 +524,7 @@ export default function App() {
             />
             <div
               className={`mx-auto mb-4 w-14 h-14 rounded-xl flex items-center justify-center transition-all
-            ${dragging ? "bg-[#4f8ef7]/20 text-[#4f8ef7]" : "bg-slate-800 text-slate-500"}`}
+            ${dragging ? "bg-[#4f8ef7]/20 text-[var(--pl-accent)]" : "bg-slate-800 text-slate-500"}`}
             >
               <Icon.Upload />
             </div>
@@ -544,7 +544,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="mt-5 rounded-xl bg-[#0e1220] border border-slate-800 p-4">
+          <div className="mt-5 rounded-xl bg-[var(--pl-surface)] border border-slate-800 p-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
               Expected column headers
             </p>
@@ -576,12 +576,12 @@ export default function App() {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 1)
     return (
-      <div className="min-h-screen bg-[#080b12] flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-[var(--pl-bg)] flex flex-col items-center justify-center p-6 font-sans">
         <div className="w-full max-w-md">
           <StepBar current={1} />
-          <div className="mt-8 bg-[#0e1220] border border-slate-800 rounded-2xl p-8">
+          <div className="mt-8 bg-[var(--pl-surface)] border border-slate-800 rounded-2xl p-8">
             <div className="flex items-center gap-3 mb-7">
-              <div className="w-10 h-10 rounded-xl bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 flex items-center justify-center text-[#4f8ef7]">
+              <div className="w-10 h-10 rounded-xl bg-[#4f8ef7]/10 border border-[#4f8ef7]/20 flex items-center justify-center text-[var(--pl-accent)]">
                 <Icon.User />
               </div>
               <div>
@@ -610,7 +610,7 @@ export default function App() {
             </div>
 
             {/* Loaded file info + remove option */}
-            <div className="mt-6 rounded-xl bg-[#080b12] border border-slate-800 p-3 flex items-center gap-3">
+            <div className="mt-6 rounded-xl bg-[var(--pl-bg)] border border-slate-800 p-3 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-none">
                 <svg
                   viewBox="0 0 24 24"
@@ -685,9 +685,9 @@ export default function App() {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 2)
     return (
-      <div className="min-h-screen bg-[#080b12] flex flex-col font-sans">
+      <div className="min-h-screen bg-[var(--pl-bg)] flex flex-col font-sans">
         {/* Sticky header */}
-        <div className="sticky top-0 z-30 bg-[#080b12]/95 backdrop-blur border-b border-slate-800/80 px-4 py-3">
+        <div className="sticky top-0 z-30 bg-[var(--pl-bg)]/95 backdrop-blur border-b border-slate-800/80 px-4 py-3">
           <div className="max-w-6xl mx-auto">
             <StepBar current={2} />
 
@@ -701,12 +701,12 @@ export default function App() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search product name or code…"
-                  className="w-full pl-9 pr-4 py-2 bg-[#0e1220] border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#4f8ef7]/60 transition-colors"
+                  className="w-full pl-9 pr-4 py-2 bg-[var(--pl-surface)] border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-[#4f8ef7]/60 transition-colors"
                 />
               </div>
               <button
                 onClick={selAll}
-                className="px-3 py-2 text-xs font-bold rounded-xl bg-[#4f8ef7]/10 text-[#7aabff] hover:bg-[#4f8ef7]/20 transition-colors border border-[#4f8ef7]/15 whitespace-nowrap"
+                className="px-3 py-2 text-xs font-bold rounded-xl bg-[#4f8ef7]/10 text-[var(--pl-accent)] hover:bg-[#4f8ef7]/20 transition-colors border border-[#4f8ef7]/15 whitespace-nowrap"
               >
                 ✓ Select visible ({filtered.length})
               </button>
@@ -717,7 +717,7 @@ export default function App() {
                 ✕ Clear all
               </button>
               <span className="ml-auto text-sm font-bold text-white whitespace-nowrap">
-                <span className="text-[#4f8ef7]">{selCount}</span>{" "}
+                <span className="text-[var(--pl-accent)]">{selCount}</span>{" "}
                 <span className="text-slate-500 font-normal">selected</span>
               </span>
             </div>
@@ -764,7 +764,7 @@ export default function App() {
             <div className="rounded-2xl border border-slate-800/80 overflow-hidden">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="bg-[#0b0f1a] border-b border-slate-800">
+                  <tr className="bg-[var(--pl-surface)] border-b border-slate-800">
                     <th className="w-10 py-3 px-3 text-center">
                       <div className="w-4 h-4 rounded border border-slate-700 inline-block" />
                     </th>
@@ -774,7 +774,7 @@ export default function App() {
                     <th className="py-3 px-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       Product Name
                     </th>
-                    <th className="py-3 px-4 text-right text-[11px] font-bold text-[#4f8ef7] uppercase tracking-wider w-32">
+                    <th className="py-3 px-4 text-right text-[11px] font-bold text-[var(--pl-accent)] uppercase tracking-wider w-32">
                       Cust. Price
                     </th>
                     <th className="py-3 px-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-36">
@@ -821,7 +821,7 @@ export default function App() {
                           >
                             {p.name}
                           </td>
-                          <td className="py-2.5 px-4 text-right font-black text-[#4f8ef7]">
+                          <td className="py-2.5 px-4 text-right font-black text-[var(--pl-accent)]">
                             ₹ {cp}
                           </td>
                           <td className="py-2.5 px-4">
@@ -842,7 +842,7 @@ export default function App() {
         </div>
 
         {/* Bottom bar */}
-        <div className="sticky bottom-0 bg-[#080b12]/95 backdrop-blur border-t border-slate-800/80 px-4 py-3 no-print">
+        <div className="sticky bottom-0 bg-[var(--pl-bg)]/95 backdrop-blur border-t border-slate-800/80 px-4 py-3 no-print">
           <div className="max-w-6xl mx-auto flex gap-3">
             <button
               onClick={() => setStep(1)}
@@ -870,9 +870,9 @@ export default function App() {
   const today = fmtDate();
 
   return (
-    <div className="min-h-screen bg-[#080b12] font-sans">
+    <div className="min-h-screen bg-[var(--pl-bg)] font-sans">
       {/* Screen toolbar */}
-      <div className="no-print sticky top-0 z-30 bg-[#080b12]/95 backdrop-blur border-b border-slate-800/80 px-4 py-2.5">
+      <div className="no-print sticky top-0 z-30 bg-[var(--pl-bg)]/95 backdrop-blur border-b border-slate-800/80 px-4 py-2.5">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <button
             onClick={() => setStep(2)}
@@ -1445,7 +1445,7 @@ function StepBar({ current }) {
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all
               ${
                 active
-                  ? "bg-[#4f8ef7]/15 text-[#4f8ef7] border border-[#4f8ef7]/30"
+                  ? "bg-[#4f8ef7]/15 text-[var(--pl-accent)] border border-[#4f8ef7]/30"
                   : done
                     ? "bg-emerald-500/10 text-emerald-400"
                     : "text-slate-700"
@@ -1458,7 +1458,7 @@ function StepBar({ current }) {
               ) : (
                 <span
                   className={`w-4 h-4 rounded-full border text-[10px] flex items-center justify-center
-                  ${active ? "border-[#4f8ef7] text-[#4f8ef7]" : "border-slate-800 text-slate-700"}`}
+                  ${active ? "border-[#4f8ef7] text-[var(--pl-accent)]" : "border-slate-800 text-slate-700"}`}
                 >
                   {n}
                 </span>
@@ -1487,7 +1487,7 @@ function Field({ label, value, onChange, placeholder }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-4 py-3 bg-[#080b12] border border-slate-800 rounded-xl text-white placeholder-slate-800
+        className="w-full px-4 py-3 bg-[var(--pl-bg)] border border-slate-800 rounded-xl text-white placeholder-slate-800
           focus:outline-none focus:border-[#4f8ef7]/50 focus:ring-1 focus:ring-[#4f8ef7]/10 transition-all text-sm"
       />
     </div>

@@ -1,0 +1,335 @@
+/* ══════════════════════════════════════════════════════════════════════
+   THEME VARIABLES
+   ──────────────────────────────────────────────────────────────────────
+   :root                         → DARK theme (the original look, unchanged)
+   html[data-theme="light"]      → LIGHT theme
+
+   The theme is switched by ThemeContext which sets <html data-theme="…">.
+   Components reference these variables (e.g. T.card = "var(--ov-card)"),
+   so no component needs to know which theme is active.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────── DARK (default) ───────────────────────── */
+:root {
+  /* "wash": colour used for subtle overlays/stripes/hover tints.
+     white on dark surfaces, ink on light surfaces. */
+  --wash: #ffffff;
+  --cl-a1:#182036; --cl-a2:#0f1420; --cl-a3:#131a2c; --cl-b1:#3a2410; --cl-b2:#241505; --cl-b3:#4a2e12;
+  --cl-c1:#1c1530; --cl-c2:#100c1c; --cl-c3:#241b3d; --cl-d2:#1e3a8a;
+  --sf-dim: #3f4254; --sf-line: #18181e; --sf-line2: #1e2030; --sf-surface: #111116; --sf-bg: #0d0d10; --sf-bg0: #09090b;
+  --sf-green: #4ade80; --sf-red: #f87171; --sf-violet: #a78bfa; --sf-blue: #60a5fa; --sf-cyan: #67e8f9; --sf-pink: #f472b6;
+  --sf-hover: #13131a; --sf-errbg: #1a0a0a;
+  --sf-text: #f1f5f9; --sf-text2: #94a3b8; --sf-text3: #e2e8f0; --sf-redline: #7f1d1d;
+  --pl-bg: #080b12;
+  --pl-surface: #0e1220;
+  --pl-hover: #111827;
+  --pl-accent: #4f8ef7;
+  --auth-bg: #080712;
+  --auth-card: #0d0b18;
+
+  /* ── Overdues / Stock Manager / Dispatch (token set "ov") ── */
+  --ov-pageBg: #06090f;
+  --ov-card: #0b1120;
+  --ov-elevated: #101828;
+  --ov-border: #1a2640;
+  --ov-borderHi: #2a3c60;
+  --ov-gold: #d4a017;
+  --ov-goldDim: #8a6a08;
+  --ov-goldGlow: rgba(212, 160, 23, 0.18);
+  --ov-text1: #e8edf8;
+  --ov-text2: #8895ae;
+  --ov-text3: #475569;
+  --ov-critical: #f43f5e;
+  --ov-urgent: #f97316;
+  --ov-warning: #eab308;
+  --ov-info: #3b82f6;
+  --ov-safe: #10b981;
+  --ov-dangerBg: rgba(244, 63, 94, 0.08);
+  --ov-urgentBg: rgba(249, 115, 22, 0.08);
+  --ov-warnBg: rgba(234, 179, 8, 0.08);
+  --ov-infoBg: rgba(59, 130, 246, 0.08);
+  --ov-safeBg: rgba(16, 185, 129, 0.08);
+  --ov-headerBg: rgba(6, 9, 15, 0.92);
+  --ov-violetText: #c4b5fd;
+
+  /* ── Daily Sales Report (token set "ds") ── */
+  --ds-bg: #0a0b10;
+  --ds-sidebar: #07080b;
+  --ds-card: #12141b;
+  --ds-surface: #191c25;
+  --ds-border: #272b38;
+  --ds-borderHi: #3c4153;
+  --ds-primary: #d4af6a;
+  --ds-primaryGlow: rgba(212, 175, 106, 0.2);
+  --ds-primaryDim: rgba(212, 175, 106, 0.08);
+  --ds-gold: #e9cf98;
+  --ds-goldGlow: rgba(233, 207, 152, 0.2);
+  --ds-goldDim: rgba(233, 207, 152, 0.08);
+  --ds-text1: #f4efe6;
+  --ds-text2: #a9a396;
+  --ds-text3: #6e6b63;
+  --ds-success: #22c55e;
+  --ds-danger: #f43f5e;
+  --ds-warning: #f97316;
+  --ds-amber: #f59e0b;
+  --ds-info: #3b82f6;
+  --ds-purple: #a855f7;
+  --ds-glass-bg: linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+  --ds-glass-border: rgba(212, 175, 106, 0.16);
+  --ds-pagebar: rgba(10, 11, 16, 0.82);
+  --ds-shadow-glass: 0 1px 0 rgba(255,255,255,0.05) inset, 0 18px 40px -20px rgba(0,0,0,0.7);
+  --ds-shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 8px 20px -12px rgba(0,0,0,0.3);
+  --ds-shadow-card-sm: 0 1px 2px rgba(0,0,0,0.2), 0 1px 1px rgba(0,0,0,0.15);
+  --ds-shadow-raised: 0 4px 8px rgba(0,0,0,0.4), 0 16px 32px -8px rgba(0,0,0,0.5);
+  --ds-shadow-hover: 0 4px 8px rgba(0,0,0,0.3), 0 16px 32px -12px rgba(212,175,106,0.2);
+  --ds-shadow-gold: 0 14px 30px -18px rgba(212,175,106,0.45);
+  --ds-shadow-expanded: 0 4px 8px rgba(0,0,0,0.25), 0 16px 40px -10px rgba(212,175,106,0.22);
+  --ds-shadow-menu: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+  --ds-shadow-bar: 0 -4px 16px rgba(0,0,0,0.3);
+  --ds-shadow-banner: 0 1px 2px rgba(0,0,0,0.4), 0 16px 32px -14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  --ds-shadow-modal: 0 8px 16px rgba(0,0,0,0.5), 0 32px 64px -16px rgba(0,0,0,0.6);
+  --ds-shadow-pop: 0 20px 48px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+  --ds-shadow-btn: 0 1px 2px rgba(0,0,0,0.25), 0 8px 20px -6px rgba(212,175,106,0.5);
+  --ds-shadow-btn-hover: 0 2px 4px rgba(0,0,0,0.3), 0 12px 24px -6px rgba(212,175,106,0.6);
+  --ds-shadow-btn-green: 0 1px 2px rgba(0,0,0,0.2), 0 8px 18px -6px rgba(4,120,87,0.45);
+  --st-A-bg: #071830; --st-A-text: #60a5fa;
+  --st-B-bg: #062218; --st-B-text: #34d399;
+  --st-C-bg: #241800; --st-C-text: #fcd34d;
+  --st-D-bg: #240e00; --st-D-text: #fb923c;
+  --st-E-bg: #1a0830; --st-E-text: #c084fc;
+  --st-F-bg: #042018; --st-F-text: #2dd4bf;
+  --st-G-bg: #240412; --st-G-text: #fb7185;
+  --st-H-bg: #042a18; --st-H-text: #4ade80;
+  --ds-banner: linear-gradient(155deg, #0b0c11 0%, #161821 55%, #222532 100%);
+  --ds-sidebarEnd: #050609;
+  --ds-sk1: #14161d;
+  --ds-sk2: #1c1f29;
+}
+
+/* ───────────────────────── LIGHT ───────────────────────── */
+html[data-theme="light"] {
+  --wash: #0f172a;
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#f5f7fb; --brass:#a8741f; --brass-light:#8a5a10;
+  --cl-a1:#ffffff; --cl-a2:#eef2f9; --cl-a3:#f6f8fc; --cl-b1:#fff4e0; --cl-b2:#ffe8c4; --cl-b3:#fff0d6;
+  --cl-c1:#f5eeff; --cl-c2:#ebe2fb; --cl-c3:#f1e9ff; --cl-d2:#dbe7ff;
+  --sf-dim: #8b92a5; --sf-line: #e3e6ee; --sf-line2: #b4bccd; --sf-surface: #ffffff; --sf-bg: #f4f5f9; --sf-bg0: #eceef4;
+  --sf-green: #15803d; --sf-red: #dc2626; --sf-violet: #6d28d9; --sf-blue: #2563eb; --sf-cyan: #0e7490; --sf-pink: #be185d;
+  --sf-hover: #eef1f7; --sf-errbg: #fef2f2;
+  --sf-text: #0f172a; --sf-text2: #64748b; --sf-text3: #334155; --sf-redline: #fca5a5;
+  --pl-bg: #f4f6fb;
+  --pl-surface: #ffffff;
+  --pl-hover: #eef2f8;
+  --pl-accent: #2563eb;
+  --auth-bg: #f6f5fb;
+  --auth-card: #ffffff;
+
+  /* ── Overdues / Stock Manager / Dispatch ── */
+  --ov-pageBg: #f3f5f9;
+  --ov-card: #ffffff;
+  --ov-elevated: #f6f8fb;
+  --ov-border: #dde3ec;
+  --ov-borderHi: #c3cddb;
+  --ov-gold: #b07f08;
+  --ov-goldDim: #d6b25a;
+  --ov-goldGlow: rgba(176, 127, 8, 0.16);
+  --ov-text1: #0f172a;
+  --ov-text2: #475569;
+  --ov-text3: #7b8798;
+  --ov-critical: #e11d48;
+  --ov-urgent: #ea580c;
+  --ov-warning: #b45309;
+  --ov-info: #2563eb;
+  --ov-safe: #059669;
+  --ov-dangerBg: rgba(225, 29, 72, 0.08);
+  --ov-urgentBg: rgba(234, 88, 12, 0.08);
+  --ov-warnBg: rgba(180, 83, 9, 0.09);
+  --ov-infoBg: rgba(37, 99, 235, 0.08);
+  --ov-safeBg: rgba(5, 150, 105, 0.09);
+  --ov-headerBg: rgba(243, 245, 249, 0.92);
+  --ov-violetText: #6d28d9;
+
+  /* ── Daily Sales Report ── */
+  --ds-bg: #f5f3ee;
+  --ds-sidebar: #fbfaf7;
+  --ds-card: #ffffff;
+  --ds-surface: #f1eee7;
+  --ds-border: #e2ddd0;
+  --ds-borderHi: #cfc8b5;
+  --ds-primary: #a67c2e;
+  --ds-primaryGlow: rgba(166, 124, 46, 0.2);
+  --ds-primaryDim: rgba(166, 124, 46, 0.1);
+  --ds-gold: #8c6a22;
+  --ds-goldGlow: rgba(140, 106, 34, 0.2);
+  --ds-goldDim: rgba(140, 106, 34, 0.09);
+  --ds-text1: #1c1a16;
+  --ds-text2: #5e5848;
+  --ds-text3: #8b8575;
+  --ds-success: #15803d;
+  --ds-danger: #e11d48;
+  --ds-warning: #ea580c;
+  --ds-amber: #b45309;
+  --ds-info: #2563eb;
+  --ds-purple: #7e22ce;
+  /* Light: soft, warm, layered shadows (no heavy black blur) */
+  --ds-glass-bg: linear-gradient(160deg, #ffffff, #fcfaf5);
+  --ds-glass-border: rgba(140, 106, 34, 0.16);
+  --ds-pagebar: rgba(251, 250, 247, 0.86);
+  --ds-shadow-glass: 0 1px 0 rgba(255,255,255,0.9) inset, 0 1px 2px rgba(70,52,16,0.05), 0 10px 24px -14px rgba(70,52,16,0.16);
+  --ds-shadow-card: 0 1px 2px rgba(70,52,16,0.06), 0 6px 16px -10px rgba(70,52,16,0.14);
+  --ds-shadow-card-sm: 0 1px 2px rgba(70,52,16,0.06), 0 1px 1px rgba(70,52,16,0.04);
+  --ds-shadow-raised: 0 4px 10px rgba(70,52,16,0.08), 0 20px 40px -14px rgba(70,52,16,0.22);
+  --ds-shadow-hover: 0 2px 6px rgba(70,52,16,0.07), 0 14px 28px -14px rgba(140,106,34,0.28);
+  --ds-shadow-gold: 0 12px 24px -16px rgba(140,106,34,0.32);
+  --ds-shadow-expanded: 0 4px 10px rgba(70,52,16,0.08), 0 18px 36px -14px rgba(140,106,34,0.3);
+  --ds-shadow-menu: 0 10px 30px -6px rgba(70,52,16,0.2), 0 2px 6px rgba(70,52,16,0.08);
+  --ds-shadow-bar: 0 -6px 18px -10px rgba(70,52,16,0.18);
+  --ds-shadow-banner: 0 1px 2px rgba(70,52,16,0.06), 0 14px 28px -16px rgba(70,52,16,0.2), inset 0 1px 0 rgba(255,255,255,0.9);
+  --ds-shadow-modal: 0 6px 14px rgba(70,52,16,0.1), 0 28px 56px -18px rgba(70,52,16,0.28);
+  --ds-shadow-pop: 0 18px 40px -10px rgba(70,52,16,0.26), 0 3px 8px rgba(70,52,16,0.08);
+  --ds-shadow-btn: 0 1px 2px rgba(70,52,16,0.18), 0 6px 14px -6px rgba(166,124,46,0.45);
+  --ds-shadow-btn-hover: 0 2px 4px rgba(70,52,16,0.2), 0 10px 20px -6px rgba(166,124,46,0.5);
+  --ds-shadow-btn-green: 0 1px 2px rgba(4,80,57,0.2), 0 6px 14px -6px rgba(4,120,87,0.4);
+  --st-A-bg: #e4eeff; --st-A-text: #1d4ed8;
+  --st-B-bg: #dcf5ea; --st-B-text: #047857;
+  --st-C-bg: #fff2cc; --st-C-text: #92600a;
+  --st-D-bg: #ffe8d4; --st-D-text: #c2410c;
+  --st-E-bg: #f0e5ff; --st-E-text: #7e22ce;
+  --st-F-bg: #d8f4ef; --st-F-text: #0f766e;
+  --st-G-bg: #ffe0e7; --st-G-text: #be123c;
+  --st-H-bg: #daf6e4; --st-H-text: #15803d;
+  --ds-banner: linear-gradient(155deg, #ffffff 0%, #f8f4ea 55%, #efe6d1 100%);
+  --ds-sidebarEnd: #f3efe6;
+  --ds-sk1: #ece8de;
+  --ds-sk2: #f6f3ec;
+}
+
+/* ───────────── First-party Tailwind tokens (index.css @theme) ───────────── */
+html[data-theme="light"] {
+  --color-background: #f4f6fb;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-primary: #b8860b;
+  --color-secondary: #e8edf4;
+  --color-secondary-foreground: #0f766e;
+  --color-muted: #edf1f7;
+  --color-muted-foreground: #64748b;
+  --color-border: #dce3ee;
+  --color-highlight: #b45309;
+  --color-surface: #ffffff;
+}
+
+/* ───────────────────────── Navbar (index.css) ───────────────────────── */
+html[data-theme="light"] {
+  --nav-bg: rgba(255, 255, 255, 0.78);
+  --nav-bg-solid: rgba(255, 255, 255, 0.97);
+  --drawer-bg: rgba(255, 255, 255, 0.99);
+  --nav-border: rgba(15, 23, 42, 0.08);
+  --nav-border-md: rgba(15, 23, 42, 0.13);
+  --nav-text: #111827;
+  --nav-muted: #6b7280;
+  --nav-dim: #9ca3af;
+  --nav-hover: rgba(15, 23, 42, 0.05);
+  --nav-active-bg: rgba(124, 58, 237, 0.1);
+  --nav-accent: #6d28d9;
+  --nav-overlay: rgba(15, 23, 42, 0.45);
+}
+
+/* ───────────────────────── Theme toggle button ───────────────────────── */
+.theme-toggle {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 9990;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(20, 24, 33, 0.82);
+  color: #f5c451;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+}
+.theme-toggle:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+html[data-theme="light"] .theme-toggle {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: #3b3f8f;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.16);
+}
+@media print {
+  .theme-toggle {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════ Hero section (sections/Hero.jsx) ═══════════════════════ */
+html[data-theme="light"] .hq {
+  --ink: #f6f3ec;
+  --surface: #ffffff;
+  --surface-2: #f3efe6;
+  --line: rgba(20, 24, 34, 0.1);
+  --text: #161a22;
+  --muted: #5d6676;
+  --saffron: #c47a00;
+  --teal: #0e9f8c;
+  --rose: #d3405a;
+  --sky: #3b68d8;
+}
+html[data-theme="light"] .hq-bg {
+  background:
+    radial-gradient(620px circle at 0% 0%, rgba(255, 180, 58, 0.24), transparent 70%),
+    radial-gradient(680px circle at 100% 100%, rgba(52, 211, 189, 0.16), transparent 70%);
+}
+html[data-theme="light"] .hq-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+}
+html[data-theme="light"] .hq-spot {
+  background: radial-gradient(circle, rgba(255, 180, 58, 0.16), transparent 62%);
+}
+html[data-theme="light"] .hq-date {
+  background: rgba(15, 23, 42, 0.03);
+}
+html[data-theme="light"] .hq-title {
+  background: linear-gradient(180deg, #2a2112 0%, #7a4300 52%, #d98200 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+html[data-theme="light"] .hq-ring {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .hq-ring-outer {
+  border-color: rgba(15, 23, 42, 0.16);
+}
+html[data-theme="light"] .hq-chip {
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+html[data-theme="light"] .hq-star {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+/* Light: inputs that used a translucent "white" overlay (now ink) look muddy – make them clean. */
+html[data-theme="light"] :is(input, textarea, select):is([class*="bg-white/"], [class*="bg-black/"]) {
+  background-color: rgba(255, 255, 255, 0.75);
+}
+
+/* Light: slightly stronger placeholder text for readability */
+html[data-theme="light"] :is(input, textarea)::placeholder {
+  color: #8592a6 !important;
+  opacity: 1;
+}

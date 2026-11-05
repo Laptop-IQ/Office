@@ -19,26 +19,26 @@ import {
 
 // ── Design tokens (falls back to the same palette if no theme prop passed) ──
 const DEFAULT_T = {
-  pageBg: "#06090F",
-  card: "#0B1120",
-  elevated: "#101828",
-  border: "#1A2640",
-  borderHi: "#2A3C60",
-  gold: "#D4A017",
-  goldGlow: "rgba(212,160,23,0.18)",
-  text1: "#E8EDF8",
-  text2: "#8895AE",
-  text3: "#475569",
-  critical: "#F43F5E",
-  urgent: "#F97316",
-  warning: "#EAB308",
-  info: "#3B82F6",
-  safe: "#10B981",
-  dangerBg: "rgba(244,63,94,0.08)",
-  urgentBg: "rgba(249,115,22,0.08)",
-  warnBg: "rgba(234,179,8,0.08)",
-  infoBg: "rgba(59,130,246,0.08)",
-  safeBg: "rgba(16,185,129,0.08)",
+  pageBg: "var(--ov-pageBg)",
+  card: "var(--ov-card)",
+  elevated: "var(--ov-elevated)",
+  border: "var(--ov-border)",
+  borderHi: "var(--ov-borderHi)",
+  gold: "var(--ov-gold)",
+  goldGlow: "var(--ov-goldGlow)",
+  text1: "var(--ov-text1)",
+  text2: "var(--ov-text2)",
+  text3: "var(--ov-text3)",
+  critical: "var(--ov-critical)",
+  urgent: "var(--ov-urgent)",
+  warning: "var(--ov-warning)",
+  info: "var(--ov-info)",
+  safe: "var(--ov-safe)",
+  dangerBg: "var(--ov-dangerBg)",
+  urgentBg: "var(--ov-urgentBg)",
+  warnBg: "var(--ov-warnBg)",
+  infoBg: "var(--ov-infoBg)",
+  safeBg: "var(--ov-safeBg)",
 };
 
 // ── Invoice number helpers ────────────────────────────────────────────────
@@ -331,23 +331,23 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (!dispatchForm.customerName.trim())
       return toast("Customer name required", "error");
     const toProcess = dispatchItemsEnriched.filter((i) => i.productId || i.qty);
-    if (!toProcess.length) return toast("Koi product select nahi hua", "error");
+    if (!toProcess.length) return toast("No product selected", "error");
     for (const item of toProcess) {
-      if (!item.product) return toast("Ek product select nahi hua", "error");
+      if (!item.product) return toast("A product has not been selected", "error");
       if (item.qty <= 0)
         return toast(
-          `${item.product?.name || "Product"}: quantity enter karein`,
+          `${item.product?.name || "Product"}: enter a quantity`,
           "error",
         );
       if (item.overLimit)
         return toast(
-          `${item.product.name}: sirf ${item.product.qty} ${item.product.unit} available`,
+          `${item.product.name}: only ${item.product.qty} ${item.product.unit} available`,
           "error",
         );
     }
     const pIds = toProcess.map((i) => String(i.productId));
     if (new Set(pIds).size !== pIds.length)
-      return toast("Ek product dobara select hua hai", "error");
+      return toast("A product has been selected more than once", "error");
 
     let res;
     try {
@@ -499,23 +499,23 @@ const DispatchTab = forwardRef(function DispatchTab(
     if (!editForm.customerName.trim())
       return toast("Customer name required", "error");
     const toProcess = editItemsEnriched.filter((i) => i.productId || i.qty);
-    if (!toProcess.length) return toast("Koi product select nahi hua", "error");
+    if (!toProcess.length) return toast("No product selected", "error");
     for (const item of toProcess) {
-      if (!item.product) return toast("Ek product select nahi hua", "error");
+      if (!item.product) return toast("A product has not been selected", "error");
       if (item.qty <= 0)
         return toast(
-          `${item.product?.name || "Product"}: quantity enter karein`,
+          `${item.product?.name || "Product"}: enter a quantity`,
           "error",
         );
       if (item.overLimit)
         return toast(
-          `${item.product.name}: sirf ${item.product.qty} ${item.product.unit} available`,
+          `${item.product.name}: only ${item.product.qty} ${item.product.unit} available`,
           "error",
         );
     }
     const pIds = toProcess.map((i) => String(i.productId));
     if (new Set(pIds).size !== pIds.length)
-      return toast("Ek product dobara select hua hai", "error");
+      return toast("A product has been selected more than once", "error");
 
     let res;
     try {
@@ -691,7 +691,7 @@ const DispatchTab = forwardRef(function DispatchTab(
 
   const exportDispatchPDF = () => {
     if (!filteredDispatches.length)
-      return toast("Koi dispatch record nahi", "error");
+      return toast("No dispatch records", "error");
     buildInvoicesPDF(filteredDispatches);
   };
   const exportSingleInvoicePDF = (d) => {
@@ -702,7 +702,7 @@ const DispatchTab = forwardRef(function DispatchTab(
   // ── Export Excel ──────────────────────────────────────────────────────────
   const exportDispatchExcel = () => {
     if (!filteredDispatches.length)
-      return toast("Koi dispatch record nahi", "error");
+      return toast("No dispatch records", "error");
     const wsData = [];
     filteredDispatches.forEach((d, di) => {
       const nd = normD(d);
@@ -827,12 +827,12 @@ const DispatchTab = forwardRef(function DispatchTab(
                 </div>
                 <div style={{ padding: "20px 24px" }}>
                   <p style={{ color: T.text1, fontSize: 13, marginBottom: 4 }}>
-                    <strong>{confirmUndoDispatch.customerName}</strong> ke
-                    dispatch ko void karna chahte hain?
+                    Void the dispatch to{" "}
+                    <strong>{confirmUndoDispatch.customerName}</strong>?
                   </p>
                   <p style={{ color: T.text2, fontSize: 12, marginBottom: 16 }}>
-                    {nd.items.length} item{nd.items.length > 1 ? "s" : ""} ka
-                    stock wapas restore ho jayega.
+                    The stock for {nd.items.length} item{nd.items.length > 1 ? "s" : ""}{" "}
+                    will be restored.
                   </p>
                   <div
                     style={{
@@ -1028,7 +1028,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       {viewInvoice.edited && (
                         <div
                           style={{
-                            color: "#C4B5FD",
+                            color: "var(--ov-violetText)",
                             fontSize: 9,
                             marginTop: 3,
                             fontWeight: 700,
@@ -1139,7 +1139,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                         key={i}
                         style={{
                           background:
-                            i % 2 ? "rgba(255,255,255,0.015)" : "transparent",
+                            i % 2 ? "color-mix(in srgb, var(--wash) 1.5%, transparent)" : "transparent",
                         }}
                       >
                         <td
@@ -1165,7 +1165,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                             <span
                               style={{
                                 background: "rgba(124,58,237,0.15)",
-                                color: "#C4B5FD",
+                                color: "var(--ov-violetText)",
                                 padding: "1px 6px",
                                 borderRadius: 5,
                                 fontSize: 9,
@@ -1254,7 +1254,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       borderRadius: 9,
                       border: `1.5px solid rgba(124,58,237,0.35)`,
                       background: "rgba(124,58,237,0.12)",
-                      color: "#C4B5FD",
+                      color: "var(--ov-violetText)",
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -1551,7 +1551,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                             background: rowErr
                               ? T.dangerBg
                               : idx % 2
-                                ? "rgba(255,255,255,0.015)"
+                                ? "color-mix(in srgb, var(--wash) 1.5%, transparent)"
                                 : "transparent",
                             borderBottom: `1px solid ${T.border}`,
                           }}
@@ -2163,7 +2163,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                 background: "rgba(212,160,23,0.1)",
                 padding: "5px 12px",
                 borderRadius: 7,
-                border: `1px solid ${T.gold}40`,
+                border: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                 display: "inline-block",
               }}
             >
@@ -2334,7 +2334,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                     background: rowErr
                       ? T.dangerBg
                       : idx % 2
-                        ? "rgba(255,255,255,0.015)"
+                        ? "color-mix(in srgb, var(--wash) 1.5%, transparent)"
                         : "transparent",
                     borderBottom: `1px solid ${T.border}`,
                   }}
@@ -2974,7 +2974,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       fontSize: 13,
                     }}
                   >
-                    🧾 Koi invoice nahi mili
+                    🧾 No invoices found
                     {dispatchSearch && ` · "${dispatchSearch}"`}
                   </td>
                 </tr>
@@ -2997,7 +2997,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                         background: isExpanded
                           ? T.infoBg
                           : idx % 2
-                            ? "rgba(255,255,255,0.012)"
+                            ? "color-mix(in srgb, var(--wash) 1.2%, transparent)"
                             : "transparent",
                       }}
                       onClick={() =>
@@ -3067,7 +3067,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                           <div
                             style={{
                               fontSize: 9,
-                              color: "#C4B5FD",
+                              color: "var(--ov-violetText)",
                               marginTop: 1,
                               fontWeight: 700,
                             }}
@@ -3176,7 +3176,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                               borderRadius: 7,
                               border: `1.5px solid rgba(124,58,237,0.35)`,
                               background: "rgba(124,58,237,0.12)",
-                              color: "#C4B5FD",
+                              color: "var(--ov-violetText)",
                               cursor: "pointer",
                               fontSize: 11,
                               fontWeight: 700,
@@ -3300,7 +3300,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                                       <span
                                         style={{
                                           background: "rgba(124,58,237,0.15)",
-                                          color: "#C4B5FD",
+                                          color: "var(--ov-violetText)",
                                           padding: "1px 6px",
                                           borderRadius: 5,
                                           fontSize: 9,
@@ -3358,7 +3358,7 @@ const DispatchTab = forwardRef(function DispatchTab(
             >
               <p style={{ fontSize: 30, marginBottom: 8 }}>🧾</p>
               <p style={{ fontWeight: 600, fontSize: 13, color: T.text2 }}>
-                Koi invoice nahi mili
+                No invoices found
                 {dispatchSearch && ` · "${dispatchSearch}"`}
               </p>
             </div>
@@ -3478,7 +3478,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       <span
                         style={{
                           marginLeft: 8,
-                          color: "#C4B5FD",
+                          color: "var(--ov-violetText)",
                           fontWeight: 700,
                         }}
                       >
@@ -3525,7 +3525,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                             <span
                               style={{
                                 background: "rgba(124,58,237,0.15)",
-                                color: "#C4B5FD",
+                                color: "var(--ov-violetText)",
                                 padding: "1px 6px",
                                 borderRadius: 5,
                                 fontSize: 9,
@@ -3585,7 +3585,7 @@ const DispatchTab = forwardRef(function DispatchTab(
                       borderRadius: 8,
                       border: `1.5px solid rgba(124,58,237,0.35)`,
                       background: "rgba(124,58,237,0.12)",
-                      color: "#C4B5FD",
+                      color: "var(--ov-violetText)",
                       cursor: "pointer",
                       fontSize: 11,
                       fontWeight: 700,
@@ -3619,7 +3619,7 @@ const DispatchTab = forwardRef(function DispatchTab(
             style={{
               padding: "10px 18px",
               background: `rgba(212,160,23,0.05)`,
-              borderTop: `1px solid ${T.gold}40`,
+              borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
               display: "flex",
               justifyContent: "space-between",
               flexWrap: "wrap",

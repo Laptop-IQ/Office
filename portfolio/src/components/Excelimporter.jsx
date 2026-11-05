@@ -211,7 +211,7 @@ const ExcelImporter = ({
           setSelected(sel);
           setDone(false);
         } catch (err) {
-          showToast("File parse nahi hua: " + err.message, "error");
+          showToast("Could not parse file: " + err.message, "error");
         }
       };
       reader.readAsArrayBuffer(file);
@@ -264,7 +264,7 @@ const ExcelImporter = ({
   // ── Import to API ───────────────────────────────────────────────────────
   const handleImport = async () => {
     if (selectedRows.length === 0) {
-      showToast("Koi customer select nahi kiya.", "error");
+      showToast("No customer selected.", "error");
       return;
     }
 
@@ -347,7 +347,7 @@ const ExcelImporter = ({
       );
       if (onImportDone) onImportDone(importedCustomers);
     } else {
-      showToast("Import fail ho gaya.", "error");
+      showToast("Import failed.", "error");
     }
   };
 
@@ -409,7 +409,7 @@ const ExcelImporter = ({
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>
-              Excel se Customers Import karo
+              Import Customers from Excel
             </div>
             <div
               style={{
@@ -418,7 +418,7 @@ const ExcelImporter = ({
                 marginTop: 2,
               }}
             >
-              DVR.xlsx ya koi bhi DSR format ki file upload karo
+              Upload DVR.xlsx or any DSR-format file
             </div>
           </div>
           <button
@@ -465,10 +465,10 @@ const ExcelImporter = ({
                   marginBottom: 6,
                 }}
               >
-                Excel file yahan drop karo
+                Drop the Excel file here
               </div>
               <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16 }}>
-                ya click karke select karo (.xlsx, .xls)
+                or click to select (.xlsx, .xls)
               </div>
               <div
                 style={{
@@ -482,7 +482,7 @@ const ExcelImporter = ({
                   cursor: "pointer",
                 }}
               >
-                📂 File Browse karo
+                📂 Browse File
               </div>
               <input
                 ref={fileInputRef}
@@ -582,7 +582,7 @@ const ExcelImporter = ({
                       marginBottom: 8,
                     }}
                   >
-                    ⚠ Already existing customers ke liye:
+                    ⚠ For customers that already exist:
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <label
@@ -607,7 +607,7 @@ const ExcelImporter = ({
                         onChange={() => setDupAction("skip")}
                         className="ei-check"
                       />
-                      Skip karo (recommended)
+                      Skip (recommended)
                     </label>
                     <label
                       style={{
@@ -633,7 +633,7 @@ const ExcelImporter = ({
                         onChange={() => setDupAction("overwrite")}
                         className="ei-check"
                       />
-                      Overwrite karo
+                      Overwrite
                     </label>
                   </div>
                   {dupAction === "overwrite" && (
@@ -660,14 +660,14 @@ const ExcelImporter = ({
                   onClick={selectAllNew}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  ✓ Sirf naye select karo
+                  ✓ Select new only
                 </button>
                 <button
                   className="ei-btn-secondary"
                   onClick={selectAll}
                   style={{ fontSize: 11, padding: "4px 10px" }}
                 >
-                  ✓ Sab select karo
+                  ✓ Select all
                 </button>
                 <button
                   className="ei-btn-secondary"
@@ -781,7 +781,7 @@ const ExcelImporter = ({
                   }}
                   style={{ fontSize: 12, padding: "5px 14px" }}
                 >
-                  🔄 Alag file upload karo
+                  🔄 Upload a different file
                 </button>
               </div>
             </>
@@ -806,7 +806,7 @@ const ExcelImporter = ({
               onClick={onClose}
               style={{ flex: 1, height: 42, fontSize: 14 }}
             >
-              ✓ Done — Close karo
+              ✓ Done — Close
             </button>
           ) : (
             <>
@@ -828,8 +828,8 @@ const ExcelImporter = ({
                 {importing
                   ? `⏳ Import ho raha hai… (${selectedRows.length})`
                   : rows.length === 0
-                    ? "📂 Pehle file upload karo"
-                    : `📥 ${selectedRows.length} Customers Import karo`}
+                    ? "📂 Upload a file first"
+                    : `📥 ${selectedRows.length} Customers`}
               </button>
             </>
           )}

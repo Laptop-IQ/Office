@@ -239,7 +239,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#080712]">
+    <main className="relative min-h-screen overflow-hidden bg-[var(--auth-bg)]">
       {/* =====================================================
           BACKGROUND
       ====================================================== */}
@@ -300,7 +300,7 @@ const ResetPassword = () => {
           className="absolute inset-0 opacity-[0.035]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)",
+              "linear-gradient(color-mix(in srgb, var(--wash) 50%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--wash) 50%, transparent) 1px, transparent 1px)",
             backgroundSize: "50px 50px",
           }}
         />
@@ -337,7 +337,7 @@ const ResetPassword = () => {
                   absolute
                   inset-[2px]
                   rounded-[14px]
-                  bg-[#0d0b18]
+                  bg-[var(--auth-card)]
                 "
               />
 

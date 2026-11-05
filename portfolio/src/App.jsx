@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import ThemeToggle from "@/components/ThemeToggle";
 import PrivateRoute from "@/components/PrivateRoute";
 
 // Layout Components
@@ -41,85 +43,88 @@ function PortfolioPage() {
 // Main App Component
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
-
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<PortfolioPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-
-          <Route
-            path="/DailySalesReport/*"
-            element={
-              <PrivateRoute>
-                <DailySalesReport />
-              </PrivateRoute>
-            }
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <ThemeToggle />
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
           />
 
-          <Route
-            path="/OverduesDashboard"
-            element={
-              <PrivateRoute>
-                <OverduesDashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/Stockmanager"
-            element={
-              <PrivateRoute>
-                <StockManager />
-              </PrivateRoute>
-            }
-          />
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<PortfolioPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          <Route
-            path="/pricelist"
-            element={
-              <PrivateRoute>
-                <PriceListApp />
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/DailySalesReport/*"
+              element={
+                <PrivateRoute>
+                  <DailySalesReport />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/Ecofast"
-            element={
-              <PrivateRoute>
-                <EcofastEntry />
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/OverduesDashboard"
+              element={
+                <PrivateRoute>
+                  <OverduesDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/Stockmanager"
+              element={
+                <PrivateRoute>
+                  <StockManager />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/purchase"
-            element={
-              <PrivateRoute>
-                <SFDyesPurchaseOrder />
-              </PrivateRoute>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            <Route
+              path="/pricelist"
+              element={
+                <PrivateRoute>
+                  <PriceListApp />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/Ecofast"
+              element={
+                <PrivateRoute>
+                  <EcofastEntry />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/purchase"
+              element={
+                <PrivateRoute>
+                  <SFDyesPurchaseOrder />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

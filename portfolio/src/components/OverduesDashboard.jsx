@@ -13,27 +13,27 @@ api.interceptors.request.use((config) => {
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const T = {
-  pageBg: "#06090F",
-  card: "#0B1120",
-  elevated: "#101828",
-  border: "#1A2640",
-  borderHi: "#2A3C60",
-  gold: "#D4A017",
-  goldDim: "#8A6A08",
-  goldGlow: "rgba(212,160,23,0.18)",
-  text1: "#E8EDF8",
-  text2: "#8895AE",
-  text3: "#475569",
-  critical: "#F43F5E",
-  urgent: "#F97316",
-  warning: "#EAB308",
-  info: "#3B82F6",
-  safe: "#10B981",
-  dangerBg: "rgba(244,63,94,0.08)",
-  urgentBg: "rgba(249,115,22,0.08)",
-  warnBg: "rgba(234,179,8,0.08)",
-  infoBg: "rgba(59,130,246,0.08)",
-  safeBg: "rgba(16,185,129,0.08)",
+  pageBg: "var(--ov-pageBg)",
+  card: "var(--ov-card)",
+  elevated: "var(--ov-elevated)",
+  border: "var(--ov-border)",
+  borderHi: "var(--ov-borderHi)",
+  gold: "var(--ov-gold)",
+  goldDim: "var(--ov-goldDim)",
+  goldGlow: "var(--ov-goldGlow)",
+  text1: "var(--ov-text1)",
+  text2: "var(--ov-text2)",
+  text3: "var(--ov-text3)",
+  critical: "var(--ov-critical)",
+  urgent: "var(--ov-urgent)",
+  warning: "var(--ov-warning)",
+  info: "var(--ov-info)",
+  safe: "var(--ov-safe)",
+  dangerBg: "var(--ov-dangerBg)",
+  urgentBg: "var(--ov-urgentBg)",
+  warnBg: "var(--ov-warnBg)",
+  infoBg: "var(--ov-infoBg)",
+  safeBg: "var(--ov-safeBg)",
 };
 
 // ── Shared styles ──────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ const getDueBadge = (days) => {
     return {
       label: "—",
       style: {
-        background: "rgba(255,255,255,0.04)",
+        background: "color-mix(in srgb, var(--wash) 4.0%, transparent)",
         color: T.text3,
         border: `1px solid ${T.border}`,
       },
@@ -573,7 +573,7 @@ const PaymentModal = ({ row, onConfirm, onCancel }) => {
               boxShadow: `0 0 0 1px ${T.border}`,
             }}
             onFocus={(e) => {
-              e.target.style.boxShadow = `0 0 0 2px ${T.gold}40`;
+              e.target.style.boxShadow = `0 0 0 2px color-mix(in srgb, ${T.gold} 25%, transparent)`;
               e.target.style.borderColor = T.gold;
             }}
             onBlur={(e) => {
@@ -710,7 +710,7 @@ const CustomerPaymentModal = ({ accounts, onConfirm, onCancel, busy }) => {
           </button>
         </div>
         <p style={{ color: T.text2, fontSize: 12, margin: "10px 0 18px" }}>
-          Payment oldest pending bill se FIFO order mein adjust hogi.
+          Payment is adjusted against the oldest pending bills first (FIFO).
         </p>
         <label
           style={{
@@ -1572,7 +1572,7 @@ export default function App() {
         .mobile-sub-row:last-child { border-bottom:0; }
         .mobile-sub-actions { display:flex; gap:4px; justify-content:flex-end; }
         .mobile-sub-actions button { width:34px; height:34px; border-radius:7px; border:1px solid ${T.border}; background:${T.elevated}; cursor:pointer; }
-        .mobile-summary-total { padding:13px; background:rgba(212,160,23,.05); border:1px solid ${T.gold}40; border-radius:12px; }
+        .mobile-summary-total { padding:13px; background:rgba(212,160,23,.05); border:1px solid color-mix(in srgb, ${T.gold} 25%, transparent); border-radius:12px; }
       }
       @media (max-width: 380px) {
         .sf-kpi-grid { grid-template-columns:1fr; }
@@ -1588,7 +1588,7 @@ export default function App() {
           fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
           color: T.text1,
           backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0)",
+            "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--wash) 2.5%, transparent) 1px, transparent 0)",
           backgroundSize: "28px 28px",
         }}
       >
@@ -1629,7 +1629,7 @@ export default function App() {
             position: "sticky",
             top: 0,
             zIndex: 50,
-            background: "rgba(6,9,15,0.92)",
+            background: "var(--ov-headerBg)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             borderBottom: `1px solid ${T.border}`,
@@ -2228,7 +2228,7 @@ export default function App() {
                               background:
                                 i % 2 === 0
                                   ? "transparent"
-                                  : "rgba(255,255,255,0.012)",
+                                  : "color-mix(in srgb, var(--wash) 1.2%, transparent)",
                               borderBottom: `1px solid ${T.border}`,
                               transition: "background 0.15s",
                             }}
@@ -2239,7 +2239,7 @@ export default function App() {
                               (e.currentTarget.style.background =
                                 i % 2 === 0
                                   ? "transparent"
-                                  : "rgba(255,255,255,0.012)")
+                                  : "color-mix(in srgb, var(--wash) 1.2%, transparent)")
                             }
                           >
                             <td
@@ -2360,7 +2360,7 @@ export default function App() {
                       <tr
                         style={{
                           background: `rgba(212,160,23,0.05)`,
-                          borderTop: `1px solid ${T.gold}40`,
+                          borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                         }}
                       >
                         <td
@@ -2780,7 +2780,7 @@ export default function App() {
                             onMouseEnter={(e) => {
                               if (!isExpanded)
                                 e.currentTarget.style.background =
-                                  "rgba(255,255,255,0.02)";
+                                  "color-mix(in srgb, var(--wash) 2.0%, transparent)";
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.background = isExpanded
@@ -2846,7 +2846,7 @@ export default function App() {
                             >
                               <span
                                 style={{
-                                  background: "rgba(255,255,255,0.06)",
+                                  background: "color-mix(in srgb, var(--wash) 6.0%, transparent)",
                                   color: T.text2,
                                   padding: "2px 8px",
                                   borderRadius: 999,
@@ -2937,7 +2937,7 @@ export default function App() {
                                       width: `${barW}%`,
                                       height: 4,
                                       borderRadius: 999,
-                                      background: `linear-gradient(90deg,${T.gold}99,${T.gold})`,
+                                      background: `linear-gradient(90deg,color-mix(in srgb, ${T.gold} 60%, transparent),${T.gold})`,
                                       transition: "width 0.3s",
                                     }}
                                   />
@@ -3119,7 +3119,7 @@ export default function App() {
                     <tr
                       style={{
                         background: `rgba(212,160,23,0.05)`,
-                        borderTop: `1px solid ${T.gold}40`,
+                        borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                       }}
                     >
                       <td
