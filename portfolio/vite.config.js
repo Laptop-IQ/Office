@@ -11,6 +11,23 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    target: "es2020",
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        // Stable, long-cacheable vendor chunks – app code changes don't
+        // invalidate React / router / icon libraries in the browser cache.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
+          if (/node_modules\/(react-router|react-router-dom|@remix-run)\//.test(id)) return "router";
+          if (/node_modules\/(lucide-react|@heroicons|react-icons)\//.test(id)) return "icons";
+          return undefined;
+        },
+      },
+    },
+  },
   // Forward frontend /api requests to the Express backend during local development.
   // Override with VITE_API_PROXY_TARGET when the backend runs on another host/port.
   server: {

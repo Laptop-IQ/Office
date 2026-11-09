@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import * as XLSX from "xlsx-js-style";
+import { XLSX } from "@/lib/xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_BASE_URL;
@@ -48,14 +48,14 @@ const PROJECT_STAGE_OPTIONS = [
 ];
 
 const STAGE_COLOR = {
-  A: { bg: "var(--st-A-bg)", text: "var(--st-A-text)", border: "#3B82F6" },
-  B: { bg: "var(--st-B-bg)", text: "var(--st-B-text)", border: "#10B981" },
-  C: { bg: "var(--st-C-bg)", text: "var(--st-C-text)", border: "#F59E0B" },
-  D: { bg: "var(--st-D-bg)", text: "var(--st-D-text)", border: "#F97316" },
-  E: { bg: "var(--st-E-bg)", text: "var(--st-E-text)", border: "#A855F7" },
-  F: { bg: "var(--st-F-bg)", text: "var(--st-F-text)", border: "#14B8A6" },
-  G: { bg: "var(--st-G-bg)", text: "var(--st-G-text)", border: "#F43F5E" },
-  H: { bg: "var(--st-H-bg)", text: "var(--st-H-text)", border: "#22C55E" },
+  A: { bg: "var(--st-A-bg)", text: "var(--st-A-text)", border: "var(--ds-primary)" },
+  B: { bg: "var(--st-B-bg)", text: "var(--st-B-text)", border: "var(--ds-primary)" },
+  C: { bg: "var(--st-C-bg)", text: "var(--st-C-text)", border: "var(--ds-primary)" },
+  D: { bg: "var(--st-D-bg)", text: "var(--st-D-text)", border: "var(--ds-primary)" },
+  E: { bg: "var(--st-E-bg)", text: "var(--st-E-text)", border: "var(--ds-primary)" },
+  F: { bg: "var(--st-F-bg)", text: "var(--st-F-text)", border: "var(--ds-primary)" },
+  G: { bg: "var(--st-G-bg)", text: "var(--st-G-text)", border: "var(--ds-primary)" },
+  H: { bg: "var(--st-H-bg)", text: "var(--st-H-text)", border: "var(--ds-success)" },
 };
 
 const stageColor = (stage) => {
@@ -107,7 +107,7 @@ const StageLadder = ({ stage, size = "md" }) => {
       <span
         style={{
           fontSize: size === "sm" ? 9 : 10,
-          fontWeight: 800,
+          fontWeight: 600,
           color: sc.text,
           flexShrink: 0,
         }}
@@ -494,80 +494,219 @@ const injectGlobalStyles = () => {
   if (document.getElementById("dsr-global-styles")) return;
   const style = document.createElement("style");
   style.id = "dsr-global-styles";
-  // NOTE: @import must be the very first rule, otherwise browsers ignore it.
+  if (!document.getElementById("dsr-fonts")) {
+    // non-render-blocking font stylesheet (was a CSS @import)
+    const fl = document.createElement("link");
+    fl.id = "dsr-fonts";
+    fl.rel = "stylesheet";
+    fl.href =
+      "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap";
+    document.head.appendChild(fl);
+  }
   style.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
     *, *::before, *::after { box-sizing: border-box; }
     .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea,
     .dsr-pages, .dsr-pages input, .dsr-pages select, .dsr-pages button, .dsr-pages textarea {
-      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    .dsr-mono { font-family: 'IBM Plex Mono','SF Mono',ui-monospace,Consolas,monospace; font-feature-settings:"tnum" 1,"zero" 1; letter-spacing:-0.01em; }
+    .dsr-mono { font-family: 'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace; font-feature-settings:"tnum" 1,"zero" 1; letter-spacing:-0.01em; }
     .dsr-layout ::selection { background:rgba(212,175,106,0.28); color:var(--ds-text1); }
     .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
     @media(prefers-reduced-motion:reduce){.dsr-layout *,.dsr-layout *::before,.dsr-layout *::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important;}}
 
-    .dsr-display { font-family:'Playfair Display','Times New Roman',serif!important; letter-spacing:0.005em; font-weight:600; }
+    .dsr-display { font-family:'Geist',-apple-system,sans-serif!important; letter-spacing:-0.01em; font-weight:500; }
     .dsr-pages ::selection { background:rgba(212,175,106,0.30); color:var(--ds-text1); }
     .dsr-pages button:focus-visible,.dsr-pages input:focus-visible,.dsr-pages select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
-    .dsr-layout, .dsr-pages { background-image:radial-gradient(ellipse at 15% 0%,rgba(212,175,106,0.07) 0%,transparent 45%),radial-gradient(ellipse at 90% 100%,rgba(212,175,106,0.04) 0%,transparent 50%)!important; }
-    .dsr-half-card { transition:border-color .2s,box-shadow .2s,transform .2s; }
-    .dsr-half-card:hover { border-color:rgba(212,175,106,0.55)!important; box-shadow:var(--ds-shadow-gold); transform:translateY(-1px); }
-    .dsr-half-open { font-size:11px; font-weight:700; color:var(--ds-primary); opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
+        .dsr-half-card { transition:border-color .2s,box-shadow .2s,transform .2s; }
+    .dsr-half-card:hover { border-color:var(--ds-borderHi)!important; }
+    .dsr-half-open { font-size:12px; font-weight:700; color:var(--ds-primary); opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
     .dsr-half-card:hover .dsr-half-open, .dsr-half-card:focus-within .dsr-half-open { opacity:1; transform:none; }
     @media(max-width:767px){ .dsr-half-open{opacity:1;transform:none;} }
     @media(max-width:640px){ .dsr-home-text{display:none;} }
-    .dsr-home-link:hover { background:rgba(212,175,106,0.15)!important; }
-    .dsr-gold-rule { height:1px; border:0; background:linear-gradient(90deg,transparent,rgba(212,175,106,0.55),transparent); margin:0; }
-    .dsr-glass { background:var(--ds-glass-bg)!important; backdrop-filter:blur(14px); border:1px solid var(--ds-glass-border)!important; box-shadow:var(--ds-shadow-glass)!important; }
-    .dsr-pagebar { position:sticky; top:0; z-index:60; background:var(--ds-pagebar); backdrop-filter:blur(16px) saturate(1.3); border-bottom:1px solid var(--ds-glass-border); }
-    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:999px; border:1px solid rgba(212,175,106,0.30); background:rgba(212,175,106,0.06); color:var(--ds-primary); font-size:12.5px; font-weight:700; cursor:pointer; transition:background .15s,transform .15s; }
-    .dsr-back-btn:hover { background:rgba(212,175,106,0.14); transform:translateX(-2px); }
-    .dsr-page-enter { animation:dsr-page-in .45s cubic-bezier(0.16,1,0.3,1) both; }
-    @keyframes dsr-page-in { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+    .dsr-home-link:hover { background:var(--ds-surface)!important; }
+    .dsr-gold-rule { height:1px; border:0; background:var(--ds-border); margin:0; }
+    .dsr-glass { background:var(--ds-glass-bg)!important; border:1px solid var(--ds-glass-border)!important; box-shadow:var(--ds-shadow-glass)!important; }
+    .dsr-pagebar { position:sticky; top:0; z-index:60; background:var(--ds-pagebar); border-bottom:1px solid var(--ds-glass-border); }
+    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:8px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s,color .15s; }
+    .dsr-back-btn:hover { background:var(--ds-surface); color:var(--ds-text1); }
+    .dsr-page-enter { animation:dsr-page-in .3s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes dsr-page-in { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
     .dsr-page-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
     .dsr-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .dsr-bar-row { cursor:pointer; border-radius:10px; padding:7px 9px 8px; margin:0 -9px 4px; transition:background .15s, transform .15s; }
-    .dsr-bar-row:hover { background:color-mix(in srgb, var(--ds-primary) 9%, transparent); transform:translateX(2px); }
+    .dsr-bar-row { cursor:pointer; border-radius:10px; padding:7px 9px 8px; margin:0 -9px 4px; transition:background .15s; }
+    .dsr-bar-row:hover { background:var(--ds-surface); }
     .dsr-bar-row:focus-visible { outline:2px solid var(--ds-primary); outline-offset:1px; }
-    .dsr-viewall { display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 9px; border-radius:999px; border:1px solid var(--ds-glass-border); background:transparent; color:var(--ds-primary); font-size:10.5px; font-weight:700; letter-spacing:.03em; cursor:pointer; transition:background .15s,border-color .15s; }
-    .dsr-viewall:hover { background:var(--ds-primaryDim); border-color:var(--ds-primary); }
+    .dsr-viewall { display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 9px; border-radius:999px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-size:12px; font-weight:500; cursor:pointer; transition:background .15s,border-color .15s; }
+    .dsr-viewall:hover { background:var(--ds-surface); color:var(--ds-text1); }
     .dsr-seg { display:flex; gap:4px; padding:4px; border-radius:12px; background:var(--ds-surface); border:1px solid var(--ds-border); margin-bottom:14px; }
-    .dsr-seg button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:30px; border:0; border-radius:9px; background:transparent; color:var(--ds-text2); font-weight:600; font-size:11.5px; font-family:inherit; cursor:pointer; transition:background .15s,color .15s; }
+    .dsr-seg button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:30px; border:0; border-radius:9px; background:transparent; color:var(--ds-text2); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; transition:background .15s,color .15s; }
     .dsr-seg button:hover { color:var(--ds-text1); }
     .dsr-seg button.active { background:var(--ds-card); color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
-    .dsr-rank-row { text-align:left; width:100%; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1px solid transparent; background:transparent; color:var(--ds-text1); font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s,transform .15s; }
+    .dsr-rank-row { text-align:left; width:100%; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1px solid transparent; background:transparent; color:var(--ds-text1); font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s; }
     .dsr-rank-row:hover { background:var(--ds-surface); }
     .dsr-rank-row.on { background:var(--ds-card); border-color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
     .dsr-rank-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; font-weight:600; margin-bottom:6px; }
     .dsr-rank-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .dsr-rank-bar { height:5px; border-radius:4px; background:var(--ds-border); overflow:hidden; }
     .dsr-rank-bar > div { height:100%; border-radius:4px; transition:width .5s cubic-bezier(0.16,1,0.3,1); }
-    .dsr-rank-sub { font-size:10.5px; color:var(--ds-text3); margin-top:6px; }
+    .dsr-rank-sub { font-size:12px; color:var(--ds-text3); margin-top:6px; }
     .dsr-trend { display:flex; align-items:flex-end; gap:3px; height:120px; }
-    .dsr-trend-col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; font-size:9px; color:var(--ds-text3); }
+    .dsr-trend-col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; font-size:12px; color:var(--ds-text3); }
     .dsr-trend-col > div { width:100%; border-radius:4px 4px 2px 2px; }
-    .dsr-trend-bar { background:linear-gradient(180deg,color-mix(in srgb, var(--ds-info) 85%, transparent),color-mix(in srgb, var(--ds-info) 35%, transparent)); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
-    .dsr-trend-col.peak .dsr-trend-bar { background:linear-gradient(180deg,var(--ds-gold),var(--ds-primary)); }
+    .dsr-trend-bar { background:var(--ds-borderHi); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
+    .dsr-trend-col.peak .dsr-trend-bar { background:var(--ds-primary); }
     .dsr-trend-col span { height:11px; line-height:11px; }
-    .dsr-mini-row { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; padding:8px 10px; margin-bottom:4px; border:1px solid var(--ds-border); border-radius:10px; background:var(--ds-surface); color:var(--ds-text1); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; text-align:left; transition:border-color .15s,transform .15s; }
-    .dsr-mini-row:hover { border-color:var(--ds-primary); transform:translateX(2px); }
+    .dsr-mini-row { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; padding:8px 10px; margin-bottom:4px; border:1px solid var(--ds-border); border-radius:10px; background:var(--ds-surface); color:var(--ds-text1); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; text-align:left; transition:border-color .15s; }
+    .dsr-mini-row:hover { border-color:var(--ds-borderHi); }
     .dsr-itable-wrap { overflow-x:auto; border:1px solid var(--ds-border); border-radius:12px; }
     .dsr-itable { min-width:680px; }
     .dsr-irow { display:grid; grid-template-columns:minmax(170px,2.2fr) 60px 70px 90px 120px 100px; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--ds-border); font-size:12.5px; }
     .dsr-irow:last-child { border-bottom:0; }
     .dsr-irow:not(.head):hover { background:var(--ds-surface); }
-    .dsr-irow.head { position:sticky; top:0; font-size:9.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ds-text3); background:var(--ds-surface); }
+    .dsr-irow.head { position:sticky; top:0; font-size:12px; font-weight:500; color:var(--ds-text3); background:var(--ds-surface); }
     .dsr-link { display:flex; flex-direction:column; gap:2px; align-items:flex-start; background:none; border:0; padding:0; font-weight:600; font-size:13px; font-family:inherit; color:var(--ds-text1); cursor:pointer; text-align:left; }
     .dsr-link:hover { color:var(--ds-primary); }
-    .dsr-link small { font-size:10.5px; font-weight:500; color:var(--ds-text3); }
-    .dsr-link.mono { font-family:'IBM Plex Mono',ui-monospace,monospace; font-weight:700; color:var(--ds-info); }
-    .dsr-stage-chip { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px; border:1px solid; font-style:normal; font-size:11px; font-weight:800; }
+    .dsr-link small { font-size:12px; font-weight:500; color:var(--ds-text3); }
+    .dsr-link.mono { font-family:'Geist Mono',ui-monospace,monospace; font-weight:700; color:var(--ds-info); }
+    .dsr-stage-chip { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px; border:1px solid; font-style:normal; font-size:12px; font-weight:600; }
+    .dsr-nv { position:relative; padding:16px 12px 14px; flex:1; overflow-y:auto; }
+    .dsr-nv-lab { font-size:12px; font-weight:400; color:var(--ds-text3); padding:0 12px 8px; }
+    .dsr-nv-list { position:relative; display:grid; gap:6px; }
+    .dsr-nv-ind { position:absolute; left:0; right:0; top:0; height:56px; border-radius:10px; pointer-events:none; background:var(--ds-surface); border:1px solid var(--ds-border); transform:translateY(calc(var(--i, 0) * 62px)); transition:transform .28s cubic-bezier(0.22,1,0.36,1), opacity .2s; }
+    .dsr-nv-item { position:relative; z-index:1; display:flex; align-items:center; gap:12px; width:100%; height:56px; padding:0 12px; border:0; border-radius:10px; background:transparent; cursor:pointer; text-align:left; font-family:inherit; color:var(--ds-text2); transition:color .2s; }
+    .dsr-nv-item:hover { color:var(--ds-text1); }
+        .dsr-nv-item:focus-visible { outline:2px solid var(--ds-primary); outline-offset:-2px; }
+    .dsr-nv-ic { width:34px; height:34px; border-radius:8px; flex:none; display:grid; place-items:center; background:var(--ds-surface); border:1px solid var(--ds-border); transition:background .2s, color .2s; }
+    .dsr-nv-item.active { color:var(--ds-text1); }
+        .dsr-nv-item.active .dsr-nv-ic { background:var(--ds-primary); border-color:transparent; color:#1a1408; }
+    html[data-theme="light"] .dsr-nv-item.active .dsr-nv-ic { color:#ffffff; }
+    .dsr-nv-t { display:flex; flex-direction:column; min-width:0; line-height:1.2; }
+    .dsr-nv-t b { font-size:14px; font-weight:500; }
+    .dsr-nv-t small { font-size:12px; font-weight:400; color:var(--ds-text3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dsr-nv-item.active .dsr-nv-t b { color:var(--ds-primary); }
+    .dsr-nv-cnt { margin-left:auto; min-width:26px; padding:2px 8px; border-radius:999px; text-align:center; font-size:12px; font-weight:500; font-family:'Geist Mono',ui-monospace,monospace; color:var(--ds-text2); background:var(--ds-card); border:1px solid var(--ds-border); }
+    .dsr-nv-kbd { margin-left:auto; font-family:'Geist Mono',ui-monospace,monospace; font-size:12px; font-weight:500; color:var(--ds-text3); border:1px solid var(--ds-border); border-radius:6px; padding:0 6px; line-height:18px; background:var(--ds-surface); }
+    .dsr-nv-foot { display:flex; align-items:center; gap:8px; padding:14px 20px; border-top:1px solid var(--ds-border); font-size:12px; font-weight:600; color:var(--ds-text3); }
+    .dsr-mtb { display:none; align-items:stretch; padding:8px 6px calc(8px + env(safe-area-inset-bottom)); background:var(--ds-card); border-top:1px solid var(--ds-border); box-shadow:var(--ds-shadow-bar); }
+    .dsr-mtb button { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; border:0; background:none; padding:2px 0; font-family:inherit; font-size:12px; font-weight:500; color:var(--ds-text3); cursor:pointer; transition:color .2s; }
+    .dsr-mtb .ic { width:42px; height:30px; border-radius:15px; display:grid; place-items:center; transition:background .2s; }
+    .dsr-mtb button.active { color:var(--ds-primary); font-weight:600; }
+    .dsr-mtb button.active .ic { background:var(--ds-surface); }
+    .dsr-mtb .badge { position:absolute; top:-3px; right:calc(50% - 26px); min-width:16px; height:16px; padding:0 4px; border-radius:8px; display:grid; place-items:center; font-style:normal; font-size:12px; font-weight:500; color:#fff; background:var(--ds-danger); }
+    @media (prefers-reduced-motion:reduce) { .dsr-nv-ind, .dsr-nv-item, .dsr-nv-ic, .dsr-mtb .ic { transition:none; } }
+    .dsr-rc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr)); gap:14px; }
+    .dsr-rc { position:relative; background:var(--ds-card); border:1px solid var(--ds-border); border-radius:12px; padding:16px; overflow:hidden; transition:border-color .15s; }
+    .dsr-rc:hover { border-color:var(--ds-borderHi); }
+    .dsr-rc-h { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .dsr-rc-av { width:42px; height:42px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:13px; font-weight:500; color:var(--ds-text2); background:var(--ds-surface); border:1px solid var(--ds-border); }
+    .dsr-rc-av.sm { width:30px; height:30px; border-radius:50%; font-size:12px; }
+    .dsr-rc-id { flex:1; min-width:0; }
+    .dsr-rc-name { display:block; max-width:100%; background:none; border:0; padding:0; font-family:inherit; font-size:16px; font-weight:500; color:var(--ds-text1); cursor:pointer; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dsr-rc-name:hover { color:var(--ds-primary); }
+    .dsr-rc-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; color:var(--ds-text2); margin-top:3px; }
+    .dsr-rc-meta i { opacity:.5; font-style:normal; }
+    .dsr-rc-ago { margin-left:2px; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:500; background:var(--ds-surface); color:var(--ds-text2); }
+    .dsr-rc-ring { --p:0; --c:var(--ds-primary); position:relative; width:48px; height:48px; flex:none; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--c) calc(var(--p) * 1%), var(--ds-border) 0); }
+    .dsr-rc-ring::before { content:""; position:absolute; inset:4.5px; border-radius:50%; background:var(--ds-card); }
+    .dsr-rc-ring b { position:relative; font-size:12px; font-weight:500; color:var(--c); font-family:'Geist Mono',ui-monospace,monospace; }
+    .dsr-rc-ring b i { font-style:normal; font-size:8px; margin-left:1px; opacity:.8; }
+    .dsr-rc-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .dsr-rc-stage { max-width:100%; padding:4px 10px; border-radius:8px; border:1px solid; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .dsr-rc-dist { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:500; color:var(--ds-text2); background:transparent; border:1px solid var(--ds-border); }
+    .dsr-rc-note { border-radius:10px; padding:9px 12px; margin-bottom:8px; background:var(--ds-surface); border:1px solid var(--ds-border); }
+    .dsr-rc-note span { display:block; font-size:12px; font-weight:400; color:var(--ds-text3); margin-bottom:2px; }
+    .dsr-rc-note p { margin:0; font-size:12.5px; line-height:1.45; color:var(--ds-text1); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .dsr-rc.open .dsr-rc-note p { -webkit-line-clamp:unset; display:block; }
+        .dsr-rc-f { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--ds-border); }
+    .dsr-rc-acts { display:flex; gap:6px; }
+    .dsr-rc-more { display:inline-flex; align-items:center; gap:5px; background:none; border:0; padding:6px 4px; font-family:inherit; font-size:13px; font-weight:500; color:var(--ds-text2); cursor:pointer; }
+    .dsr-rc-more:hover { color:var(--ds-text1); }
+    .dsr-rc-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px; height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .15s,color .15s,border-color .15s; }
+    .dsr-rc-btn:hover { color:var(--ds-text1); border-color:var(--ds-borderHi); background:var(--ds-surface); }
+    .dsr-rc-btn.info { color:var(--ds-text2); }
+    .dsr-rc-btn.info:hover { border-color:var(--ds-borderHi); background:var(--ds-surface); color:var(--ds-text1); }
+    .dsr-rc-btn.danger { color:var(--ds-danger); padding:0 9px; }
+    .dsr-rc-btn.danger:hover { border-color:color-mix(in srgb, var(--ds-danger) 55%, var(--ds-border)); background:color-mix(in srgb, var(--ds-danger) 10%, transparent); color:var(--ds-danger); }
+    .dsr-rc-btn.danger.armed { background:var(--ds-danger); border-color:var(--ds-danger); color:#fff; }
+    .dsr-rc-btn.icon { width:30px; padding:0; }
+    .dsr-rc-fin { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
+    .dsr-rc-fin div { padding:9px 10px; border-radius:10px; background:var(--ds-surface); border:1px solid var(--ds-border); text-align:center; }
+    .dsr-rc-fin div.wide { grid-column:span 3; display:flex; justify-content:space-between; align-items:center; text-align:left; }
+    .dsr-rc-fin span { display:block; font-size:12px; font-weight:400; color:var(--ds-text3); margin-bottom:2px; }
+    .dsr-rc-fin div.wide span { margin:0; }
+    .dsr-rc-fin b { font-size:15px; font-weight:500; color:var(--ds-text1); }
+    .dsr-rc-letter { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:8px; border:1px solid; font-style:normal; font-size:12px; font-weight:500; }
+    .dsr-ins { display:grid; grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:16px; }
+    .dsr-ins-card { text-align:left; font-family:inherit; color:inherit; padding:16px; border-radius:12px; background:var(--ds-card); border:1px solid var(--ds-border); }
+    button.dsr-ins-card { cursor:pointer; transition:border-color .15s; }
+    button.dsr-ins-card:hover { border-color:var(--ds-borderHi); }
+    .dsr-ins-card.on { border-color:var(--ds-primary); }
+    .dsr-ins-t { font-size:13px; font-weight:400; color:var(--ds-text3); }
+    .dsr-ins-v { font-size:32px; font-weight:500; letter-spacing:-.02em; margin-top:8px; line-height:1; }
+    .dsr-ins-s { font-size:13px; color:var(--ds-text2); margin-top:8px; }
+    .dsr-fun { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:10px; }
+    .dsr-fun-b { display:flex; flex-direction:column; align-items:center; gap:5px; padding:6px 2px 5px; border-radius:10px; border:1px solid transparent; background:transparent; font-family:inherit; cursor:pointer; transition:background .15s, border-color .15s; }
+    .dsr-fun-b:hover { background:var(--ds-surface); }
+    .dsr-fun-b.on { background:var(--ds-surface); border-color:var(--ds-borderHi); }
+    .dsr-fun-b .n { font-size:12px; font-weight:600; color:var(--c); font-family:'Geist Mono',ui-monospace,monospace; }
+    .dsr-fun-b .bar { width:100%; height:38px; display:flex; align-items:flex-end; justify-content:center; }
+    .dsr-fun-b .bar i { display:block; width:60%; min-width:10px; border-radius:4px 4px 2px 2px; background:var(--c); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
+    .dsr-fun-b .l { font-size:12px; font-weight:500; color:var(--ds-text2); }
+    @media (max-width:860px) { .dsr-ins { grid-template-columns:repeat(2,minmax(0,1fr)); } .dsr-ins-card.funnel { grid-column:1 / -1; } }
+    .dsr-tb { display:grid; gap:10px; margin-bottom:14px; }
+    .dsr-tb-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .dsr-tb-row.chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+    .dsr-tb-row.chips::-webkit-scrollbar { display:none; }
+    .dsr-tb-row.sel .grow { flex:1; }
+    .dsr-tb-search { position:relative; flex:1; min-width:220px; }
+    .dsr-tb-search .ic { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ds-text3); display:flex; }
+    .dsr-tb-search kbd { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-family:'Geist Mono',ui-monospace,monospace; font-size:12px; font-weight:500; color:var(--ds-text3); border:1px solid var(--ds-border); border-radius:6px; padding:1px 7px; background:var(--ds-surface); }
+    .dsr-tb-search .clr { position:absolute; right:10px; top:50%; transform:translateY(-50%); width:24px; height:24px; border-radius:50%; border:0; background:var(--ds-surface); color:var(--ds-text2); cursor:pointer; display:grid; place-items:center; }
+    .dsr-tb-custom { display:flex; gap:8px; align-items:center; background:var(--ds-primaryDim); padding:10px 12px; border-radius:12px; border:1px solid var(--ds-border); }
+    .dsr-tb-custom span { font-size:12px; font-weight:500; color:var(--ds-text2); }
+    .dsr-filter-chip .cnt { font-size:12px; font-weight:500; opacity:.7; margin-left:2px; }
+    .dsr-seg2 { display:inline-flex; padding:3px; gap:2px; border-radius:10px; background:var(--ds-surface); border:1px solid var(--ds-border); }
+    .dsr-seg2 button { width:32px; height:30px; border:0; border-radius:8px; background:transparent; color:var(--ds-text2); font-size:15px; cursor:pointer; }
+    .dsr-seg2 button.on { background:var(--ds-card); color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
+    html:has(.dsr-layout), body:has(.dsr-layout) { background:var(--ds-bg); }
+    .dsr-mlist { border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); overflow:hidden; }
+    .dsr-mrow { display:grid; grid-template-columns:minmax(150px,1.6fr) repeat(4,minmax(80px,1fr)) minmax(120px,1.1fr) 112px; align-items:center; gap:12px; padding:0 18px; min-height:56px; width:100%; border:0; border-top:1px solid var(--ds-border); background:transparent; color:var(--ds-text1); font-family:inherit; font-size:14px; text-align:left; cursor:pointer; transition:background-color .15s; }
+    .dsr-mrow:first-child { border-top:0; }
+    .dsr-mrow.head { min-height:44px; background:var(--ds-surface); color:var(--ds-text3); font-size:13px; cursor:default; }
+    .dsr-mrow:not(.head):hover { background:var(--ds-surface); }
+    .dsr-mrow:not(.head):focus-visible { outline:2px solid var(--ds-primary); outline-offset:-2px; }
+    .dsr-mrow .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .dsr-mrow .mon { font-weight:500; }
+    .dsr-mrow .chg { font-size:13px; }
+    .dsr-mrow > .hide-sm:not(.num) { padding-left:16px; }
+    .dsr-mrow .go { justify-self:end; display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border:1px solid var(--ds-border); border-radius:8px; font-size:13px; font-weight:500; color:var(--ds-text2); }
+    .dsr-mrow:not(.head):hover .go { color:var(--ds-text1); border-color:var(--ds-borderHi); }
+    @media (max-width: 860px) {
+      .dsr-mrow { grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(56px,.7fr)) auto; padding:0 14px; gap:8px; }
+      .dsr-mrow .hide-sm { display:none; }
+    }
+    .dsr-tb-row.act { font-size:12px; color:var(--ds-text2); }
+    .dsr-tb-row.act .res b { color:var(--ds-primary); }
+    .dsr-x { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:999px; border:1px solid var(--ds-border); background:var(--ds-surface); color:var(--ds-text1); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+    .dsr-x:hover { border-color:var(--ds-borderHi); }
+    .dsr-x.clear { background:transparent; color:var(--ds-text2); border-color:var(--ds-border); }
+    .dsr-rt-wrap { overflow-x:auto; border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); }
+    .dsr-rt { min-width:820px; }
+    .dsr-rt-r { display:grid; grid-template-columns:minmax(180px,2fr) 110px minmax(90px,1fr) minmax(100px,1fr) 56px 70px 76px; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--ds-border); font-size:12.5px; color:var(--ds-text1); }
+    .dsr-rt-r:last-child { border-bottom:0; }
+    .dsr-rt-r:not(.head):hover { background:var(--ds-surface); }
+    .dsr-rt-r.head { position:sticky; top:0; font-size:12px; font-weight:500; color:var(--ds-text3); background:var(--ds-surface); }
+    .dsr-rt-r small { display:block; font-size:12px; color:var(--ds-text3); margin-top:1px; }
+    .dsr-rt-name { display:flex; align-items:center; gap:10px; min-width:0; background:none; border:0; padding:0; font-family:inherit; font-size:14px; font-weight:500; color:var(--ds-text1); cursor:pointer; text-align:left; }
+    .dsr-rt-name:hover { color:var(--ds-primary); }
+    .dsr-rt .acts { display:flex; gap:5px; justify-content:flex-end; }
+    .dsr-more-btn { display:block; margin:16px auto 0; }
+    @media (prefers-reduced-motion:reduce) { .dsr-rc, .dsr-rc:hover { transition:none; transform:none; } }
     .dsr-ghost-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:38px; padding:0 14px; border-radius:10px; border:1px solid var(--ds-border); background:color-mix(in srgb, var(--wash) 3.0%, transparent); color:var(--ds-text1); font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s,color .15s,background .15s; }
-    .dsr-ghost-btn:hover:not(:disabled) { border-color:var(--ds-primary); color:var(--ds-primary); background:rgba(212,175,106,0.08); }
+    .dsr-ghost-btn:hover:not(:disabled) { border-color:var(--ds-borderHi); color:var(--ds-text1); background:var(--ds-surface); }
     .dsr-ghost-btn:disabled { opacity:.45; cursor:not-allowed; }
-    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:linear-gradient(180deg,transparent,color-mix(in srgb, var(--ds-bg) 94%, transparent) 35%); backdrop-filter:blur(8px); }
+    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:var(--ds-bg); border-top:1px solid var(--ds-border); }
     @keyframes dsr-shimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
     .dsr-skeleton { border-radius:12px; background:linear-gradient(90deg,var(--ds-sk1) 25%,var(--ds-sk2) 37%,var(--ds-sk1) 63%); background-size:800px 100%; animation:dsr-shimmer 1.4s infinite linear; }
     @media(min-width:960px){
@@ -576,95 +715,91 @@ const injectGlobalStyles = () => {
       .dsr-stat-grid.cols4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
       .dsr-sticky-actions { margin:20px 0 0; padding:0; position:static; background:none; backdrop-filter:none; }
     }
-    @keyframes dsr-modal-in { from{opacity:0;transform:translateY(12px) scale(0.97);} to{opacity:1;transform:translateY(0) scale(1);} }
-    .dsr-modal-box { animation:dsr-modal-in 0.28s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes dsr-modal-in { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
+    .dsr-modal-box { animation:dsr-modal-in 0.22s cubic-bezier(0.22,1,0.36,1) both; }
     .dsr-ladder-seg { transition:background-color 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s ease; }
     @keyframes dsr-spin { to{transform:rotate(360deg);} }
     .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid color-mix(in srgb, var(--wash) 8.0%, transparent);border-top-color:var(--ds-primary);animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
-    .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(212,175,106,0.12),rgba(59,130,246,0.12));border:1px solid rgba(212,175,106,0.2);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
-    .dsr-input:focus { outline:none;border-color:var(--ds-primary)!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
-    .dsr-input-highlight { border-color:#F59E0B!important;background:rgba(245,158,11,0.06)!important;box-shadow:0 0 0 2px rgba(245,158,11,0.15)!important; }
-    .dsr-input-highlight:focus { border-color:#D97706!important;box-shadow:0 0 0 3px rgba(217,119,6,0.22)!important; }
-    .dsr-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A)!important;border:none!important;box-shadow:var(--ds-shadow-btn);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
-    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px);box-shadow:var(--ds-shadow-btn-hover); }
-    .dsr-btn-primary:active:not(:disabled) { transform:translateY(0);filter:brightness(0.97); }
+    .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:var(--ds-surface);border:1px solid var(--ds-border);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
+    .dsr-input:focus { outline:none;border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
+    .dsr-input-highlight { border-color:var(--ds-borderHi)!important; }
+    .dsr-input-highlight:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
+    .dsr-btn-primary { background:var(--ds-primary)!important;color:#1a1408!important;border:none!important;box-shadow:var(--ds-shadow-btn);transition:background-color 0.16s ease,transform 0.16s ease; }
+    html[data-theme="light"] .dsr-btn-primary { background:#171717!important;color:#fff!important; }
+    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07); }
+    .dsr-btn-primary:active:not(:disabled) { transform:scale(0.98); }
     .dsr-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
     .dsr-btn-danger:hover { background:rgba(244,63,94,0.15)!important;color:#FB7185!important;border-color:rgba(244,63,94,0.4)!important; }
     .dsr-btn-edit:hover { background:rgba(59,130,246,0.12)!important;color:#60A5FA!important;border-color:rgba(59,130,246,0.35)!important; }
-    .dsr-btn-export { background:linear-gradient(135deg,#0D9B72,#047857)!important;box-shadow:var(--ds-shadow-btn-green);transition:transform 0.18s cubic-bezier(0.16,1,0.3,1),box-shadow 0.18s ease,filter 0.18s ease; }
-    .dsr-btn-export:hover { filter:brightness(1.08);transform:translateY(-1.5px); }
-    .dsr-record-card { transition:box-shadow 0.25s cubic-bezier(0.16,1,0.3,1),transform 0.25s cubic-bezier(0.16,1,0.3,1),border-color 0.25s ease;box-shadow:var(--ds-shadow-card-sm); }
-    .dsr-record-card:hover { box-shadow:var(--ds-shadow-hover)!important;transform:translateY(-2px);border-color:var(--ds-borderHi)!important; }
+    .dsr-btn-export { background:var(--ds-surface)!important;color:var(--ds-text1)!important;border:1px solid var(--ds-border)!important;box-shadow:none!important;transition:background-color 0.16s ease,border-color 0.16s ease; }
+    .dsr-btn-export:hover { border-color:var(--ds-borderHi)!important; }
+    .dsr-record-card { transition:border-color 0.15s ease; }
+    .dsr-record-card:hover { border-color:var(--ds-borderHi)!important; }
     .dsr-customer-row { transition:background 0.12s;cursor:pointer; }
     .dsr-customer-row:focus-visible { outline:2px solid var(--ds-primary);outline-offset:-2px; }
-    .dsr-customer-row:hover { background:rgba(212,175,106,0.06)!important; }
+    .dsr-customer-row:hover { background:var(--ds-surface)!important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
     .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
     @media(max-width:767px){.dsr-row-actions{opacity:1!important;}}
-    .dsr-nav-item:hover { background:color-mix(in srgb, var(--wash) 5.0%, transparent)!important; }
-    .dsr-nav-item.active { background:rgba(212,175,106,0.14)!important;color:var(--ds-primary)!important; }
     .dsr-topbar-btn:hover { background:color-mix(in srgb, var(--wash) 12.0%, transparent)!important; }
     .dsr-topbar-btn:active { background:color-mix(in srgb, var(--wash) 20.0%, transparent)!important; }
-    .dsr-visits-btn { transition:background 0.15s,border-color 0.15s,transform 0.15s; }
-    .dsr-visits-btn:hover { background:rgba(212,175,106,0.18)!important;border-color:var(--ds-primary)!important;transform:translateY(-1px); }
+    .dsr-visits-btn { transition:background 0.15s,border-color 0.15s; }
+    .dsr-visits-btn:hover { background:var(--ds-surface)!important;border-color:var(--ds-borderHi)!important; }
     .dsr-export-dropdown { position:relative;display:inline-flex;flex-shrink:0; }
     .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:var(--ds-shadow-menu); }
     .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:var(--ds-text1);border:none;background:transparent;width:100%;text-align:left; }
-    .dsr-export-menu-item:hover { background:rgba(212,175,106,0.10);color:var(--ds-primary); }
-    .dsr-export-menu-item.active { background:rgba(212,175,106,0.12);color:var(--ds-primary);font-weight:700; }
+    .dsr-export-menu-item:hover { background:var(--ds-surface);color:var(--ds-text1); }
+    .dsr-export-menu-item.active { background:var(--ds-surface);color:var(--ds-primary);font-weight:500; }
     .dsr-export-divider { height:1px;background:var(--ds-border);margin:6px 0; }
     .dsr-export-custom-row { padding:10px 12px 4px;display:flex;flex-direction:column;gap:6px; }
-    .dsr-export-custom-row label { font-size:11px;font-weight:700;color:var(--ds-text2);text-transform:uppercase;letter-spacing:0.05em; }
+    .dsr-export-custom-row label { font-size:12px;font-weight:500;color:var(--ds-text2); }
     .dsr-export-custom-inputs { display:flex;gap:6px;align-items:center; }
-    .dsr-card-expanded { border:1.5px solid var(--ds-primary)!important;box-shadow:var(--ds-shadow-expanded)!important; }
-    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--ds-border);background:transparent;font-size:11px;font-weight:600;cursor:pointer;color:var(--ds-text2);transition:all 0.15s;display:flex;align-items:center;gap:4px; }
-    .dsr-expand-btn:hover,.dsr-expand-btn.expanded { background:rgba(59,130,246,0.10);color:#60A5FA;border-color:rgba(59,130,246,0.35); }
+    .dsr-card-expanded { border:1px solid var(--ds-primary)!important; }
+    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--ds-border);background:transparent;font-size:12px;font-weight:500;cursor:pointer;color:var(--ds-text2);transition:background 0.15s,color 0.15s;display:flex;align-items:center;gap:4px; }
+    .dsr-expand-btn:hover,.dsr-expand-btn.expanded { background:var(--ds-surface);color:var(--ds-text1);border-color:var(--ds-borderHi); }
     .dsr-card-detail-section { overflow:hidden;transition:max-height 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.2s ease;max-height:0;opacity:0; }
     .dsr-card-detail-section.open { max-height:800px;opacity:1; }
     .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid var(--ds-border);background:color-mix(in srgb, var(--wash) 3.0%, transparent);font-size:12px;font-weight:600;color:var(--ds-text2);cursor:pointer;transition:all 0.15s;white-space:nowrap; }
-    .dsr-filter-chip:hover { border-color:var(--ds-primary);color:var(--ds-primary);background:rgba(212,175,106,0.08); }
-    .dsr-filter-chip.active { background:var(--ds-primary);color:#0A0B10;border-color:var(--ds-primary); }
-    .dsr-cust-banner { background:rgba(212,175,106,0.06);border:1px solid rgba(212,175,106,0.20);border-left:4px solid var(--ds-primary);border-radius:10px;padding:12px 14px;margin-bottom:14px; }
-    .dsr-cust-banner-title { font-size:10px;font-weight:700;color:var(--ds-primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;gap:5px; }
+    .dsr-filter-chip:hover { border-color:var(--ds-borderHi);color:var(--ds-text1);background:var(--ds-surface); }
+    .dsr-filter-chip.active { background:var(--ds-primary);color:#1a1408;border-color:var(--ds-primary); }
+    html[data-theme="light"] .dsr-filter-chip.active { background:#171717;color:#fff;border-color:#171717; }
+    .dsr-cust-banner { background:var(--ds-surface);border:1px solid var(--ds-border);border-radius:10px;padding:12px 14px;margin-bottom:14px; }
+    .dsr-cust-banner-title { font-size:12px;font-weight:500;color:var(--ds-text2);margin-bottom:8px;display:flex;align-items:center;gap:5px; }
     .dsr-cust-banner-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px 14px; }
     .dsr-cust-banner-item { display:flex;flex-direction:column;gap:1px; }
-    .dsr-cust-banner-key { font-size:9px;color:var(--ds-text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em; }
-    .dsr-cust-banner-val { font-size:12px;font-weight:700;color:var(--ds-gold); }
-    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);font-size:11px;color:var(--ds-gold);line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
-    .dsr-last-hint:hover { background:rgba(245,158,11,0.15); }
+    .dsr-cust-banner-key { font-size:12px;color:var(--ds-text3);font-weight:400; }
+    .dsr-cust-banner-val { font-size:13px;font-weight:500;color:var(--ds-text1); }
+    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:var(--ds-surface);border:1px solid var(--ds-border);font-size:12px;color:var(--ds-text2);line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
+    .dsr-last-hint:hover { background:var(--ds-card); }
     .dsr-last-hint .hint-text { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:700;color:var(--ds-gold);margin-left:3px; }
-    .dsr-edit-stripe { background:linear-gradient(135deg,#1B1D28,#2C3042);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
+    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:500;color:var(--ds-primary);margin-left:3px; }
+    .dsr-edit-stripe { background:var(--ds-surface);border-bottom:1px solid var(--ds-border);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
     .dsr-modal-box::-webkit-scrollbar { width:4px; }
     .dsr-modal-box::-webkit-scrollbar-track { background:var(--ds-surface); }
     .dsr-modal-box::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
     .dsr-scroll::-webkit-scrollbar { width:4px; }
     .dsr-scroll::-webkit-scrollbar-track { background:var(--ds-surface); }
     .dsr-scroll::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
-    @keyframes ei-pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,0.45);}70%{box-shadow:0 0 0 7px rgba(34,197,94,0);}100%{box-shadow:0 0 0 0 rgba(34,197,94,0);} }
-    .ei-import-btn { animation:ei-pulse 2s ease-out 1; }
-    .ei-import-btn:hover { background:#059669!important; }
+        .ei-import-btn:hover { border-color:var(--ds-borderHi)!important; }
     .ei-input { transition:border-color 0.15s,box-shadow 0.15s;outline:none; }
-    .ei-input:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 3px rgba(212,175,106,0.18)!important; }
+    .ei-input:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
     .ei-row-new { background:rgba(212,175,106,0.05); }
     .ei-row-dup { background:rgba(245,158,11,0.05); }
-    .ei-row-new td:first-child { border-left:3px solid var(--ds-primary); }
-    .ei-row-dup td:first-child { border-left:3px solid #F59E0B; }
     .ei-check:checked { accent-color:var(--ds-primary); }
-    .ei-btn-primary { background:linear-gradient(135deg,#F2D48F,#A8823A);color:#0A0B10;border:none;border-radius:8px;cursor:pointer;font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 20px -6px rgba(212,175,106,0.45);transition:filter 0.18s,transform 0.18s; }
-    .ei-btn-primary:hover:not(:disabled) { filter:brightness(1.07);transform:translateY(-1.5px); }
+    .ei-btn-primary { background:var(--ds-primary);color:#1a1408;border:none;border-radius:8px;cursor:pointer;font-weight:500;box-shadow:var(--ds-shadow-btn);transition:filter 0.18s,transform 0.18s; }
+    .ei-btn-primary:hover:not(:disabled) { filter:brightness(1.07); }
     .ei-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
     .ei-btn-secondary { background:color-mix(in srgb, var(--wash) 5.0%, transparent);color:var(--ds-text1);border:1px solid var(--ds-border);border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
     .ei-btn-secondary:hover { background:color-mix(in srgb, var(--wash) 8.0%, transparent); }
     .ei-dropzone { border:2px dashed var(--ds-border);border-radius:12px;background:color-mix(in srgb, var(--wash) 2.0%, transparent);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
     .ei-dropzone.dragover { border-color:var(--ds-primary);background:rgba(212,175,106,0.06); }
     .ei-table { border-collapse:collapse;width:100%;font-size:12px; }
-    .ei-table th { background:var(--ds-surface);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--ds-text2);padding:8px 10px;border-bottom:1px solid var(--ds-border);position:sticky;top:0;z-index:1; }
+    .ei-table th { background:var(--ds-surface);font-size:12px;font-weight:500;color:var(--ds-text2);padding:8px 10px;border-bottom:1px solid var(--ds-border);position:sticky;top:0;z-index:1; }
     .ei-table td { padding:8px 10px;border-bottom:1px solid color-mix(in srgb, var(--wash) 4.0%, transparent);vertical-align:middle;color:var(--ds-text1); }
-    .ei-badge { display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700; }
+    .ei-badge { display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:500; }
     .ei-badge-new { background:rgba(212,175,106,0.15);color:var(--ds-primary);border:1px solid rgba(212,175,106,0.3); }
-    .ei-badge-dup { background:rgba(245,158,11,0.12);color:var(--ds-gold);border:1px solid rgba(245,158,11,0.3); }
-    .ei-toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;align-items:center;gap:8px; }
+    .ei-badge-dup { background:var(--ds-surface);color:var(--ds-text2);border:1px solid var(--ds-border); }
+    .ei-toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:var(--ds-shadow-menu);display:flex;align-items:center;gap:8px; }
     @media(max-width:640px){.ei-desktop-only{display:none!important;}}
     @media(min-width:768px){
       .dsr-layout{display:grid!important;grid-template-columns:240px 1fr!important;min-height:100vh!important;}
@@ -914,7 +1049,7 @@ const IH = {
   ...IS,
   borderColor: "#F59E0B",
   background: "rgba(245,158,11,0.06)",
-  boxShadow: "0 0 0 2px rgba(245,158,11,0.15)",
+  boxShadow: "none",
 };
 
 // ── ExcelImporter ──────────────────────────────────────────────────────────
@@ -1149,8 +1284,7 @@ const ExcelImporter = ({
         justifyContent: "center",
         zIndex: 300,
         padding: 16,
-        backdropFilter: "blur(6px)",
-      }}
+              }}
     >
       {eiToast.msg && (
         <div
@@ -1199,13 +1333,12 @@ const ExcelImporter = ({
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: "linear-gradient(135deg,var(--ds-primary),#A8823A)",
+              background: DS.primary,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              boxShadow: "0 4px 12px rgba(212,175,106,0.35)",
-            }}
+                          }}
           >
             <Icon
               name="upload"
@@ -1215,10 +1348,10 @@ const ExcelImporter = ({
             />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: DS.text1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: DS.text1 }}>
               Import Customers from Excel
             </div>
-            <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}>
               DVR.xlsx or any DSR format
             </div>
           </div>
@@ -1259,8 +1392,8 @@ const ExcelImporter = ({
                   height: 64,
                   borderRadius: "50%",
                   background:
-                    "linear-gradient(135deg,rgba(212,175,106,0.12),rgba(59,130,246,0.12))",
-                  border: "1px solid rgba(212,175,106,0.2)",
+                    DS.surface,
+                  border: `1px solid ${DS.border}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1277,7 +1410,7 @@ const ExcelImporter = ({
               <div
                 style={{
                   fontSize: 15,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DS.text1,
                   marginBottom: 6,
                 }}
@@ -1297,10 +1430,9 @@ const ExcelImporter = ({
                   color: "#0A0B10",
                   borderRadius: 8,
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
-                  boxShadow: "0 4px 12px rgba(212,175,106,0.35)",
-                }}
+                                  }}
               >
                 <Icon name="upload" size={13} strokeWidth={2.1} /> Browse File
               </div>
@@ -1330,13 +1462,13 @@ const ExcelImporter = ({
             >
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div
-                  style={{ fontSize: 12.5, fontWeight: 700, color: DS.text1 }}
+                  style={{ fontSize: 12.5, fontWeight: 600, color: DS.text1 }}
                 >
                   Template chahiye?
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     color: DS.text2,
                     marginTop: 2,
                     lineHeight: 1.45,
@@ -1373,7 +1505,7 @@ const ExcelImporter = ({
                     color: DS.primary,
                     borderRadius: 20,
                     fontSize: 12,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
@@ -1388,10 +1520,10 @@ const ExcelImporter = ({
                     style={{
                       padding: "6px 14px",
                       background: "rgba(233,207,152,0.10)",
-                      color: DS.gold,
+                      color: DS.text1,
                       borderRadius: 20,
                       fontSize: 12,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       display: "flex",
                       alignItems: "center",
                       gap: 5,
@@ -1412,9 +1544,8 @@ const ExcelImporter = ({
                 <div
                   style={{
                     padding: "10px 14px",
-                    background: "rgba(245,158,11,0.06)",
-                    border: "1px solid rgba(245,158,11,0.25)",
-                    borderLeft: `4px solid ${DS.amber}`,
+                    background: DS.surface,
+                    border: `1px solid ${DS.border}`,
                     borderRadius: 10,
                     marginBottom: 14,
                     fontSize: 12,
@@ -1422,8 +1553,8 @@ const ExcelImporter = ({
                 >
                   <div
                     style={{
-                      fontWeight: 700,
-                      color: DS.gold,
+                      fontWeight: 600,
+                      color: DS.text1,
                       marginBottom: 8,
                       display: "flex",
                       alignItems: "center",
@@ -1472,7 +1603,7 @@ const ExcelImporter = ({
                   className="ei-btn-secondary"
                   onClick={selectAllNew}
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     padding: "4px 10px",
                     display: "inline-flex",
                     alignItems: "center",
@@ -1485,7 +1616,7 @@ const ExcelImporter = ({
                   className="ei-btn-secondary"
                   onClick={selectAll}
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     padding: "4px 10px",
                     display: "inline-flex",
                     alignItems: "center",
@@ -1498,7 +1629,7 @@ const ExcelImporter = ({
                   className="ei-btn-secondary"
                   onClick={deselectAll}
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     padding: "4px 10px",
                     display: "inline-flex",
                     alignItems: "center",
@@ -1559,7 +1690,7 @@ const ExcelImporter = ({
                           <td style={{ color: DS.text2 }}>{r.area}</td>
                           <td
                             className="ei-desktop-only"
-                            style={{ color: DS.text2, fontSize: 11.5 }}
+                            style={{ color: DS.text2, fontSize: 12 }}
                           >
                             {r.contactPerson || r.mobile ? (
                               <>
@@ -1573,13 +1704,13 @@ const ExcelImporter = ({
                           </td>
                           <td
                             className="ei-desktop-only"
-                            style={{ color: DS.gold }}
+                            style={{ color: DS.text1 }}
                           >
                             ₹{r.potDyes}L
                           </td>
                           <td
                             className="ei-desktop-only"
-                            style={{ color: DS.gold }}
+                            style={{ color: DS.text1 }}
                           >
                             ₹{r.abp}L
                           </td>
@@ -1602,10 +1733,10 @@ const ExcelImporter = ({
                             {r._missing.length > 0 && (
                               <div
                                 style={{
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: DS.danger,
                                   marginTop: 4,
-                                  fontWeight: 700,
+                                  fontWeight: 600,
                                 }}
                               >
                                 Missing: {r._missing.join(", ")}
@@ -1614,7 +1745,7 @@ const ExcelImporter = ({
                             {r._issues.length > 0 && (
                               <div
                                 style={{
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: DS.amber,
                                   marginTop: 4,
                                   fontWeight: 600,
@@ -1793,11 +1924,9 @@ const ExportDropdown = ({ records, onExport }) => {
         <div className="dsr-export-menu">
           <div
             style={{
-              fontSize: 10,
-              fontWeight: 700,
+              fontSize: 12,
+              fontWeight: 600,
               color: DS.text3,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
               padding: "2px 12px 6px",
             }}
           >
@@ -1812,7 +1941,7 @@ const ExportDropdown = ({ records, onExport }) => {
           >
             <Icon name="records" size={13} strokeWidth={2} />
             <span>All records</span>
-            <span style={{ marginLeft: "auto", fontSize: 10, color: DS.text3 }}>
+            <span style={{ marginLeft: "auto", fontSize: 12, color: DS.text3 }}>
               {records.length} records
             </span>
           </button>
@@ -1837,7 +1966,7 @@ const ExportDropdown = ({ records, onExport }) => {
                   colorScheme: "dark",
                 }}
               />
-              <span style={{ fontSize: 11, color: DS.text3 }}>to</span>
+              <span style={{ fontSize: 12, color: DS.text3 }}>to</span>
               <input
                 type="date"
                 value={ce}
@@ -1894,7 +2023,7 @@ const CustomerLastRecord = ({ record }) => {
         <span
           style={{
             marginLeft: "auto",
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 400,
             color: DS.text2,
           }}
@@ -1911,7 +2040,7 @@ const CustomerLastRecord = ({ record }) => {
             lineHeight: 1.4,
           }}
         >
-          <span style={{ fontWeight: 700 }}>Objective: </span>
+          <span style={{ fontWeight: 600 }}>Objective: </span>
           {record.objective}
         </div>
       )}
@@ -1924,7 +2053,7 @@ const CustomerLastRecord = ({ record }) => {
             lineHeight: 1.4,
           }}
         >
-          <span style={{ fontWeight: 700 }}>Outcome: </span>
+          <span style={{ fontWeight: 600 }}>Outcome: </span>
           {record.outcome}
         </div>
       )}
@@ -1932,7 +2061,7 @@ const CustomerLastRecord = ({ record }) => {
         <div style={{ marginBottom: 8 }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 12,
               padding: "3px 8px",
               borderRadius: 4,
               fontWeight: 600,
@@ -2000,23 +2129,10 @@ const MetricCard = ({ label, value, sub, accent }) => (
     }}
   >
     <div
-      aria-hidden="true"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 2,
-        background: `linear-gradient(90deg,${accent || DS.primary},color-mix(in srgb, ${accent || DS.primary} 33.3%, transparent))`,
-      }}
-    />
-    <div
-      style={{
-        fontSize: 9.5,
+        fontSize: 12,
         color: DS.text3,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.07em",
+        fontWeight: 600,
         marginBottom: 7,
       }}
     >
@@ -2024,14 +2140,14 @@ const MetricCard = ({ label, value, sub, accent }) => (
     </div>
     <div
       className="dsr-mono"
-      style={{ fontSize: 23, fontWeight: 700, color: DS.gold, lineHeight: 1 }}
+      style={{ fontSize: 24, fontWeight: 500, color: DS.text1, lineHeight: 1 }}
     >
       {value}
     </div>
     {sub && (
       <div
         style={{
-          fontSize: 10.5,
+          fontSize: 12,
           color: DS.text2,
           marginTop: 5,
           fontWeight: 500,
@@ -2047,12 +2163,11 @@ const FieldLabel = ({ children, required, keyBadge }) => (
   <label
     style={{
       display: "block",
-      fontSize: 11,
+      fontSize: 12,
       color: DS.text2,
       marginBottom: 5,
       fontWeight: 600,
-      letterSpacing: "0.02em",
-    }}
+      }}
   >
     {children}
     {required && <span style={{ color: DS.danger, marginLeft: 2 }}>*</span>}
@@ -2060,13 +2175,12 @@ const FieldLabel = ({ children, required, keyBadge }) => (
       <span
         style={{
           marginLeft: 6,
-          fontSize: 10,
-          fontWeight: 700,
-          color: DS.gold,
+          fontSize: 12,
+          fontWeight: 600,
+          color: DS.text1,
           background: "rgba(233,207,152,0.12)",
           padding: "1px 6px 1px 5px",
           borderRadius: 4,
-          letterSpacing: "0.03em",
           display: "inline-flex",
           alignItems: "center",
           gap: 3,
@@ -2147,9 +2261,9 @@ const CustomSelect = ({
           color: isEmpty ? DS.text2 : DS.text1,
           borderColor: open ? DS.primary : highlight ? DS.amber : DS.border,
           boxShadow: open
-            ? `0 0 0 3px rgba(212,175,106,0.18)`
+            ? `0 0 0 1px ${DS.primary}`
             : highlight
-              ? "0 0 0 2px rgba(245,158,11,0.15)"
+              ? `0 0 0 1px ${DS.primary}`
               : "none",
         }}
       >
@@ -2242,8 +2356,7 @@ const CustomSelect = ({
                       borderRadius: 2,
                       flexShrink: 0,
                       background: sc.border,
-                      boxShadow: `0 0 6px color-mix(in srgb, ${sc.border} 66.7%, transparent)`,
-                    }}
+                                          }}
                   />
                 )}
                 <span
@@ -2327,395 +2440,355 @@ const Toast = ({ msg, type }) => {
   );
 };
 
-const RecordCard = ({ record, onDelete, onEdit }) => {
+// ══════════════════════════════════════════════════════════════════════════
+//  RECORDS PRO UI – toolbar, insights, premium cards, compact table
+// ══════════════════════════════════════════════════════════════════════════
+const dsrHue = (s) => [...String(s || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const dsrInitials = (n) =>
+  String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+const agoLabel = (d) => {
+  const n = daysSince(d);
+  if (n === null) return "";
+  return n === 0 ? "Today" : n === 1 ? "Yesterday" : `${n} days ago`;
+};
+const stageLetter = (s) => (s || "").trim()[0]?.toUpperCase() || "";
+
+const REC_SORTS = [
+  ["new", "Newest first"],
+  ["old", "Oldest first"],
+  ["name", "Customer A–Z"],
+  ["pct", "Highest YTD/ABP"],
+  ["pctLow", "Lowest YTD/ABP"],
+  ["pot", "Highest potential"],
+];
+const REC_PRESETS = [
+  ["all", "All time"],
+  ["today", "Today"],
+  ["7", "7 days"],
+  ["month", "This month"],
+  ["lastmonth", "Last month"],
+];
+const presetRange = (id) => {
+  const now = new Date();
+  const sod = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const eod = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  if (id === "today") return [sod(now), eod(now)];
+  if (id === "7") {
+    const s = sod(now);
+    s.setDate(s.getDate() - 6);
+    return [s, eod(now)];
+  }
+  if (id === "month") return [new Date(now.getFullYear(), now.getMonth(), 1), eod(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+  if (id === "lastmonth")
+    return [new Date(now.getFullYear(), now.getMonth() - 1, 1), eod(new Date(now.getFullYear(), now.getMonth(), 0))];
+  return null;
+};
+const recPot = (r) => toNum(r.potDyes) + toNum(r.potAux);
+
+const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
   const [expanded, setExpanded] = useState(false);
+  const [armed, setArmed] = useState(false);
   const color = pctColor(record.pct);
   const sc = stageColor(record.stage);
   const id = record._id || record.id;
+  const askDelete = () => {
+    if (armed) return onDelete(id);
+    setArmed(true);
+    setTimeout(() => setArmed(false), 3000);
+  };
   return (
-    <div
-      className={`dsr-record-card${expanded ? " dsr-card-expanded" : ""}`}
-      style={{
-        background: DS.card,
-        border: `1px solid ${DS.border}`,
-        borderRadius: 12,
-        overflow: "hidden",
-        borderLeft: `4px solid ${sc.border}`,
-      }}
-    >
-      <div style={{ padding: "14px 14px 0 14px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 8,
-            marginBottom: 8,
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: DS.text1,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {record.customer}
-            </div>
-            <div style={{ fontSize: 11, color: DS.text2, marginTop: 2 }}>
-              {fmtDate(record.date)} · {record.area}
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                padding: "3px 9px",
-                borderRadius: 20,
-                fontWeight: 600,
-                background: "rgba(59,130,246,0.12)",
-                color: DS.info,
-                border: "1px solid rgba(59,130,246,0.25)",
-              }}
-            >
-              {record.distributor}
-            </span>
-            <button
-              className={`dsr-expand-btn${expanded ? " expanded" : ""}`}
-              onClick={() => setExpanded((p) => !p)}
-            >
-              {expanded ? "▲ Collapse" : "▼ Expand"}
-            </button>
+    <article className={`dsr-rc${expanded ? " open" : ""}`} style={{ "--sc": sc.border }}>
+      <header className="dsr-rc-h">
+        <span className="dsr-rc-av" style={{ "--h": dsrHue(record.customer) }} aria-hidden="true">
+          {dsrInitials(record.customer)}
+        </span>
+        <div className="dsr-rc-id">
+          <button className="dsr-rc-name" onClick={onOpen} title="Open customer history">
+            {record.customer}
+          </button>
+          <div className="dsr-rc-meta">
+            <span>{fmtDate(record.date)}</span>
+            <i>·</i>
+            <span>{record.area || "—"}</span>
+            <span className="dsr-rc-ago">{agoLabel(record.date)}</span>
           </div>
         </div>
-        {record.objective && (
-          <div
-            style={{
-              fontSize: 12,
-              color: DS.text1,
-              marginBottom: 6,
-              lineHeight: 1.4,
-              background: "rgba(212,175,106,0.07)",
-              borderRadius: 6,
-              padding: "6px 10px",
-              borderLeft: `3px solid ${DS.primary}`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: DS.text3,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                display: "block",
-                marginBottom: 2,
-              }}
-            >
-              Objective
-            </span>
-            {record.objective}
-          </div>
-        )}
-        {record.outcome && (
-          <div
-            style={{
-              fontSize: 12,
-              color: DS.text1,
-              marginBottom: 8,
-              lineHeight: 1.4,
-              background: "rgba(59,130,246,0.07)",
-              borderRadius: 6,
-              padding: "6px 10px",
-              borderLeft: `3px solid ${DS.info}`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: DS.text3,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                display: "block",
-                marginBottom: 2,
-              }}
-            >
-              Visit Outcome
-            </span>
-            {record.outcome}
-          </div>
-        )}
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 8,
-            paddingBottom: 12,
-          }}
+          className="dsr-rc-ring"
+          style={{ "--p": Math.min(Number(record.pct) || 0, 100), "--c": color }}
+          title={`YTD vs ABP: ${record.pct}%`}
         >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 4,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  fontWeight: 600,
-                  background: sc.bg,
-                  color: sc.text,
-                  border: `1px solid color-mix(in srgb, ${sc.border} 26.7%, transparent)`,
-                  maxWidth: 200,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {record.stage || "No stage"}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color,
-                  marginLeft: 8,
-                  flexShrink: 0,
-                }}
-              >
-                {record.pct}%
-              </span>
+          <b>
+            {Math.round(Number(record.pct) || 0)}
+            <i>%</i>
+          </b>
+        </div>
+      </header>
+
+      <div className="dsr-rc-tags">
+        <span className="dsr-rc-stage" style={{ background: sc.bg, color: sc.text, borderColor: `color-mix(in srgb, ${sc.border} 35%, transparent)` }}>
+          {record.stage || "No stage"}
+        </span>
+        {record.distributor && <span className="dsr-rc-dist">{record.distributor}</span>}
+      </div>
+      <div style={{ margin: "2px 0 10px" }}>
+        <StageLadder stage={record.stage} size="sm" />
+      </div>
+
+      {record.objective && (
+        <div className="dsr-rc-note obj">
+          <span>Objective</span>
+          <p>{record.objective}</p>
+        </div>
+      )}
+      {record.outcome && (
+        <div className="dsr-rc-note out">
+          <span>Visit outcome</span>
+          <p>{record.outcome}</p>
+        </div>
+      )}
+
+      <footer className="dsr-rc-f">
+        <button className="dsr-rc-more" onClick={() => setExpanded((p) => !p)} aria-expanded={expanded}>
+          <Icon name={expanded ? "chevronUp" : "chevronDown"} size={13} strokeWidth={2.2} />
+          {expanded ? "Less" : "Financials"}
+        </button>
+        <div className="dsr-rc-acts">
+          <button className="dsr-rc-btn" onClick={onOpen} title="Visit history">
+            <Icon name="records" size={13} strokeWidth={2} /> History
+          </button>
+          <button className="dsr-rc-btn info" onClick={() => onEdit(record)}>
+            <Icon name="edit" size={13} strokeWidth={2} /> Edit
+          </button>
+          <button className={`dsr-rc-btn danger${armed ? " armed" : ""}`} onClick={askDelete} aria-label="Delete record">
+            <Icon name="trash" size={13} strokeWidth={2} />
+            {armed && " Confirm?"}
+          </button>
+        </div>
+      </footer>
+
+      {expanded && (
+        <div className="dsr-rc-fin">
+          {[
+            ["Pot. Dyes", record.potDyes],
+            ["Pot. Aux", record.potAux],
+            ["Ex. Dyes", record.exDyes],
+            ["Ex. Aux", record.exAux],
+            ["ABP AM26", record.abp],
+            ["YTD sale", record.ytd],
+          ].map(([k, v]) => (
+            <div key={k}>
+              <span>{k}</span>
+              <b className="dsr-mono">₹{v}L</b>
             </div>
-            <div style={{ marginBottom: 6 }}>
-              <StageLadder stage={record.stage} size="sm" />
-            </div>
-            <div
-              style={{
-                height: 5,
-                background: DS.border,
-                borderRadius: 3,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${Math.min(record.pct, 100)}%`,
-                  background: color,
-                  borderRadius: 3,
-                  transition: "width 0.5s ease",
-                }}
-              />
-            </div>
+          ))}
+          <div className="wide">
+            <span>Total potential</span>
+            <b className="dsr-mono" style={{ color: DS.primary }}>₹{recPot(record).toFixed(2)}L/mth</b>
           </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            <button
-              className="dsr-btn-edit"
-              onClick={() => onEdit(record)}
-              style={{
-                color: DS.info,
-                background: "transparent",
-                border: "1px solid rgba(59,130,246,0.25)",
-                height: 30,
-                padding: "0 10px",
-                borderRadius: 6,
-                fontSize: 11,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                transition: "all 0.15s",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <Icon name="edit" size={12} strokeWidth={2} /> Edit
-            </button>
-            <button
-              className="dsr-btn-danger"
-              onClick={() => onDelete(id)}
-              style={{
-                color: DS.danger,
-                background: "transparent",
-                border: "1px solid rgba(244,63,94,0.25)",
-                height: 30,
-                padding: "0 10px",
-                borderRadius: 6,
-                fontSize: 11,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-                transition: "all 0.15s",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <Icon name="trash" size={12} strokeWidth={2} /> Delete
-            </button>
+          <div className="wide">
+            <span>Total existing</span>
+            <b className="dsr-mono" style={{ color: DS.info }}>₹{(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth</b>
           </div>
+        </div>
+      )}
+    </article>
+  );
+};
+
+const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
+  <div className="dsr-rt-wrap">
+    <div className="dsr-rt">
+      <div className="dsr-rt-r head">
+        <span>Customer</span>
+        <span>Date</span>
+        <span>Area</span>
+        <span>Distributor</span>
+        <span>Stage</span>
+        <span>YTD/ABP</span>
+        <span />
+      </div>
+      {rows.map((r) => {
+        const sc = stageColor(r.stage);
+        const id = r._id || r.id;
+        return (
+          <div key={id} className="dsr-rt-r" style={{ "--sc": sc.border }}>
+            <button className="dsr-rt-name" onClick={() => onOpen(r.customer)}>
+              <span className="dsr-rc-av sm" style={{ "--h": dsrHue(r.customer) }}>{dsrInitials(r.customer)}</span>
+              {r.customer}
+            </button>
+            <span>
+              {fmtDate(r.date)}
+              <small>{agoLabel(r.date)}</small>
+            </span>
+            <span>{r.area || "—"}</span>
+            <span>{r.distributor || "—"}</span>
+            <span>
+              <em className="dsr-rc-letter" style={{ background: sc.bg, color: sc.text, borderColor: sc.border }} title={r.stage}>
+                {stageLetter(r.stage) || "–"}
+              </em>
+            </span>
+            <span className="dsr-mono" style={{ color: pctColor(r.pct), fontWeight: 600 }}>{r.pct}%</span>
+            <span className="acts">
+              <button className="dsr-rc-btn info icon" onClick={() => onEdit(r)} aria-label="Edit record"><Icon name="edit" size={13} strokeWidth={2} /></button>
+              <button className="dsr-rc-btn danger icon" onClick={() => onDelete(id)} aria-label="Delete record"><Icon name="trash" size={13} strokeWidth={2} /></button>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const RecordsInsights = ({ latest, todayCount, followCount, followOnly, onFollow, stage, onStage, topArea }) => {
+  const counts = {};
+  latest.forEach((r) => {
+    const l = stageLetter(r.stage);
+    if (l) counts[l] = (counts[l] || 0) + 1;
+  });
+  const max = Math.max(1, ...Object.values(counts));
+  return (
+    <div className="dsr-ins">
+      <div className="dsr-ins-card funnel">
+        <div className="dsr-ins-t">Pipeline · customers by stage</div>
+        <div className="dsr-fun" role="group" aria-label="Filter by stage">
+          {PROJECT_STAGE_OPTIONS.map((st) => {
+            const l = st[0];
+            const n = counts[l] || 0;
+            const col = stageColor(st).border;
+            return (
+              <button key={l} className={`dsr-fun-b${stage === l ? " on" : ""}`} style={{ "--c": col }} onClick={() => onStage(stage === l ? "" : l)} title={st} aria-pressed={stage === l}>
+                <span className="n">{n}</span>
+                <span className="bar"><i style={{ height: `${Math.max(6, (n / max) * 100)}%` }} /></span>
+                <span className="l">{l}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
-      <div className={`dsr-card-detail-section${expanded ? " open" : ""}`}>
-        <div
-          style={{
-            margin: "0 14px",
-            borderTop: `1px dashed ${DS.border}`,
-            paddingTop: 12,
-            paddingBottom: 14,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: DS.text3,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              marginBottom: 10,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <Icon name="wallet" size={12} strokeWidth={2} /> Financial Details
-            (₹ Lakhs)
-          </div>
-          <div
-            className="dsr-record-detail-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-              gap: "10px 14px",
-              padding: "12px 14px",
-              background: DS.surface,
-              borderRadius: 10,
-              border: `1px solid ${DS.border}`,
-            }}
-          >
-            {[
-              ["Pot. Dyes", record.potDyes],
-              ["Pot. Aux", record.potAux],
-              ["Ex. Dyes", record.exDyes],
-              ["Ex. Aux", record.exAux],
-              ["ABP AM26", record.abp],
-              ["YTD Sale", record.ytd],
-            ].map(([key, val]) => (
-              <div
-                key={key}
-                style={{
-                  textAlign: "center",
-                  padding: "8px 6px",
-                  background: DS.card,
-                  borderRadius: 8,
-                  border: `1px solid ${DS.border}`,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: DS.text3,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: 4,
-                  }}
-                >
-                  {key}
-                </div>
-                <div
-                  className="dsr-mono"
-                  style={{ fontSize: 15.5, fontWeight: 700, color: DS.gold }}
-                >
-                  ₹{val}L
-                </div>
-              </div>
-            ))}
-          </div>
-          <div
-            style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}
-          >
-            {[
-              [
-                "Total Potential",
-                `₹${(toNum(record.potDyes) + toNum(record.potAux)).toFixed(2)}L/mth`,
-                DS.primary,
-                "rgba(212,175,106,0.08)",
-                "rgba(212,175,106,0.2)",
-              ],
-              [
-                "Total Existing",
-                `₹${(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth`,
-                DS.info,
-                "rgba(59,130,246,0.08)",
-                "rgba(59,130,246,0.2)",
-              ],
-              [
-                "YTD vs ABP",
-                `${record.pct}%`,
-                color,
-                "rgba(233,207,152,0.06)",
-                "rgba(233,207,152,0.18)",
-              ],
-            ].map(([lbl, val, clr, bg, bd]) => (
-              <div
-                key={lbl}
-                style={{
-                  flex: 1,
-                  minWidth: 120,
-                  padding: "8px 12px",
-                  background: bg,
-                  borderRadius: 8,
-                  border: `1px solid ${bd}`,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: DS.text3,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {lbl}
-                </div>
-                <div
-                  className="dsr-mono"
-                  style={{
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    color: clr,
-                    marginTop: 2,
-                  }}
-                >
-                  {val}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <button className={`dsr-ins-card stat${followOnly ? " on" : ""}`} onClick={onFollow} aria-pressed={followOnly}>
+        <div className="dsr-ins-t">Follow-ups due</div>
+        <div className="dsr-ins-v dsr-mono" style={{ color: followCount ? DS.warning : DS.success }}>{followCount}</div>
+        <div className="dsr-ins-s">no visit in 14+ days · {followOnly ? "showing" : "tap to filter"}</div>
+      </button>
+      <div className="dsr-ins-card stat">
+        <div className="dsr-ins-t">Visits today</div>
+        <div className="dsr-ins-v dsr-mono" style={{ color: DS.text1 }}>{todayCount}</div>
+        <div className="dsr-ins-s">{topArea ? `Top area: ${topArea}` : "no data yet"}</div>
       </div>
     </div>
   );
 };
+
+const RecordsToolbar = (p) => {
+  const active = [
+    p.preset !== "all" && ["preset", p.preset === "custom" ? "Custom range" : REC_PRESETS.find((x) => x[0] === p.preset)?.[1], () => p.setPreset("all")],
+    p.stage && ["stage", `Stage ${p.stage}`, () => p.setStage("")],
+    p.dist && ["dist", p.dist, () => p.setDist("")],
+    p.area && ["area", p.area, () => p.setArea("")],
+    p.followOnly && ["follow", "Follow-ups due", () => p.setFollowOnly(false)],
+    p.q && ["q", `“${p.q}”`, () => p.setQ("")],
+  ].filter(Boolean);
+  return (
+    <div className="dsr-tb">
+      <div className="dsr-tb-row">
+        <div className="dsr-tb-search">
+          <span className="ic"><Icon name="search" size={15} strokeWidth={2} /></span>
+          <input ref={p.searchRef} className="dsr-input" style={{ ...IS, paddingLeft: 36, paddingRight: 64 }} placeholder="Search customer, area, distributor, objective…" value={p.q} onChange={(e) => p.setQ(e.target.value)} aria-label="Search records" />
+          {p.q ? (
+            <button className="clr" onClick={() => p.setQ("")} aria-label="Clear search"><Icon name="close" size={12} strokeWidth={2.4} /></button>
+          ) : (
+            <kbd>/</kbd>
+          )}
+        </div>
+        {p.exportNode}
+      </div>
+      <div className="dsr-tb-row chips" role="group" aria-label="Date range">
+        {REC_PRESETS.map(([id, label]) => (
+          <button key={id} className={`dsr-filter-chip${p.preset === id ? " active" : ""}`} onClick={() => p.setPreset(id)}>
+            {label} <span className="cnt">{p.counts[id]}</span>
+          </button>
+        ))}
+        <button className={`dsr-filter-chip${p.preset === "custom" ? " active" : ""}`} onClick={() => p.setPreset("custom")}>
+          <Icon name="calendar" size={12} strokeWidth={2} /> Custom
+        </button>
+      </div>
+      {p.preset === "custom" && (
+        <div className="dsr-tb-custom">
+          <span>From</span>
+          <input type="date" value={p.start} onChange={(e) => p.setStart(e.target.value)} className="dsr-input" style={{ ...IS, height: 34, flex: 1 }} aria-label="From date" />
+          <span>To</span>
+          <input type="date" value={p.end} onChange={(e) => p.setEnd(e.target.value)} className="dsr-input" style={{ ...IS, height: 34, flex: 1 }} aria-label="To date" />
+        </div>
+      )}
+      <div className="dsr-tb-row sel">
+        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.stage} onChange={(e) => p.setStage(e.target.value)} aria-label="Stage">
+          <option value="">All stages</option>
+          {PROJECT_STAGE_OPTIONS.map((st) => <option key={st[0]} value={st[0]}>{st}</option>)}
+        </select>
+        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.dist} onChange={(e) => p.setDist(e.target.value)} aria-label="Distributor">
+          <option value="">All distributors</option>
+          {p.dists.map((d) => <option key={d}>{d}</option>)}
+        </select>
+        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.area} onChange={(e) => p.setArea(e.target.value)} aria-label="Area">
+          <option value="">All areas</option>
+          {p.areas.map((a) => <option key={a}>{a}</option>)}
+        </select>
+        <div className="grow" />
+        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.sort} onChange={(e) => p.setSort(e.target.value)} aria-label="Sort records">
+          {REC_SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <div className="dsr-seg2" role="group" aria-label="View">
+          <button className={p.view === "cards" ? "on" : ""} onClick={() => p.setView("cards")} aria-label="Card view" title="Card view">▦</button>
+          <button className={p.view === "table" ? "on" : ""} onClick={() => p.setView("table")} aria-label="Table view" title="Table view">☰</button>
+        </div>
+      </div>
+      {(active.length > 0 || p.total !== p.shown) && (
+        <div className="dsr-tb-row act">
+          <span className="res"><b>{p.shown}</b> of {p.total} records</span>
+          {active.map(([k, label, off]) => (
+            <button key={k} className="dsr-x" onClick={off}>{label}<Icon name="close" size={10} strokeWidth={2.6} /></button>
+          ))}
+          {active.length > 0 && <button className="dsr-x clear" onClick={p.onClear}>Clear all</button>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MonthAnalysisList = ({ rows, onOpen }) => (
+  <div className="dsr-mlist" role="table" aria-label="Monthly visit analysis">
+    <div className="dsr-mrow head" role="row">
+      <span role="columnheader">Month</span>
+      <span role="columnheader" className="num">Visits</span>
+      <span role="columnheader" className="num">Customers</span>
+      <span role="columnheader" className="num hide-sm">Potential</span>
+      <span role="columnheader" className="num hide-sm">Avg YTD/ABP</span>
+      <span role="columnheader" className="hide-sm">Vs last month</span>
+      <span role="columnheader" />
+    </div>
+    {rows.map(({ month, delta }) => (
+      <button
+        key={month.key}
+        type="button"
+        role="row"
+        className="dsr-mrow"
+        onClick={() => onOpen(month)}
+        aria-label={`Open full report for ${month.label}`}
+      >
+        <span className="mon" role="cell">{month.label}</span>
+        <span className="num" role="cell">{month.totalVisits}</span>
+        <span className="num" role="cell">{month.uniqueCustomers}</span>
+        <span className="num hide-sm" role="cell">{`₹${month.totalPot}L`}</span>
+        <span className="num hide-sm" role="cell">{`${month.avgPct}%`}</span>
+        <span className="chg hide-sm" role="cell" style={{ color: delta === null || delta === 0 ? DS.text3 : delta > 0 ? DS.success : DS.danger }}>
+          {delta === null || delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta} visits`}
+        </span>
+        <span className="go" role="cell">Full report ›</span>
+      </button>
+    ))}
+  </div>
+);
 
 const MonthAnalysisCard = ({ month, delta, onOpen }) => (
   <div
@@ -2725,7 +2798,6 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
       border: `1px solid ${DS.border}`,
       borderRadius: 14,
       overflow: "hidden",
-      borderLeft: `4px solid ${DS.primary}`,
     }}
   >
     <div
@@ -2768,8 +2840,8 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
             <span
               style={{
                 fontFamily: "'Manrope',sans-serif",
-                fontSize: 10,
-                fontWeight: 700,
+                fontSize: 12,
+                fontWeight: 600,
                 color: delta > 0 ? DS.success : DS.danger,
               }}
             >
@@ -2780,8 +2852,8 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span
             style={{
-              fontSize: 11.5,
-              fontWeight: 700,
+              fontSize: 12,
+              fontWeight: 600,
               color: DS.primary,
               background: DS.primaryDim,
               border: "1px solid rgba(212,175,106,0.35)",
@@ -2821,7 +2893,7 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
                   padding: ri === 0 ? "12px 6px" : "9px 6px",
                   background:
                     ri === 0
-                      ? `linear-gradient(160deg,${DS.surface},${DS.card})`
+                      ? DS.card
                       : DS.surface,
                   borderRadius: 10,
                   border: `1px solid ${ri === 0 ? DS.borderHi : DS.border}`,
@@ -2830,11 +2902,9 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
               >
                 <div
                   style={{
-                    fontSize: 9,
+                    fontSize: 12,
                     color: DS.text3,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
+                    fontWeight: 600,
                     marginBottom: 4,
                   }}
                 >
@@ -2844,8 +2914,8 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
                   className="dsr-mono"
                   style={{
                     fontSize: ri === 0 ? 22 : 14,
-                    fontWeight: 700,
-                    color: clr,
+                    fontWeight: 500,
+                    color: DS.text1,
                   }}
                 >
                   {val}
@@ -2860,17 +2930,17 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
 );
 
 const TABS = [
-  { id: "records", icon: "records", label: "Records" },
-  { id: "add", icon: "addRecord", label: "Add Record" },
-  { id: "customers", icon: "store", label: "Customers" },
-  { id: "analysis", icon: "trending", label: "Analysis" },
+  { id: "records", icon: "records", label: "Records", hint: "All visit entries" },
+  { id: "add", icon: "addRecord", label: "Add Record", hint: "Log a new visit" },
+  { id: "customers", icon: "store", label: "Customers", hint: "Customer master" },
+  { id: "analysis", icon: "trending", label: "Analysis", hint: "Monthly insights" },
 ];
 
 const Sidebar = ({ active, onChange, recordCount }) => (
   <div
     className="dsr-sidebar"
     style={{
-      background: `linear-gradient(180deg,${DS.sidebar} 0%,var(--ds-sidebarEnd) 100%)`,
+      background: DS.sidebar,
       flexDirection: "column",
       padding: "0",
       position: "sticky",
@@ -2892,7 +2962,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             width: 36,
             height: 36,
             borderRadius: 10,
-            background: "linear-gradient(135deg,#F2D48F,#A8823A)",
+            background: DS.primary,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2900,9 +2970,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             fontWeight: 900,
             color: "#0A0B10",
             flexShrink: 0,
-            boxShadow:
-              "0 0 16px rgba(212,175,106,0.45),0 4px 12px -2px rgba(212,175,106,0.35)",
-          }}
+                      }}
         >
           D
         </div>
@@ -2910,7 +2978,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
           <div
             style={{
               fontSize: 14,
-              fontWeight: 800,
+              fontWeight: 600,
               color: DS.text1,
               letterSpacing: "-0.01em",
             }}
@@ -2919,11 +2987,10 @@ const Sidebar = ({ active, onChange, recordCount }) => (
           </div>
           <div
             style={{
-              fontSize: 9.5,
+              fontSize: 12,
               color: DS.text3,
               fontWeight: 500,
-              letterSpacing: "0.02em",
-            }}
+              }}
           >
             Sales Management
           </div>
@@ -2933,59 +3000,37 @@ const Sidebar = ({ active, onChange, recordCount }) => (
     <div style={{ padding: "14px 14px 0" }}>
       <HomeLink />
     </div>
-    <nav style={{ padding: "12px 10px 14px", flex: 1 }}>
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          className={`dsr-nav-item${active === t.id ? " active" : ""}`}
-          onClick={() => onChange(t.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 9,
-            border: "none",
-            borderLeft:
-              active === t.id
-                ? `3px solid ${DS.primary}`
-                : "3px solid transparent",
-            cursor: "pointer",
-            marginBottom: 3,
-            fontSize: 13,
-            fontWeight: active === t.id ? 700 : 500,
-            color: active === t.id ? DS.primary : DS.text2,
-            background:
-              active === t.id ? "rgba(212,175,106,0.12)" : "transparent",
-            textAlign: "left",
-            transition: "background 0.2s,color 0.2s,border-color 0.2s",
-          }}
-        >
-          <Icon name={t.icon} size={17} strokeWidth={1.9} />
-          <span>{t.label}</span>
-          {t.id === "records" && recordCount > 0 && (
-            <span
-              style={{
-                marginLeft: "auto",
-                background: "linear-gradient(135deg,#F2D48F,#A8823A)",
-                color: "#0A0B10",
-                fontSize: 10,
-                fontWeight: 900,
-                padding: "1px 7px",
-                borderRadius: 10,
-                lineHeight: "16px",
-                boxShadow: "0 2px 8px rgba(212,175,106,0.35)",
-              }}
-            >
-              {recordCount}
+    <nav className="dsr-nv" aria-label="DSR sections">
+      <div className="dsr-nv-lab">Workspace</div>
+      <div className="dsr-nv-list">
+        <span
+          className="dsr-nv-ind"
+          aria-hidden="true"
+          style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === active)), opacity: TABS.some((t) => t.id === active) ? 1 : 0 }}
+        />
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`dsr-nv-item${active === t.id ? " active" : ""}`}
+            onClick={() => onChange(t.id)}
+            aria-current={active === t.id ? "page" : undefined}
+          >
+            <span className="dsr-nv-ic">
+              <Icon name={t.icon} size={17} strokeWidth={active === t.id ? 2.1 : 1.8} />
             </span>
-          )}
-        </button>
-      ))}
+            <span className="dsr-nv-t">
+              <b>{t.label}</b>
+              <small>{t.hint}</small>
+            </span>
+            {t.id === "records" && recordCount > 0 && <span className="dsr-nv-cnt">{recordCount}</span>}
+            {t.id === "add" && <kbd className="dsr-nv-kbd" title="Keyboard shortcut">N</kbd>}
+          </button>
+        ))}
+      </div>
     </nav>
-    <div style={{ padding: "12px 20px", borderTop: `1px solid ${DS.border}` }}>
-      <div style={{ fontSize: 10, color: DS.text3, fontWeight: 500 }}>
+    <div className="dsr-nv-foot">
+      <Icon name="calendar" size={12} strokeWidth={2} />
+      <div>
         {new Date().toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -2997,107 +3042,43 @@ const Sidebar = ({ active, onChange, recordCount }) => (
 );
 
 const MobileTabBar = ({ active, onChange, recordCount }) => (
-  <div
-    className="dsr-mobile-tabbar"
+  <nav
+    className="dsr-mobile-tabbar dsr-mtb"
+    aria-label="DSR sections"
     style={{
       position: "fixed",
       bottom: 0,
       left: 0,
       right: 0,
       zIndex: 50,
-      background: DS.card,
-      borderTop: `1px solid ${DS.border}`,
-      boxShadow: "var(--ds-shadow-bar)",
-      padding: "6px 0 calc(6px + env(safe-area-inset-bottom))",
       justifyContent: "space-around",
     }}
   >
-    <button
-      onClick={() => window.history.back()}
-      style={{
-        flex: 1,
-        border: "none",
-        background: "transparent",
-        cursor: "pointer",
-        padding: "4px 0",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 3,
-        color: DS.text3,
-      }}
-    >
-      <Icon name="back" size={19} />
-      <span style={{ fontSize: 9 }}>Back</span>
+    <button onClick={() => window.history.back()} aria-label="Back">
+      <span className="ic"><Icon name="back" size={18} strokeWidth={1.9} /></span>
+      <span>Back</span>
     </button>
     {TABS.map((t) => (
       <button
         key={t.id}
+        className={active === t.id ? "active" : ""}
         onClick={() => onChange(t.id)}
-        style={{
-          flex: 1,
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          padding: "4px 0",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 3,
-          color: active === t.id ? DS.primary : DS.text2,
-          position: "relative",
-        }}
+        aria-current={active === t.id ? "page" : undefined}
       >
-        <Icon
-          name={t.icon}
-          size={19}
-          strokeWidth={active === t.id ? 2.1 : 1.8}
-        />
-        <span style={{ fontSize: 9, fontWeight: active === t.id ? 700 : 400 }}>
-          {t.label}
+        <span className="ic">
+          <Icon name={t.icon} size={18} strokeWidth={active === t.id ? 2.2 : 1.8} />
         </span>
+        <span>{t.label.replace("Add Record", "Add")}</span>
         {t.id === "records" && recordCount > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: 0,
-              right: "22%",
-              background: DS.danger,
-              color: "#fff",
-              fontSize: 8,
-              fontWeight: 700,
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {recordCount > 99 ? "99" : recordCount}
-          </span>
+          <i className="badge">{recordCount > 99 ? "99+" : recordCount}</i>
         )}
       </button>
     ))}
-    <button
-      onClick={() => onChange("records")}
-      style={{
-        flex: 1,
-        border: "none",
-        background: "transparent",
-        cursor: "pointer",
-        padding: "4px 0",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 3,
-        color: active === "records" ? DS.primary : DS.text2,
-      }}
-    >
-      <Icon name="home" size={19} />
-      <span style={{ fontSize: 9 }}>Home</span>
+    <button onClick={() => onChange("records")} aria-label="Home">
+      <span className="ic"><Icon name="home" size={18} strokeWidth={1.8} /></span>
+      <span>Home</span>
     </button>
-  </div>
+  </nav>
 );
 
 const SectionCard = ({ title, children, style }) => (
@@ -3115,13 +3096,11 @@ const SectionCard = ({ title, children, style }) => (
     {title && (
       <div
         style={{
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 12,
+          fontWeight: 600,
           color: DS.text3,
           marginBottom: 14,
-          textTransform: "uppercase",
-          letterSpacing: "0.07em",
-        }}
+          }}
       >
         {title}
       </div>
@@ -3231,7 +3210,7 @@ const HomeLink = ({ compact = false }) => {
         background: "rgba(212,175,106,0.06)",
         color: DS.primary,
         fontSize: compact ? 10.5 : 11.5,
-        fontWeight: 700,
+        fontWeight: 600,
         textDecoration: "none",
         whiteSpace: "nowrap",
         marginBottom: compact ? 8 : 0,
@@ -3297,7 +3276,7 @@ const PageShell = ({
             style={{
               minWidth: 0,
               flex: 1,
-              fontSize: 11.5,
+              fontSize: 12,
               color: DS.text2,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -3318,7 +3297,7 @@ const PageShell = ({
               Daily Sales Report
             </button>
             <span style={{ color: DS.text3, margin: "0 7px" }}>/</span>
-            <span style={{ color: DS.primary, fontWeight: 700 }}>
+            <span style={{ color: DS.primary, fontWeight: 600 }}>
               {eyebrow}
             </span>
           </div>
@@ -3349,14 +3328,13 @@ const PageShell = ({
                 width: 58,
                 height: 58,
                 borderRadius: "50%",
-                background: `linear-gradient(145deg,${DS.primaryGlow},color-mix(in srgb, var(--wash) 2.0%, transparent))`,
+                background: DS.surface,
                 border: `1px solid ${DS.primary}`,
-                boxShadow: `0 0 0 4px ${DS.primaryDim}`,
-                display: "flex",
+                                display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 18,
-                fontWeight: 800,
+                fontWeight: 600,
                 color: DS.primary,
                 flexShrink: 0,
               }}
@@ -3424,7 +3402,7 @@ const PageNotFound = ({ onBack, what }) => (
           style={{ color: DS.primary }}
         />
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700 }}>
+      <div style={{ fontSize: 15, fontWeight: 600 }}>
         {what} is not available
       </div>
       <div style={{ fontSize: 12.5, color: DS.text2, margin: "6px 0 18px" }}>
@@ -3444,11 +3422,9 @@ const StatTile = ({ label, value, sub, accent = DS.primary }) => (
   >
     <div
       style={{
-        fontSize: 9.5,
-        fontWeight: 700,
+        fontSize: 12,
+        fontWeight: 600,
         color: DS.text3,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
         marginBottom: 6,
       }}
     >
@@ -3458,7 +3434,7 @@ const StatTile = ({ label, value, sub, accent = DS.primary }) => (
       className="dsr-mono"
       style={{
         fontSize: 20,
-        fontWeight: 700,
+        fontWeight: 600,
         color: accent,
         overflow: "hidden",
         textOverflow: "ellipsis",
@@ -3468,7 +3444,7 @@ const StatTile = ({ label, value, sub, accent = DS.primary }) => (
       {value}
     </div>
     {sub && (
-      <div style={{ fontSize: 10.5, color: DS.text2, marginTop: 3 }}>{sub}</div>
+      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>{sub}</div>
     )}
   </div>
 );
@@ -3476,12 +3452,10 @@ const StatTile = ({ label, value, sub, accent = DS.primary }) => (
 const SubHead = ({ icon, children }) => (
   <div
     style={{
-      fontSize: 10,
-      fontWeight: 700,
+      fontSize: 12,
+      fontWeight: 600,
       color: DS.text3,
       marginBottom: 12,
-      textTransform: "uppercase",
-      letterSpacing: "0.08em",
       display: "flex",
       alignItems: "center",
       gap: 6,
@@ -3510,7 +3484,7 @@ const SaveBar = ({ onCancel, onSave, saving, label, dirty }) => (
       {dirty && (
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: DS.amber,
             fontWeight: 600,
             display: "flex",
@@ -3547,7 +3521,7 @@ const SaveBar = ({ onCancel, onSave, saving, label, dirty }) => (
           border: "none",
           borderRadius: 10,
           fontSize: 13.5,
-          fontWeight: 800,
+          fontWeight: 600,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -3592,10 +3566,10 @@ const DangerZone = ({ title, text, label, onClick }) => (
     }}
   >
     <div style={{ flex: 1, minWidth: 200 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: DS.danger }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: DS.danger }}>
         {title}
       </div>
-      <div style={{ fontSize: 11.5, color: DS.text2, marginTop: 3 }}>
+      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>
         {text}
       </div>
     </div>
@@ -3610,7 +3584,7 @@ const DangerZone = ({ title, text, label, onClick }) => (
         border: "1px solid rgba(244,63,94,0.35)",
         borderRadius: 10,
         fontSize: 12.5,
-        fontWeight: 700,
+        fontWeight: 600,
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
@@ -3676,11 +3650,9 @@ const VisitCard = ({ r, index, total, onEdit }) => {
       <div style={{ minWidth: 0, flex: 1 }}>
         <div
           style={{
-            fontSize: 9.5,
-            fontWeight: 800,
+            fontSize: 12,
+            fontWeight: 600,
             color: accent,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
             marginBottom: 4,
           }}
         >
@@ -3706,13 +3678,12 @@ const VisitCard = ({ r, index, total, onEdit }) => {
     <div
       className="dsr-record-card"
       style={{
-        background: `linear-gradient(160deg,${DS.surface},${DS.card})`,
+        background: DS.card,
         border: `1px solid ${isLatest ? DS.primary + "99" : DS.border}`,
-        borderLeft: `4px solid ${isLatest ? DS.primary : sc.border}`,
-        borderRadius: 16,
+                borderRadius: 16,
         padding: "15px 16px 16px",
         boxShadow: isLatest
-          ? `0 0 0 1px ${DS.primaryDim},0 18px 36px -22px rgba(212,175,106,0.35)`
+          ? `0 0 0 1px ${DS.primaryDim}`
           : undefined,
       }}
     >
@@ -3732,7 +3703,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
             alignItems: "center",
             gap: 8,
             fontSize: 14,
-            fontWeight: 700,
+            fontWeight: 600,
           }}
         >
           <Icon
@@ -3746,21 +3717,20 @@ const VisitCard = ({ r, index, total, onEdit }) => {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span
             className="dsr-mono"
-            style={{ fontSize: 10.5, color: DS.text3, fontWeight: 700 }}
+            style={{ fontSize: 12, color: DS.text3, fontWeight: 600 }}
           >
             #{total - index}
           </span>
           {isLatest && (
             <span
               style={{
-                fontSize: 9.5,
-                fontWeight: 800,
+                fontSize: 12,
+                fontWeight: 600,
                 color: "#0A0B10",
-                background: `linear-gradient(135deg,${DS.gold},${DS.primary})`,
+                background: DS.primary,
                 padding: "3px 10px",
                 borderRadius: 20,
-                letterSpacing: "0.08em",
-              }}
+                }}
             >
               LATEST
             </span>
@@ -3776,7 +3746,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
                 border: `1px solid ${DS.border}`,
                 background: "color-mix(in srgb, var(--wash) 3.0%, transparent)",
                 color: DS.text2,
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
                 display: "flex",
@@ -3881,12 +3851,12 @@ const PotentialMeter = ({ pot, ex }) => {
           marginBottom: 7,
         }}
       >
-        <span style={{ fontSize: 11, color: DS.text2, fontWeight: 600 }}>
+        <span style={{ fontSize: 12, color: DS.text2, fontWeight: 600 }}>
           Market penetration
         </span>
         <span
           className="dsr-mono"
-          style={{ fontSize: 12, fontWeight: 700, color: pctColor(pen) }}
+          style={{ fontSize: 12, fontWeight: 600, color: pctColor(pen) }}
         >
           {pen.toFixed(0)}%
         </span>
@@ -3903,7 +3873,7 @@ const PotentialMeter = ({ pot, ex }) => {
           style={{
             width: `${pen}%`,
             height: "100%",
-            background: `linear-gradient(90deg,${DS.primary},${DS.gold})`,
+            background: DS.primary,
             transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
           }}
         />
@@ -3913,12 +3883,12 @@ const PotentialMeter = ({ pot, ex }) => {
           display: "flex",
           justifyContent: "space-between",
           marginTop: 8,
-          fontSize: 11,
+          fontSize: 12,
           color: DS.text2,
         }}
       >
         <span>Existing {fmtL(ex)}</span>
-        <span style={{ color: DS.gold, fontWeight: 700 }}>
+        <span style={{ color: DS.text1, fontWeight: 600 }}>
           Headroom {fmtL(headroom)}
         </span>
       </div>
@@ -4011,7 +3981,7 @@ const ContactCard = ({ data, name, onEdit }) => {
               <div
                 style={{
                   fontSize: 14,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -4020,7 +3990,7 @@ const ContactCard = ({ data, name, onEdit }) => {
                 {data.contactPerson || name || "—"}
               </div>
               {data.designation && (
-                <div style={{ fontSize: 11, color: DS.text2 }}>
+                <div style={{ fontSize: 12, color: DS.text2 }}>
                   {data.designation}
                 </div>
               )}
@@ -4058,11 +4028,11 @@ const ContactCard = ({ data, name, onEdit }) => {
               </div>
             ))}
           {data.gstin && (
-            <div style={{ marginTop: 8, fontSize: 10.5, color: DS.text2 }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: DS.text2 }}>
               GSTIN{" "}
               <span
                 className="dsr-mono"
-                style={{ color: DS.gold, fontWeight: 700 }}
+                style={{ color: DS.text1, fontWeight: 600 }}
               >
                 {data.gstin}
               </span>
@@ -4115,7 +4085,7 @@ const FieldNote = ({ type = "error", children }) =>
   children ? (
     <div
       style={{
-        fontSize: 10.5,
+        fontSize: 12,
         marginTop: -6,
         marginBottom: 10,
         fontWeight: 600,
@@ -4159,7 +4129,7 @@ const MobileInput = ({
             alignItems: "center",
             justifyContent: "center",
             fontSize: 12,
-            fontWeight: 700,
+            fontWeight: 600,
             color: DS.primary,
             background: DS.primaryDim,
             borderRadius: "7px 0 0 7px",
@@ -4174,8 +4144,7 @@ const MobileInput = ({
             ...IS,
             paddingLeft: 54,
             paddingRight: 34,
-            letterSpacing: "0.04em",
-          }}
+            }}
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
@@ -4201,7 +4170,7 @@ const MobileInput = ({
       {value && !ok && (
         <div
           style={{
-            fontSize: 10.5,
+            fontSize: 12,
             marginTop: 5,
             color: DS.danger,
             fontWeight: 600,
@@ -4310,7 +4279,7 @@ const CustomerFormPage = ({
               background: DS.primaryDim,
               border: `1px solid ${DS.primary}`,
               color: DS.primary,
-              fontWeight: 800,
+              fontWeight: 600,
               fontSize: 13,
               display: "flex",
               alignItems: "center",
@@ -4324,7 +4293,7 @@ const CustomerFormPage = ({
             <div
               style={{
                 fontSize: 14,
-                fontWeight: 700,
+                fontWeight: 600,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -4332,7 +4301,7 @@ const CustomerFormPage = ({
             >
               {name || "Customer name"}
             </div>
-            <div style={{ fontSize: 11, color: DS.text2 }}>
+            <div style={{ fontSize: 12, color: DS.text2 }}>
               {data.area || "Area"} · {data.distributor || "Distributor"}
             </div>
           </div>
@@ -4341,7 +4310,7 @@ const CustomerFormPage = ({
           <span
             style={{
               display: "inline-block",
-              fontSize: 10.5,
+              fontSize: 12,
               padding: "3px 9px",
               borderRadius: 5,
               fontWeight: 600,
@@ -4386,13 +4355,13 @@ const CustomerFormPage = ({
             className="dsr-mono"
             style={{
               fontSize: 24,
-              fontWeight: 700,
+              fontWeight: 600,
               color: profilePct >= 70 ? DS.success : DS.primary,
             }}
           >
             {profilePct}%
           </span>
-          <span style={{ fontSize: 10.5, color: DS.text2 }}>
+          <span style={{ fontSize: 12, color: DS.text2 }}>
             contact · GST · notes
           </span>
         </div>
@@ -4408,7 +4377,7 @@ const CustomerFormPage = ({
             style={{
               width: `${profilePct}%`,
               height: "100%",
-              background: `linear-gradient(90deg,${DS.primary},${DS.gold})`,
+              background: DS.primary,
               transition: "width .4s",
             }}
           />
@@ -4435,7 +4404,7 @@ const CustomerFormPage = ({
             }}
           />
         </div>
-        <div style={{ fontSize: 11.5, color: DS.text2 }}>
+        <div style={{ fontSize: 12, color: DS.text2 }}>
           {done}/{required.length} required fields complete
         </div>
       </div>
@@ -4446,7 +4415,7 @@ const CustomerFormPage = ({
           <div style={{ fontSize: 12.5, marginBottom: 12 }}>
             <span
               className="dsr-mono"
-              style={{ color: DS.primary, fontWeight: 700 }}
+              style={{ color: DS.primary, fontWeight: 600 }}
             >
               {visitCount}
             </span>{" "}
@@ -4492,7 +4461,7 @@ const CustomerFormPage = ({
           {dupName && (
             <div
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 marginTop: 6,
                 color: DS.amber,
                 fontWeight: 600,
@@ -4507,7 +4476,7 @@ const CustomerFormPage = ({
               {onOpenOther && (
                 <button
                   className="dsr-ghost-btn"
-                  style={{ height: 26, padding: "0 10px", fontSize: 11 }}
+                  style={{ height: 26, padding: "0 10px", fontSize: 12 }}
                   onClick={() => onOpenOther(dupName)}
                 >
                   Open ›
@@ -4634,7 +4603,7 @@ const CustomerFormPage = ({
           onChange={handleChange}
           placeholder="22AAAAA0000A1Z5"
           maxLength={15}
-          style={{ ...IS, textTransform: "uppercase", letterSpacing: "0.06em" }}
+          style={{ ...IS, }}
         />
         {data.gstin && (
           <FieldNote type={isValidGSTIN(data.gstin) ? "ok" : "error"}>
@@ -4793,7 +4762,7 @@ const RecordEditPage = ({
         <SubHead icon="trending">YTD vs ABP (live)</SubHead>
         <div
           className="dsr-mono"
-          style={{ fontSize: 30, fontWeight: 700, color: pctColor(livePct) }}
+          style={{ fontSize: 30, fontWeight: 600, color: pctColor(livePct) }}
         >
           {livePct.toFixed(1)}%
         </div>
@@ -4815,7 +4784,7 @@ const RecordEditPage = ({
             }}
           />
         </div>
-        <div style={{ fontSize: 11.5, color: DS.text2 }}>
+        <div style={{ fontSize: 12, color: DS.text2 }}>
           {fmtL(ytd)} of {fmtL(abp)} ABP
         </div>
         <div style={{ marginTop: 14 }}>
@@ -4828,7 +4797,7 @@ const RecordEditPage = ({
         {prev ? (
           <>
             <CustomerLastRecord record={prev} />
-            <div style={{ fontSize: 11, color: DS.text2 }}>
+            <div style={{ fontSize: 12, color: DS.text2 }}>
               Outcome: {prev.outcome || "—"}
             </div>
           </>
@@ -5161,7 +5130,7 @@ const CustomerHistoryPage = ({
                     >
                       {j.stage}
                     </div>
-                    <div style={{ fontSize: 10.5, color: DS.text3 }}>
+                    <div style={{ fontSize: 12, color: DS.text3 }}>
                       {fmtDate(j.date)}
                     </div>
                   </div>
@@ -5186,10 +5155,10 @@ const CustomerHistoryPage = ({
         currentStage ? (
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               padding: "5px 11px",
               borderRadius: 6,
-              fontWeight: 700,
+              fontWeight: 600,
               background: sc.bg,
               color: sc.text,
               border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
@@ -5217,7 +5186,7 @@ const CustomerHistoryPage = ({
               border: "none",
               borderRadius: 10,
               fontSize: 12.5,
-              fontWeight: 800,
+              fontWeight: 600,
               color: "#0A0B10",
               cursor: "pointer",
               display: "flex",
@@ -5300,7 +5269,7 @@ const CustomerHistoryPage = ({
               style={{ color: DS.primary }}
             />
           </div>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: DS.text1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: DS.text1 }}>
             No visits yet
           </div>
           <div style={{ fontSize: 12, marginTop: 4 }}>
@@ -5327,12 +5296,10 @@ const CustomerHistoryPage = ({
                 alignItems: "center",
                 gap: 10,
                 marginBottom: 10,
-                fontSize: 10.5,
-                fontWeight: 700,
+                fontSize: 12,
+                fontWeight: 600,
                 color: DS.text3,
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
+                }}
             >
               <span>{g.label}</span>
               <span style={{ color: DS.primary }}>
@@ -5344,8 +5311,8 @@ const CustomerHistoryPage = ({
                   className="dsr-visits-btn"
                   onClick={() => onOpenMonth(g.key)}
                   style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
+                    fontSize: 12,
+                    fontWeight: 600,
                     color: DS.primary,
                     background: DS.primaryDim,
                     border: `1px solid color-mix(in srgb, ${DS.primary} 33%, transparent)`,
@@ -5466,10 +5433,10 @@ const VisitsPage = ({
         >
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               padding: "4px 10px",
               borderRadius: 6,
-              fontWeight: 700,
+              fontWeight: 600,
               background: sc.bg,
               color: sc.text,
               border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
@@ -5501,7 +5468,7 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
   const d = Number(cur) - Number(prev);
   if (!isFinite(d) || Math.abs(d) < 0.05) {
     return (
-      <span style={{ fontSize: 10.5, color: DS.text3, fontWeight: 700 }}>
+      <span style={{ fontSize: 12, color: DS.text3, fontWeight: 600 }}>
         — no change
       </span>
     );
@@ -5511,8 +5478,8 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
     <span
       className="dsr-mono"
       style={{
-        fontSize: 10.5,
-        fontWeight: 700,
+        fontSize: 12,
+        fontWeight: 600,
         color: up ? DS.success : DS.danger,
       }}
     >
@@ -5568,7 +5535,7 @@ const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
         display: "flex",
         justifyContent: "space-between",
         gap: 8,
-        fontSize: 11.5,
+        fontSize: 12,
         marginBottom: 4,
       }}
     >
@@ -5585,7 +5552,7 @@ const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
       </span>
       <span
         className="dsr-mono"
-        style={{ color, fontWeight: 700, flexShrink: 0 }}
+        style={{ color, fontWeight: 600, flexShrink: 0 }}
       >
         {right ?? value}
       </span>
@@ -5602,7 +5569,7 @@ const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
         style={{
           width: `${max > 0 ? (value / max) * 100 : 0}%`,
           height: "100%",
-          background: `linear-gradient(90deg,color-mix(in srgb, ${color} 60.0%, transparent),${color})`,
+          background: color,
           transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
         }}
       />
@@ -5868,7 +5835,7 @@ const InsightPage = ({
             >
               <div className="dsr-rank-top">
                 <span className="dsr-rank-name">{g.label}</span>
-                <span className="dsr-mono" style={{ color, fontWeight: 700 }}>
+                <span className="dsr-mono" style={{ color, fontWeight: 600 }}>
                   {g.visits}
                 </span>
               </div>
@@ -5876,7 +5843,7 @@ const InsightPage = ({
                 <div
                   style={{
                     width: `${(g.visits / maxVisits) * 100}%`,
-                    background: `linear-gradient(90deg,color-mix(in srgb, ${color} 55%, transparent),${color})`,
+                    background: color,
                   }}
                 />
               </div>
@@ -5922,7 +5889,7 @@ const InsightPage = ({
           className="dsr-glass"
           style={{ borderRadius: 16, padding: 36, textAlign: "center" }}
         >
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
             This {meta.short.toLowerCase()} was not found in this period
           </div>
           <div style={{ fontSize: 12, color: DS.text2 }}>
@@ -6010,7 +5977,7 @@ const InsightPage = ({
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11.5, color: DS.text2, marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: DS.text2, marginTop: 10 }}>
               {activeDays} active day{activeDays === 1 ? "" : "s"}
               {peak.n > 0 && (
                 <>
@@ -6084,7 +6051,7 @@ const InsightPage = ({
                         <span>{c.name}</span>
                         <span
                           className="dsr-mono"
-                          style={{ color: DS.warning, fontWeight: 700 }}
+                          style={{ color: DS.warning, fontWeight: 600 }}
                         >
                           {gapOf(c)}d
                         </span>
@@ -6108,7 +6075,7 @@ const InsightPage = ({
                       <span>{c.name}</span>
                       <span
                         className="dsr-mono"
-                        style={{ color: DS.success, fontWeight: 700 }}
+                        style={{ color: DS.success, fontWeight: 600 }}
                       >
                         {fmtL(custHeadroom(c))}
                       </span>
@@ -6212,7 +6179,7 @@ const InsightPage = ({
                         {fmtL(toNum(c.latest.ytd))}{" "}
                         <small>{(c.latest.pct || 0).toFixed(0)}%</small>
                       </span>
-                      <span style={{ fontSize: 11.5 }}>
+                      <span style={{ fontSize: 12 }}>
                         {new Date(c.latest.date).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
@@ -6399,7 +6366,7 @@ const PeriodReportPage = ({
       {pv && (
         <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
           <SubHead icon="trending">vs previous period</SubHead>
-          <div style={{ fontSize: 11, color: DS.text2, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: DS.text2, marginBottom: 12 }}>
             {prev.label}
           </div>
           {[
@@ -6430,7 +6397,7 @@ const PeriodReportPage = ({
               >
                 <span
                   className="dsr-mono"
-                  style={{ fontSize: 13, fontWeight: 700 }}
+                  style={{ fontSize: 13, fontWeight: 600 }}
                 >
                   {cur}
                 </span>
@@ -6641,11 +6608,10 @@ const PeriodReportPage = ({
                 >
                   <span
                     style={{
-                      fontSize: 9.5,
-                      fontWeight: 800,
-                      letterSpacing: "0.1em",
+                      fontSize: 12,
+                      fontWeight: 600,
                       color: "#0A0B10",
-                      background: `linear-gradient(135deg,${DS.gold},${DS.primary})`,
+                      background: DS.primary,
                       padding: "3px 9px",
                       borderRadius: 20,
                     }}
@@ -6654,7 +6620,7 @@ const PeriodReportPage = ({
                   </span>
                   <span
                     className="dsr-mono"
-                    style={{ fontSize: 13, fontWeight: 700 }}
+                    style={{ fontSize: 13, fontWeight: 600 }}
                   >
                     {h.title}
                   </span>
@@ -6726,12 +6692,10 @@ const PeriodReportPage = ({
                       >
                         <div
                           style={{
-                            fontSize: 9,
+                            fontSize: 12,
                             color: DS.text3,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                          }}
+                            fontWeight: 600,
+                            }}
                         >
                           {lbl}
                         </div>
@@ -6739,7 +6703,7 @@ const PeriodReportPage = ({
                           className="dsr-mono"
                           style={{
                             fontSize: 15,
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: clr,
                             margin: "2px 0",
                           }}
@@ -6759,7 +6723,7 @@ const PeriodReportPage = ({
                   </div>
                 )}
                 {h.id === 2 && h.totalVisits > 0 && (
-                  <div style={{ fontSize: 10, color: DS.text3, marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: DS.text3, marginTop: 8 }}>
                     ▲▼ = compared with the first half
                   </div>
                 )}
@@ -6796,7 +6760,7 @@ const PeriodReportPage = ({
               <span
                 className="dsr-mono"
                 style={{
-                  fontSize: 9.5,
+                  fontSize: 12,
                   color: x.n ? DS.gold : "transparent",
                   marginBottom: 3,
                 }}
@@ -6812,8 +6776,8 @@ const PeriodReportPage = ({
                   borderRadius: "5px 5px 2px 2px",
                   background: x.n
                     ? x.d === peak.d
-                      ? `linear-gradient(180deg,${DS.gold},${DS.primary})`
-                      : `linear-gradient(180deg,color-mix(in srgb, ${DS.primary} 80%, transparent),color-mix(in srgb, ${DS.primary} 33%, transparent))`
+                      ? DS.primary
+                      : DS.borderHi
                     : DS.border,
                 }}
               />
@@ -6835,7 +6799,7 @@ const PeriodReportPage = ({
                 flex: 1,
                 minWidth: 0,
                 textAlign: "center",
-                fontSize: 9,
+                fontSize: 12,
                 color: DS.text3,
               }}
             >
@@ -6877,7 +6841,7 @@ const PeriodReportPage = ({
               <div
                 style={{
                   fontSize: 12.5,
-                  fontWeight: 800,
+                  fontWeight: 600,
                   color: clr,
                   marginBottom: 3,
                 }}
@@ -6885,7 +6849,7 @@ const PeriodReportPage = ({
                 {ttl}
               </div>
               <div
-                style={{ fontSize: 10.5, color: DS.text2, marginBottom: 10 }}
+                style={{ fontSize: 12, color: DS.text2, marginBottom: 10 }}
               >
                 {sub}
               </div>
@@ -6900,14 +6864,14 @@ const PeriodReportPage = ({
                 className="dsr-scroll"
               >
                 {list.length === 0 && (
-                  <span style={{ fontSize: 11.5, color: DS.text3 }}>—</span>
+                  <span style={{ fontSize: 12, color: DS.text3 }}>—</span>
                 )}
                 {list.map((c) => (
                   <button
                     key={c.name}
                     onClick={() => onOpenCustomer(c.name)}
                     className="dsr-filter-chip"
-                    style={{ fontSize: 11, padding: "4px 10px" }}
+                    style={{ fontSize: 12, padding: "4px 10px" }}
                   >
                     {c.name}
                   </button>
@@ -7008,9 +6972,9 @@ const PeriodReportPage = ({
                   className="dsr-mono"
                   style={{
                     width: 22,
-                    fontSize: 11,
+                    fontSize: 12,
                     color: DS.text3,
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}
                 >
                   {i + 1}
@@ -7019,7 +6983,7 @@ const PeriodReportPage = ({
                   <div
                     style={{
                       fontSize: 13,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -7028,7 +6992,7 @@ const PeriodReportPage = ({
                     {c.name}
                   </div>
                   <div
-                    style={{ fontSize: 10.5, color: DS.text2, marginTop: 2 }}
+                    style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}
                   >
                     {c.latest.area} · {c.latest.distributor} · last{" "}
                     {fmtDate(c.latest.date)}
@@ -7038,15 +7002,15 @@ const PeriodReportPage = ({
                 <div style={{ textAlign: "right", minWidth: 62 }}>
                   <div
                     className="dsr-mono"
-                    style={{ fontSize: 12, fontWeight: 700, color: DS.gold }}
+                    style={{ fontSize: 12, fontWeight: 600, color: DS.text1 }}
                   >
                     {fmtL(pot)}
                   </div>
                   <div
                     className="dsr-mono"
                     style={{
-                      fontSize: 10,
-                      fontWeight: 700,
+                      fontSize: 12,
+                      fontWeight: 600,
                       color: pctColor(pct),
                     }}
                   >
@@ -7061,8 +7025,8 @@ const PeriodReportPage = ({
                     onOpenVisits(c.name);
                   }}
                   style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
+                    fontSize: 12,
+                    fontWeight: 600,
                     color: DS.primary,
                     background: DS.primaryDim,
                     padding: "4px 11px",
@@ -7101,6 +7065,34 @@ const DailySalesReport = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
+  const [distFilter, setDistFilter] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
+  const [followOnly, setFollowOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("new");
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem("dsr_view") === "table" ? "table" : "cards";
+    } catch {
+      return "cards";
+    }
+  });
+  const [analysisView, setAnalysisView] = useState(() => {
+    try {
+      return localStorage.getItem("dsr_analysis_view") === "list" ? "list" : "cards";
+    } catch {
+      return "cards";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("dsr_analysis_view", analysisView);
+    } catch {
+      /* ignore */
+    }
+  }, [analysisView]);
+  const [visibleCount, setVisibleCount] = useState(30);
+  const searchRef = useRef(null);
   const [customerQuery, setCustomerQuery] = useState("");
   const [recordsLoaded, setRecordsLoaded] = useState(false);
   const [customersLoaded, setCustomersLoaded] = useState(false);
@@ -7278,15 +7270,26 @@ const DailySalesReport = () => {
     if (!name || !customers[name]) return null;
     return customerLastRecord[name] || null;
   }, [newRecord.customer, customers, customerLastRecord]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("dsr_view", viewMode);
+    } catch {
+      /* ignore */
+    }
+  }, [viewMode]);
+  useEffect(() => setVisibleCount(30), [activeFilter, filterStart, filterEnd, stageFilter, distFilter, areaFilter, followOnly, sortBy, searchQuery]);
+
   const filteredByDate = useMemo(() => {
     if (activeFilter === "all") return records;
-    if (activeFilter === "custom" && filterStart && filterEnd) {
+    if (activeFilter === "custom") {
+      if (!filterStart || !filterEnd) return records;
       const s = new Date(filterStart);
       const e = new Date(filterEnd);
       e.setHours(23, 59, 59, 999);
       return records.filter((r) => inRange(r.date, s, e));
     }
-    return records;
+    const range = presetRange(activeFilter);
+    return range ? records.filter((r) => inRange(r.date, range[0], range[1])) : records;
   }, [records, activeFilter, filterStart, filterEnd]);
 
   const uniqueLatestRecords = useMemo(() => {
@@ -7302,36 +7305,97 @@ const DailySalesReport = () => {
     }
     return Object.values(seen);
   }, [filteredByDate]);
-  const filteredRecords = filteredByDate.filter((r) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (r.customer || "").toLowerCase().includes(q) ||
-      (r.area || "").toLowerCase().includes(q) ||
-      (r.distributor || "").toLowerCase().includes(q) ||
-      (r.objective && r.objective.toLowerCase().includes(q))
-    );
-  });
-  const avgPct = filteredByDate.length
-    ? (
-        filteredByDate.reduce((s, r) => s + (r.pct || 0), 0) /
-        filteredByDate.length
-      ).toFixed(1)
-    : "0.0";
 
-  const totalPot = uniqueLatestRecords
-    .reduce((s, r) => s + toNum(r.potDyes) + toNum(r.potAux), 0)
-    .toFixed(1);
+  // latest visit per customer over ALL records → follow-up detection
+  const latestAll = useMemo(() => {
+    const m = {};
+    records.forEach((r) => {
+      if (r.customer && (!m[r.customer] || new Date(r.date) > new Date(m[r.customer].date))) m[r.customer] = r;
+    });
+    return m;
+  }, [records]);
+  const followUps = useMemo(
+    () => Object.values(latestAll).filter((r) => (daysSince(r.date) ?? 0) >= 14),
+    [latestAll],
+  );
+  const distOptions = useMemo(() => [...new Set(records.map((r) => r.distributor).filter(Boolean))].sort(), [records]);
+  const areaOptions = useMemo(() => [...new Set(records.map((r) => r.area).filter(Boolean))].sort(), [records]);
+  const presetCounts = useMemo(() => {
+    const out = { all: records.length };
+    REC_PRESETS.slice(1).forEach(([id]) => {
+      const rg = presetRange(id);
+      out[id] = records.filter((r) => inRange(r.date, rg[0], rg[1])).length;
+    });
+    return out;
+  }, [records]);
+  const todayCount = useMemo(() => {
+    const rg = presetRange("today");
+    return records.filter((r) => inRange(r.date, rg[0], rg[1])).length;
+  }, [records]);
+  const topArea = useMemo(() => {
+    const m = {};
+    filteredByDate.forEach((r) => r.area && (m[r.area] = (m[r.area] || 0) + 1));
+    return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  }, [filteredByDate]);
 
-  const totalYTD = uniqueLatestRecords
-    .reduce((s, r) => s + toNum(r.ytd), 0)
-    .toFixed(1);
+  const filteredRecords = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = filteredByDate.filter((r) => {
+      if (stageFilter && stageLetter(r.stage) !== stageFilter) return false;
+      if (distFilter && r.distributor !== distFilter) return false;
+      if (areaFilter && r.area !== areaFilter) return false;
+      if (followOnly && latestAll[r.customer] !== r) return false;
+      if (followOnly && (daysSince(r.date) ?? 0) < 14) return false;
+      if (!q) return true;
+      return (
+        (r.customer || "").toLowerCase().includes(q) ||
+        (r.area || "").toLowerCase().includes(q) ||
+        (r.distributor || "").toLowerCase().includes(q) ||
+        (r.objective || "").toLowerCase().includes(q) ||
+        (r.outcome || "").toLowerCase().includes(q)
+      );
+    });
+    const by = {
+      new: (a, b) => new Date(b.date) - new Date(a.date),
+      old: (a, b) => new Date(a.date) - new Date(b.date),
+      name: (a, b) => (a.customer || "").localeCompare(b.customer || ""),
+      pct: (a, b) => (b.pct || 0) - (a.pct || 0),
+      pctLow: (a, b) => (a.pct || 0) - (b.pct || 0),
+      pot: (a, b) => recPot(b) - recPot(a),
+    }[sortBy];
+    return sortBy === "new" ? list : [...list].sort(by);
+  }, [filteredByDate, searchQuery, stageFilter, distFilter, areaFilter, followOnly, latestAll, sortBy]);
 
-  const today = new Date().toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const clearAllFilters = () => {
+    setActiveFilter("all");
+    setStageFilter("");
+    setDistFilter("");
+    setAreaFilter("");
+    setFollowOnly(false);
+    setSearchQuery("");
+  };
+
+  // keyboard shortcuts: "/" search · "n" new record · Esc clears search
+  useEffect(() => {
+    const h = (e) => {
+      const t = e.target;
+      const typing = t && (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.isContentEditable);
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (route.type !== "list") return;
+      if (e.key === "/" && !typing && activeTab === "records") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === "n" && !typing) {
+        e.preventDefault();
+        setActiveTab("add");
+      } else if (e.key === "Escape" && t === searchRef.current) {
+        setSearchQuery("");
+        t.blur();
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [route.type, activeTab]);
 
   const handleRecordChange = (e) => {
     const { name, value } = e.target;
@@ -7433,8 +7497,8 @@ const DailySalesReport = () => {
     }
   };
 
-  const deleteRecord = async (id) => {
-    if (!window.confirm("Delete this record?")) return;
+  const deleteRecord = async (id, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("Delete this record?")) return;
     try {
       await apiFetch(`/api/dsr/records/${id}`, { method: "DELETE" });
       setRecords((p) => p.filter((r) => (r._id || r.id) !== id));
@@ -7789,8 +7853,6 @@ const DailySalesReport = () => {
       .includes(q);
   });
   const lr = selectedCustomerLastRecord;
-  const FILTER_CHIPS = [{ id: "all", label: "All", count: records.length }];
-
   if (route.type !== "list") {
     let page = null;
     if (route.type === "customerNew") {
@@ -8054,9 +8116,8 @@ const DailySalesReport = () => {
       style={{
         background: DS.bg,
         fontFamily:
-          "'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+          "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
         color: DS.text1,
-        backgroundImage: `radial-gradient(ellipse at 20% 10%,rgba(212,175,106,0.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(59,130,246,0.03) 0%,transparent 50%)`,
       }}
     >
       <Toast msg={toast.msg} type={toast.type} />
@@ -8074,365 +8135,98 @@ const DailySalesReport = () => {
           width: "100%",
         }}
       >
-        <div
-          className="dsr-header"
-          style={{
-            background:
-              "var(--ds-banner)",
-            borderRadius: 16,
-            padding: "18px 20px",
-            marginBottom: 18,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            boxShadow:
-              "var(--ds-shadow-banner)",
-            position: "relative",
-            overflow: "hidden",
-            border: `1px solid rgba(212,175,106,0.28)`,
-          }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              top: -70,
-              right: -50,
-              width: 200,
-              height: 200,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle,rgba(212,175,106,0.18),transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              bottom: -40,
-              left: -20,
-              width: 140,
-              height: 140,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle,rgba(59,130,246,0.08),transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-            <HomeLink compact />
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                color: DS.primary,
-                textTransform: "uppercase",
-                letterSpacing: "0.14em",
-                marginBottom: 3,
-              }}
-            >
-              Field Sales · DSR
-            </div>
-            <h1
-              className="dsr-display"
-              style={{
-                fontSize: 17,
-                fontWeight: 800,
-                color: DS.text1,
-                margin: 0,
-                letterSpacing: "-0.01em",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              Daily Sales Report
-            </h1>
-            <p
-              style={{
-                fontSize: 11,
-                color: DS.text2,
-                marginTop: 3,
-                marginBottom: 0,
-                fontWeight: 500,
-              }}
-            >
-              Customer data management
-            </p>
-          </div>
-          <button
-            className="dsr-topbar-btn"
-            onClick={() => setActiveTab("records")}
-            aria-label="Home"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              border: `1px solid ${DS.border}`,
-              background:
-                activeTab === "records"
-                  ? "rgba(212,175,106,0.20)"
-                  : "color-mix(in srgb, var(--wash) 6.0%, transparent)",
-              color: activeTab === "records" ? DS.primary : DS.text1,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            <Icon name="home" size={17} strokeWidth={2} />
-          </button>
-        </div>
-
-        <div
-          className="dsr-metrics-row"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-            marginBottom: 16,
-          }}
-        >
-          <MetricCard
-            label={
-              activeFilter === "all"
-                ? "Total records"
-                : `Records (${FILTER_CHIPS.find((f) => f.id === activeFilter)?.label || "filtered"})`
-            }
-            value={filteredByDate.length}
-            sub={today}
-            accent={DS.info}
-          />
-          <MetricCard
-            label="Avg. YTD vs ABP"
-            value={`${avgPct}%`}
-            sub="filtered period"
-            accent={DS.primary}
-          />
-          <MetricCard
-            label="Total Potential"
-            value={`₹${totalPot}L`}
-            sub="dyes + aux /mth"
-            accent={DS.gold}
-          />
-          <MetricCard
-            label="YTD Sales"
-            value={`₹${totalYTD}L`}
-            sub="prev. month total"
-            accent={DS.purple}
-          />
-        </div>
-
         {activeTab === "records" && (
           <>
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                marginBottom: 12,
-                overflowX: "auto",
-                paddingBottom: 4,
-              }}
-            >
-              {FILTER_CHIPS.map((chip) => (
-                <button
-                  key={chip.id}
-                  className={`dsr-filter-chip${activeFilter === chip.id ? " active" : ""}`}
-                  onClick={() => setActiveFilter(chip.id)}
-                >
-                  {chip.label}
-                  <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 400 }}>
-                    ({chip.count})
-                  </span>
-                </button>
-              ))}
-              <button
-                className={`dsr-filter-chip${activeFilter === "custom" ? " active" : ""}`}
-                onClick={() => setActiveFilter("custom")}
-              >
-                <Icon name="calendar" size={12} strokeWidth={2} /> Custom
-              </button>
-            </div>
-            {activeFilter === "custom" && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginBottom: 12,
-                  alignItems: "center",
-                  background: "rgba(212,175,106,0.06)",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(212,175,106,0.18)",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: DS.primary,
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  From
-                </span>
-                <input
-                  type="date"
-                  value={filterStart}
-                  onChange={(e) => setFilterStart(e.target.value)}
-                  className="dsr-input"
-                  style={{ ...IS, height: 34, flex: 1 }}
-                />
-                <span
-                  style={{ fontSize: 11, color: DS.primary, fontWeight: 600 }}
-                >
-                  To
-                </span>
-                <input
-                  type="date"
-                  value={filterEnd}
-                  onChange={(e) => setFilterEnd(e.target.value)}
-                  className="dsr-input"
-                  style={{ ...IS, height: 34, flex: 1 }}
-                />
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 14,
-                alignItems: "center",
-              }}
-            >
-              <div style={{ flex: 1, position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: 11,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: DS.text3,
-                    display: "flex",
-                  }}
-                >
-                  <Icon name="search" size={15} strokeWidth={2} />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search customer, area, distributor…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="dsr-input"
-                  style={{ ...IS, paddingLeft: 34 }}
-                />
-              </div>
-              <ExportDropdown records={filteredByDate} onExport={doExport} />
-            </div>
-            {(activeFilter !== "all" || searchQuery) && (
-              <div
-                style={{
-                  marginBottom: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 12, color: DS.text2 }}>Showing</span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: DS.primary,
-                    background: DS.primaryDim,
-                    padding: "2px 10px",
-                    borderRadius: 20,
-                    border: "1px solid rgba(212,175,106,0.2)",
-                  }}
-                >
-                  {filteredRecords.length} records
-                </span>
-                {activeFilter !== "all" && (
-                  <button
-                    onClick={() => setActiveFilter("all")}
-                    style={{
-                      fontSize: 11,
-                      color: DS.text2,
-                      background: "transparent",
-                      border: `1px solid ${DS.border}`,
-                      borderRadius: 20,
-                      padding: "2px 8px",
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 3,
-                    }}
-                  >
-                    <Icon name="close" size={10} strokeWidth={2.3} /> Clear
-                  </button>
-                )}
-              </div>
-            )}
+            <RecordsInsights
+              latest={uniqueLatestRecords}
+              todayCount={todayCount}
+              followCount={followUps.length}
+              followOnly={followOnly}
+              onFollow={() => setFollowOnly((v) => !v)}
+              stage={stageFilter}
+              onStage={setStageFilter}
+              topArea={topArea}
+            />
+            <RecordsToolbar
+              searchRef={searchRef}
+              q={searchQuery}
+              setQ={setSearchQuery}
+              preset={activeFilter}
+              setPreset={setActiveFilter}
+              counts={presetCounts}
+              start={filterStart}
+              end={filterEnd}
+              setStart={setFilterStart}
+              setEnd={setFilterEnd}
+              stage={stageFilter}
+              setStage={setStageFilter}
+              dist={distFilter}
+              setDist={setDistFilter}
+              area={areaFilter}
+              setArea={setAreaFilter}
+              dists={distOptions}
+              areas={areaOptions}
+              sort={sortBy}
+              setSort={setSortBy}
+              view={viewMode}
+              setView={setViewMode}
+              followOnly={followOnly}
+              setFollowOnly={setFollowOnly}
+              shown={filteredRecords.length}
+              total={records.length}
+              onClear={clearAllFilters}
+              exportNode={<ExportDropdown records={filteredRecords} onExport={doExport} />}
+            />
             {loading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "56px 16px",
-                  color: DS.text2,
-                }}
-              >
+              <div style={{ textAlign: "center", padding: "56px 16px", color: DS.text2 }}>
                 <div className="dsr-spinner" />
-                <div style={{ fontSize: 13, fontWeight: 500 }}>
-                  Loading records…
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Loading records…</div>
               </div>
             ) : filteredRecords.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "56px 16px",
-                  color: DS.text2,
-                }}
-              >
+              <div style={{ textAlign: "center", padding: "56px 16px", color: DS.text2 }}>
                 <div className="dsr-empty-icon">
-                  <Icon
-                    name="inbox"
-                    size={26}
-                    strokeWidth={1.6}
-                    style={{ color: DS.primary }}
-                  />
+                  <Icon name="inbox" size={26} strokeWidth={1.6} style={{ color: DS.primary }} />
                 </div>
-                <div
-                  style={{
-                    fontSize: 14.5,
-                    fontWeight: 700,
-                    color: DS.text1,
-                    letterSpacing: "-0.01em",
-                  }}
-                >
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: DS.text1, letterSpacing: "-0.01em" }}>
                   No records found
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
                   Try a different filter or search
                 </div>
+                {filteredRecords.length < records.length && (
+                  <button className="dsr-ghost-btn" style={{ marginTop: 14 }} onClick={clearAllFilters}>
+                    Clear all filters
+                  </button>
+                )}
               </div>
             ) : (
-              <div
-                className="dsr-card-list"
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
-              >
-                {filteredRecords.map((r) => (
-                  <RecordCard
-                    key={r._id || r.id}
-                    record={r}
-                    onDelete={deleteRecord}
+              <>
+                {viewMode === "table" ? (
+                  <RecordRows
+                    rows={filteredRecords.slice(0, visibleCount)}
+                    onOpen={(n) => navigate(ROUTES.history(n))}
                     onEdit={(r) => navigate(ROUTES.editRecord(r._id || r.id))}
+                    onDelete={(id) => deleteRecord(id, true)}
                   />
-                ))}
-              </div>
+                ) : (
+                  <div className="dsr-rc-grid">
+                    {filteredRecords.slice(0, visibleCount).map((r) => (
+                      <RecordCard
+                        key={r._id || r.id}
+                        record={r}
+                        onDelete={(id) => deleteRecord(id, true)}
+                        onEdit={(rec) => navigate(ROUTES.editRecord(rec._id || rec.id))}
+                        onOpen={() => navigate(ROUTES.history(r.customer))}
+                      />
+                    ))}
+                  </div>
+                )}
+                {filteredRecords.length > visibleCount && (
+                  <button className="dsr-ghost-btn dsr-more-btn" onClick={() => setVisibleCount((n) => n + 30)}>
+                    Show 30 more · {filteredRecords.length - visibleCount} left
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
@@ -8475,7 +8269,7 @@ const DailySalesReport = () => {
                   {!newRecord.date && (
                     <div
                       style={{
-                        fontSize: 10,
+                        fontSize: 12,
                         color: DS.amber,
                         marginTop: 3,
                         display: "flex",
@@ -8677,14 +8471,13 @@ const DailySalesReport = () => {
               </div>
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   color: DS.info,
-                  background: "rgba(59,130,246,0.07)",
+                  background: DS.surface,
                   padding: "9px 12px",
                   borderRadius: 8,
                   marginTop: 4,
                   lineHeight: 1.5,
-                  borderLeft: `3px solid ${DS.info}`,
                   display: "flex",
                   alignItems: "flex-start",
                   gap: 7,
@@ -8711,15 +8504,14 @@ const DailySalesReport = () => {
                 border: "none",
                 borderRadius: 12,
                 fontSize: 14,
-                fontWeight: 700,
-                letterSpacing: "0.01em",
+                fontWeight: 600,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
                 marginBottom: 12,
-                color: "#0A0B10",
+                color: "inherit",
               }}
             >
               {loading ? (
@@ -8756,7 +8548,7 @@ const DailySalesReport = () => {
               <div
                 style={{
                   fontSize: 14,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DS.text1,
                   display: "flex",
                   alignItems: "center",
@@ -8766,7 +8558,7 @@ const DailySalesReport = () => {
                 <Icon name="store" size={15} strokeWidth={2} /> Customer Master{" "}
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 400,
                     color: DS.text2,
                     marginLeft: 8,
@@ -8801,18 +8593,17 @@ const DailySalesReport = () => {
                   style={{
                     height: 34,
                     padding: "0 14px",
-                    background: "#10B981",
-                    color: "#0A0B10",
-                    border: "none",
+                    background: DS.surface,
+                    color: DS.text1,
+                    border: `1px solid ${DS.border}`,
                     borderRadius: 8,
                     fontSize: 12,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
-                    boxShadow: "0 4px 12px rgba(16,185,129,0.35)",
-                  }}
+                                      }}
                 >
                   <Icon name="upload" size={13} strokeWidth={2.1} /> Excel
                   Upload
@@ -8890,7 +8681,7 @@ const DailySalesReport = () => {
                 <div
                   style={{
                     fontSize: 14.5,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color: DS.text1,
                     letterSpacing: "-0.01em",
                   }}
@@ -8934,14 +8725,14 @@ const DailySalesReport = () => {
                         width: 38,
                         height: 38,
                         borderRadius: "50%",
-                        background: "rgba(59,130,246,0.12)",
-                        border: "1px solid rgba(59,130,246,0.2)",
+                        background: DS.surface,
+                        border: `1px solid ${DS.border}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         fontSize: 12,
-                        fontWeight: 700,
-                        color: DS.info,
+                        fontWeight: 500,
+                        color: DS.text2,
                         flexShrink: 0,
                       }}
                     >
@@ -8961,11 +8752,11 @@ const DailySalesReport = () => {
                         {name}
                       </div>
                       <div
-                        style={{ fontSize: 11, color: DS.text2, marginTop: 1 }}
+                        style={{ fontSize: 12, color: DS.text2, marginTop: 1 }}
                       >
                         {c.area} · {c.distributor}
                         {(c.contactPerson || c.mobile) && (
-                          <span style={{ marginLeft: 5, color: DS.gold }}>
+                          <span style={{ marginLeft: 5, color: DS.text1 }}>
                             · {c.contactPerson}
                             {c.contactPerson && c.mobile ? " · " : ""}
                             {c.mobile && (
@@ -9073,7 +8864,7 @@ const DailySalesReport = () => {
               <div
                 style={{
                   fontSize: 14,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: DS.text1,
                   display: "flex",
                   alignItems: "center",
@@ -9083,9 +8874,33 @@ const DailySalesReport = () => {
                 <Icon name="trending" size={15} strokeWidth={2} /> Monthly Visit
                 Analysis
               </div>
-              <div style={{ fontSize: 11, color: DS.text2 }}>
-                {monthlyAnalysis.length} month
-                {monthlyAnalysis.length !== 1 ? "s" : ""} tracked
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 13, color: DS.text2 }}>
+                  {monthlyAnalysis.length} month
+                  {monthlyAnalysis.length !== 1 ? "s" : ""} tracked
+                </span>
+                {monthlyAnalysis.length > 0 && (
+                  <div className="dsr-seg2" role="group" aria-label="Analysis view">
+                    <button
+                      className={analysisView === "cards" ? "on" : ""}
+                      onClick={() => setAnalysisView("cards")}
+                      aria-label="Card view"
+                      aria-pressed={analysisView === "cards"}
+                      title="Card view"
+                    >
+                      ▦
+                    </button>
+                    <button
+                      className={analysisView === "list" ? "on" : ""}
+                      onClick={() => setAnalysisView("list")}
+                      aria-label="List view"
+                      aria-pressed={analysisView === "list"}
+                      title="List view"
+                    >
+                      ☰
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             {monthlyAnalysis.length === 0 ? (
@@ -9107,7 +8922,7 @@ const DailySalesReport = () => {
                 <div
                   style={{
                     fontSize: 14.5,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color: DS.text1,
                     letterSpacing: "-0.01em",
                   }}
@@ -9118,6 +8933,14 @@ const DailySalesReport = () => {
                   Add records and the monthly analysis will appear here
                 </div>
               </div>
+            ) : analysisView === "list" ? (
+              <MonthAnalysisList
+                rows={monthlyAnalysis.map((m, idx) => {
+                  const prev = monthlyAnalysis[idx + 1];
+                  return { month: m, delta: prev ? m.totalVisits - prev.totalVisits : null };
+                })}
+                onOpen={(m) => navigate(ROUTES.period(m.key, "full"))}
+              />
             ) : (
               <div
                 className="dsr-card-list"

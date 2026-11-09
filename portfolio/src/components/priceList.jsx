@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/xlsx";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 const calcCustomerPrice = (dp45) => Math.round((Number(dp45) + 15) * 1.3);

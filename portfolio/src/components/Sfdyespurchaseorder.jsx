@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/xlsx";
 
 const PRICE_TIERS = ["DP7", "DP45", "RSP"];
 

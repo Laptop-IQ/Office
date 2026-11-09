@@ -13,10 +13,10 @@ const nowStr = () =>
 const pushLog = (ws, action, tab, details) => {
   ws.changeLog.unshift({ id: genId(), action, tab, details, time: nowStr() });
   if (ws.changeLog.length > 200) ws.changeLog.splice(200);
+  if (!ws.lastUpdated) ws.lastUpdated = {};
   ws.lastUpdated[tab] = nowStr();
 };
 
-const LOCATIONS = ["sample", "delhi", "faridabad", "shadecard"];
 
 // FIX: package-tracked product (packageSize set hai) ke liye qty ghatne ke
 // baad packageCount bhi sync karo, warna qty aur packageCount×packageSize
@@ -41,8 +41,6 @@ export const createDispatch = async (req, res) => {
       return res.status(400).json({ message: "Location required" });
     // FIX: location string frontend se aata tha aur seedha ws.stocks[location]
     // index kiya jaata tha, bina whitelist ke — ab valid tab hi allow hai.
-    if (!LOCATIONS.includes(location))
-      return res.status(400).json({ message: `Unknown location: ${location}` });
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ message: "At least one item required" });
 
@@ -55,8 +53,12 @@ export const createDispatch = async (req, res) => {
     const ws = await StockWorkspace.findOne({ owner: req.user._id });
     if (!ws) return res.status(404).json({ message: "Workspace not found" });
 
-    const list = ws.stocks[location];
-    if (!list)
+    // Locations are user-defined – the location must exist in this workspace.
+    const locEntry = (ws.locations || []).find((l) => l.id === location);
+    const list = Object.prototype.hasOwnProperty.call(ws.stocks || {}, location)
+      ? ws.stocks[location]
+      : null;
+    if (!locEntry || !Array.isArray(list))
       return res.status(400).json({ message: `Unknown location: ${location}` });
 
     // Pass 1 — sab items validate karo. Koi bhi fail ho to yahin return —
@@ -104,6 +106,7 @@ export const createDispatch = async (req, res) => {
       invoiceNo: (invoiceNo || "").trim(), // FIX: pehle yahan padha hi nahi jaata tha
       customerName: customerName.trim(),
       location,
+      locationName: locEntry.name,
       items: dispatchItems,
       note: (note || "").trim(),
       date: date || new Date().toISOString().split("T")[0],

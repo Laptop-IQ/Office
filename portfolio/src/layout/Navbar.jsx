@@ -8,6 +8,7 @@ import {
   ShoppingCartIcon,
   ListBulletIcon,
   CubeIcon,
+  TruckIcon,
   CreditCardIcon,
   ChartBarIcon,
   DocumentTextIcon,
@@ -21,29 +22,6 @@ import { useAuth } from "@/context/AuthContext";
    DESIGN TOKENS
    ══════════════════════════════════════════════════════════════════════ */
 
-const T = {
-  navBg: "rgba(8, 8, 12, 0.72)",
-  navBgSolid: "rgba(11, 11, 16, 0.97)",
-  drawerBg: "rgba(11, 11, 16, 0.99)",
-
-  border: "rgba(255, 255, 255, 0.07)",
-  borderMd: "rgba(255, 255, 255, 0.11)",
-
-  text: "#f2f2f7",
-  muted: "#8e8e93",
-  dim: "#55555d",
-
-  hover: "rgba(255, 255, 255, 0.055)",
-  activeBg: "rgba(124, 58, 237, 0.13)",
-  accent: "#a78bfa",
-
-  red: "#ff453a",
-  redBg: "rgba(255, 69, 58, 0.10)",
-
-  overlay: "rgba(0, 0, 0, 0.72)",
-
-  font: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif",
-};
 
 /* ══════════════════════════════════════════════════════════════════════
    NAVIGATION
@@ -51,7 +29,7 @@ const T = {
 
 const NAV = [
   {
-    section: "MAIN",
+    section: "Main",
     items: [
       {
         name: "Dashboard",
@@ -67,7 +45,7 @@ const NAV = [
   },
 
   {
-    section: "INVENTORY",
+    section: "Inventory",
     items: [
       {
         name: "Price List",
@@ -79,17 +57,21 @@ const NAV = [
         path: "/Stockmanager",
         icon: CubeIcon,
       },
+      {
+        name: "Dispatch",
+        path: "/Dispatch",
+        icon: TruckIcon,
+      },
     ],
   },
 
   {
-    section: "REPORTS",
+    section: "Reports",
     items: [
       {
         name: "Overdue Payments",
         path: "/OverduesDashboard",
         icon: CreditCardIcon,
-        badge: "Alert",
       },
       {
         name: "Daily Visit Report",
@@ -319,7 +301,10 @@ export function Navbar() {
         data-scrolled={scrolled}
       >
         <div className="app-navbar-inner">
-          {/* INTENTIONALLY EMPTY */}
+          <Link to="/" className="app-brand">
+            <span className="app-brand-mark" aria-hidden="true" />
+            My Office Workplace
+          </Link>
 
           <div className="app-desktop-menu" aria-hidden="true" />
 
@@ -405,7 +390,7 @@ export function Navbar() {
             {/* ACCOUNT */}
 
             <section className="app-mobile-group">
-              <div className="app-mobile-section-title">ACCOUNT</div>
+              <div className="app-mobile-section-title">Account</div>
 
               <AccountItem user={user} onLogout={handleLogout} />
             </section>

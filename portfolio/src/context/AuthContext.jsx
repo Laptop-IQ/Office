@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem("token");
         setToken(response.data.token);
         setUser(response.data.user);
-        toast.success("Email verified successfully!");
+        toast.success("Email verified successfully");
         return { success: true };
       }
     } catch (error) {
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
         email,
       });
       if (response.data.success) {
-        toast.success("OTP resent successfully!");
+        toast.success("OTP resent successfully");
         return { success: true };
       }
     } catch (error) {
@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }) => {
         email,
       });
       if (response.data.success) {
-        toast.success("OTP sent to your email!");
+        toast.success("OTP sent to your email");
         return { success: true };
       }
     } catch (error) {
@@ -164,7 +164,7 @@ export const AuthProvider = ({ children }) => {
         newPassword,
       });
       if (response.data.success) {
-        toast.success("Password reset successfully!");
+        toast.success("Password reset successfully");
         return { success: true };
       }
     } catch (error) {
@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.put(`${API_URL}/user/profile`, profileData);
       if (response.data.success) {
         setUser(response.data.user);
-        toast.success("Profile updated successfully!");
+        toast.success("Profile updated successfully");
         return { success: true };
       }
     } catch (error) {
@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }) => {
         newPassword,
       });
       if (response.data.success) {
-        toast.success("Password changed successfully!");
+        toast.success("Password changed successfully");
         return { success: true };
       }
     } catch (error) {
@@ -217,7 +217,7 @@ export const AuthProvider = ({ children }) => {
       );
       if (response.data.success) {
         setUser(response.data.user);
-        toast.success("Profile photo updated!");
+        toast.success("Profile photo updated");
         return { success: true };
       }
     } catch (error) {

@@ -24,6 +24,15 @@ const productSchema = new mongoose.Schema(
 // we keep that id so existing React state logic (find/map by id) works unchanged.
 productSchema.add({ id: { type: Number, required: true } });
 
+const locationSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    name: { type: String, required: true, trim: true, maxlength: 40 },
+    icon: { type: String, default: "📦", maxlength: 8 },
+  },
+  { _id: false },
+);
+
 const changeLogSchema = new mongoose.Schema(
   {
     id: { type: Number, required: true },
@@ -54,6 +63,7 @@ const dispatchEntrySchema = new mongoose.Schema(
     id: { type: Number, required: true }, // frontend-style numeric id (genId())
     customerName: { type: String, required: true, trim: true },
     location: { type: String, required: true },
+    locationName: { type: String, default: "" },
     items: { type: [dispatchItemSchema], default: [] },
     note: { type: String, default: "" },
     date: { type: String, default: "" },
@@ -81,23 +91,17 @@ const stockWorkspaceSchema = new mongoose.Schema(
       // ban sakte the, aur data "randomly gayab" hota dikhta.
     },
     companyName: { type: String, default: "My Chemical Store" },
-    stocks: {
-      sample: { type: [productSchema], default: [] },
-      delhi: { type: [productSchema], default: [] },
-      faridabad: { type: [productSchema], default: [] },
-      shadecard: { type: [productSchema], default: [] },
-    },
+    // Locations are user-defined now (name / icon editable, add + delete).
+    // `stocks` is a map { [locationId]: Product[] } and `lastUpdated` a map
+    // { [locationId]: string }. New workspaces start completely empty.
+    locations: { type: [locationSchema], default: [] },
+    stocks: { type: mongoose.Schema.Types.Mixed, default: {} },
     changeLog: { type: [changeLogSchema], default: [] },
-    lastUpdated: {
-      sample: { type: String, default: "" },
-      delhi: { type: String, default: "" },
-      faridabad: { type: String, default: "" },
-      shadecard: { type: String, default: "" },
-    },
+    lastUpdated: { type: mongoose.Schema.Types.Mixed, default: {} },
     // ── NEW — pehle ye field hi missing thi, isliye dispatches save nahi ho rahe the ──
     dispatches: { type: [dispatchEntrySchema], default: [] },
   },
-  { timestamps: true },
+  { timestamps: true, minimize: false },
 );
 
 const StockWorkspace = mongoose.model("StockWorkspace", stockWorkspaceSchema);

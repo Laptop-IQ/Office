@@ -202,23 +202,27 @@
    ══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --nav-bg: rgba(8, 8, 12, 0.72);
-  --nav-bg-solid: rgba(11, 11, 16, 0.97);
+  --nav-bg: #141415;
+  --nav-bg-solid: #141415;
 
-  --drawer-bg: rgba(11, 11, 16, 0.99);
+  --drawer-bg: #0f0f10;
 
-  --nav-border: rgba(255, 255, 255, 0.07);
-  --nav-border-md: rgba(255, 255, 255, 0.11);
+  --nav-border: rgba(237, 237, 237, 0.08);
+  --nav-border-md: rgba(237, 237, 237, 0.12);
 
-  --nav-text: #f2f2f7;
-  --nav-muted: #8e8e93;
-  --nav-dim: #55555d;
+  --nav-text: #ededed;
+  --nav-muted: #a1a1a6;
+  --nav-dim: #85858b;
 
-  --nav-hover: rgba(255, 255, 255, 0.055);
-  --nav-active-bg: rgba(124, 58, 237, 0.13);
-  --nav-accent: #a78bfa;
+  --nav-hover: rgba(237, 237, 237, 0.06);
+  --nav-active-bg: rgba(237, 237, 237, 0.08);
+  --nav-accent: #d4af6a;
 
-  --nav-overlay: rgba(0, 0, 0, 0.72);
+  --footer-bg: #141415;
+  --footer-line: rgba(237, 237, 237, 0.08);
+  --footer-text: #85858b;
+
+  --nav-overlay: rgba(0, 0, 0, 0.6);
 
   --nav-font:
     -apple-system,
@@ -247,10 +251,7 @@
 
   background: var(--nav-bg);
 
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-
-  border-bottom: 0.5px solid var(--nav-border);
+  border-bottom: 1px solid var(--nav-border);
 
   transition:
     background 0.3s ease,
@@ -276,10 +277,10 @@
   width: 100%;
   height: 100%;
 
-  max-width: 1180px;
+  max-width: 1280px;
 
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 32px;
 
   display: flex;
   align-items: center;
@@ -354,10 +355,7 @@
 
   background: var(--nav-overlay);
 
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-
-  animation: appOverlayIn 0.2s ease;
+  animation: appOverlayIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 
@@ -381,15 +379,14 @@
 
   background: var(--drawer-bg);
 
-  border-left: 0.5px solid var(--nav-border-md);
+  border-left: 1px solid var(--nav-border-md);
 
-  box-shadow:
-    -20px 0 60px rgba(0, 0, 0, 0.45);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.2);
 
   font-family: var(--nav-font);
 
   animation:
-    appDrawerIn 0.28s cubic-bezier(.32, 0, .67, 0);
+    appDrawerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 
   overscroll-behavior: contain;
 }
@@ -408,12 +405,8 @@
   align-items: center;
   justify-content: space-between;
 
-  border-bottom: 0.5px solid var(--nav-border);
+  border-bottom: 1px solid var(--nav-border);
 
-  background:
-    linear-gradient(180deg,
-      rgba(124, 58, 237, 0.08),
-      transparent);
 }
 
 .app-drawer-title {
@@ -422,7 +415,6 @@
   font-size: 17px;
   font-weight: 600;
 
-  letter-spacing: -0.035em;
 }
 
 .app-drawer-close {
@@ -473,18 +465,16 @@
 }
 
 .app-mobile-group {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .app-mobile-section-title {
-  padding: 6px 12px 8px;
+  padding: 8px 12px;
 
   color: var(--nav-dim);
 
-  font-size: 10px;
-  font-weight: 700;
-
-  letter-spacing: 0.12em;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 
@@ -513,7 +503,6 @@
   font-size: 13px;
   font-weight: 400;
 
-  letter-spacing: -0.022em;
 
   transition:
     color 0.18s ease,
@@ -659,12 +648,12 @@
 }
 
 .app-menu-button:hover {
-  background: rgba(255, 255, 255, 0.055);
-  color: #f2f2f7;
+  background: var(--nav-hover);
+  color: var(--nav-text);
 }
 
 .app-menu-button:focus-visible {
-  outline: 2px solid #a78bfa;
+  outline: 2px solid var(--nav-accent);
   outline-offset: 2px;
 }
 
@@ -689,7 +678,7 @@
 
   text-decoration: none;
 
-  color: #8e8e93;
+  color: var(--nav-muted);
 
   font-family:
     -apple-system,
@@ -708,13 +697,13 @@
 }
 
 .app-login-item:hover {
-  color: #f2f2f7;
-  background: rgba(255, 255, 255, 0.055);
+  color: var(--nav-text);
+  background: var(--nav-hover);
 }
 
 .app-login-item.active {
-  color: #a78bfa;
-  background: rgba(124, 58, 237, 0.13);
+  color: var(--nav-accent);
+  background: var(--nav-active-bg);
 }
 
 .app-login-icon {
@@ -728,7 +717,7 @@
 
 .app-login-group {
   padding-top: 4px;
-  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--nav-border);
 }
 
 .app-login-item.mobile-login-item {
@@ -774,12 +763,12 @@
 }
 
 .app-menu-button:hover {
-  color: #f2f2f7;
-  background: rgba(255, 255, 255, 0.055);
+  color: var(--nav-text);
+  background: var(--nav-hover);
 }
 
 .app-menu-button:focus-visible {
-  outline: 2px solid #a78bfa;
+  outline: 2px solid var(--nav-accent);
   outline-offset: 2px;
 }
 
@@ -794,7 +783,7 @@
 
 .app-account-section {
   padding-top: 10px;
-  border-top: 0.5px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--nav-border);
 }
 
 /* USER CARD */
@@ -808,13 +797,10 @@
 
   margin-bottom: 6px;
 
-  border: 0.5px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--nav-border);
   border-radius: 12px;
 
-  background:
-    linear-gradient(135deg,
-      rgba(124, 58, 237, 0.10),
-      rgba(124, 58, 237, 0.025));
+  background: var(--nav-hover);
 }
 
 /* AVATAR */
@@ -833,13 +819,11 @@
 
   border-radius: 50%;
 
-  color: #a78bfa;
+  color: var(--nav-accent);
 
-  background: #18182a;
+  background: var(--nav-active-bg);
 
-  box-shadow:
-    0 0 0 1px rgba(124, 58, 237, 0.35),
-    0 0 16px rgba(124, 58, 237, 0.18);
+  box-shadow: inset 0 0 0 1px var(--nav-border-md);
 }
 
 .app-user-avatar img {
@@ -864,12 +848,11 @@
 .app-user-name {
   overflow: hidden;
 
-  color: #f2f2f7;
+  color: var(--nav-text);
 
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 
-  letter-spacing: -0.022em;
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -880,9 +863,9 @@
 
   overflow: hidden;
 
-  color: #8e8e93;
+  color: var(--nav-dim);
 
-  font-size: 10px;
+  font-size: 12px;
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -895,9 +878,9 @@
 
   margin-top: 4px;
 
-  color: #8e8e93;
+  color: var(--nav-dim);
 
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .app-status-dot {
@@ -908,10 +891,7 @@
 
   border-radius: 50%;
 
-  background: #30d158;
-
-  box-shadow:
-    0 0 7px rgba(48, 209, 88, 0.55);
+  background: #4cc38a;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -930,9 +910,9 @@
 
   border-radius: 10px;
 
-  color: #a78bfa;
+  color: var(--nav-text);
 
-  background: rgba(124, 58, 237, 0.10);
+  background: var(--nav-hover);
 
   text-decoration: none;
 
@@ -953,8 +933,8 @@
 }
 
 .app-login-item:hover {
-  color: #c4b5fd;
-  background: rgba(124, 58, 237, 0.16);
+  color: var(--nav-text);
+  background: var(--nav-active-bg);
 }
 
 .app-login-item svg {
@@ -983,7 +963,7 @@
 
   background: transparent;
 
-  color: #ff453a;
+  color: #e5484d;
 
   cursor: pointer;
 
@@ -1002,13 +982,12 @@
 
   transition:
     color 0.18s ease,
-    background 0.18s ease,
-    transform 0.15s ease;
+    background 0.18s ease;
 }
 
 .app-logout-button:hover {
-  color: #ff6961;
-  background: rgba(255, 69, 58, 0.10);
+  color: #e5484d;
+  background: rgba(229, 72, 77, 0.1);
 }
 
 .app-logout-button:active {
@@ -1025,3 +1004,41 @@
   height: 18px;
   flex-shrink: 0;
 }
+/* BRAND */
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  color: var(--nav-text);
+  text-decoration: none;
+
+  font-family: var(--nav-font);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.app-brand:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.app-brand-mark {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--nav-accent);
+}
+
+@media (max-width: 639px) {
+  .app-navbar-inner {
+    padding: 0 20px;
+  }
+}
+
+/* Native controls (scrollbars, number spinners) follow the theme */
+:root { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }

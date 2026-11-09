@@ -1,4 +1,6 @@
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { loadXLSX } from "@/lib/xlsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -13,19 +15,46 @@ import { Footer } from "./layout/Footer";
 // Public Sections
 import HeroSection from "./sections/Hero";
 
-// Auth Pages
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import VerifyOTP from "@/pages/VerifyOTP";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
+// Every page below is code-split: it is only downloaded when its route is
+// opened, so the home page no longer ships the whole application.
+const Login = lazy(() => import("@/pages/Login"));
+const Register = lazy(() => import("@/pages/Register"));
+const VerifyOTP = lazy(() => import("@/pages/VerifyOTP"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
-import DailySalesReport from "./components/DailySalesReport";
-import OverduesDashboard from "./components/OverduesDashboard";
-import StockManager from "./components/Stockmanager";
-import SFDyesPurchaseOrder from "./components/Sfdyespurchaseorder";
-import PriceListApp from "./components/priceList";
-import EcofastEntry from "./components/EcofastEntry";
+// Pages that export Excel files also need the (separately chunked) Excel
+// engine. It starts downloading in the background as soon as the page code is
+// requested – the page itself renders without waiting for it, and the home
+// page never downloads it.
+const withExcel = (loader) => () => {
+  loadXLSX().catch(() => {});
+  return loader();
+};
+const loaders = {
+  dsr: withExcel(() => import("./components/DailySalesReport")),
+  overdues: withExcel(() => import("./components/OverduesDashboard")),
+  purchase: withExcel(() => import("./components/Sfdyespurchaseorder")),
+  priceList: withExcel(() => import("./components/priceList")),
+  ecofast: () => import("./components/EcofastEntry"),
+  stock: () => import("./components/stock/StockModule"),
+};
+const DailySalesReport = lazy(loaders.dsr);
+const OverduesDashboard = lazy(loaders.overdues);
+const SFDyesPurchaseOrder = lazy(loaders.purchase);
+const PriceListApp = lazy(loaders.priceList);
+const EcofastEntry = lazy(loaders.ecofast);
+const StockLayout = lazy(() => loaders.stock().then((m) => ({ default: m.StockLayout })));
+const StockApp = lazy(() => loaders.stock().then((m) => ({ default: m.StockApp })));
+const DispatchApp = lazy(() => loaders.stock().then((m) => ({ default: m.DispatchApp })));
+
+function RouteFallback() {
+  return (
+    <div className="route-fallback" role="status" aria-label="Loading">
+      <div className="route-spinner" />
+    </div>
+  );
+}
 
 // Portfolio Page (Public)
 function PortfolioPage() {
@@ -41,12 +70,33 @@ function PortfolioPage() {
 }
 
 // Main App Component
+// When the user is logged in, warm the cache for the most used pages once the
+// browser is idle, so navigating to them feels instant.
+function usePrefetch() {
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return undefined;
+    const run = () => {
+      // page code only – the Excel engine is NOT prefetched (it is large and
+      // only needed when a page is actually opened).
+      [() => import("./components/stock/StockModule"), () => import("./components/DailySalesReport")].forEach((l) => l().catch(() => {}));
+    };
+    const id = "requestIdleCallback" in window ? window.requestIdleCallback(run, { timeout: 4000 }) : setTimeout(run, 2500);
+    return () => ("cancelIdleCallback" in window ? window.cancelIdleCallback(id) : clearTimeout(id));
+  }, []);
+}
+
+function Prefetcher() {
+  usePrefetch();
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
           <ThemeToggle />
+        <Prefetcher />
           <ToastContainer
             position="top-right"
             autoClose={5000}
@@ -60,6 +110,7 @@ function App() {
             theme="light"
           />
 
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<PortfolioPage />} />
@@ -79,21 +130,24 @@ function App() {
             />
 
             <Route
-              path="/OverduesDashboard"
+              path="/OverduesDashboard/*"
               element={
                 <PrivateRoute>
                   <OverduesDashboard />
                 </PrivateRoute>
               }
             />
+            {/* Stock Manager + Dispatch share one data provider */}
             <Route
-              path="/Stockmanager"
               element={
                 <PrivateRoute>
-                  <StockManager />
+                  <StockLayout />
                 </PrivateRoute>
               }
-            />
+            >
+              <Route path="/Stockmanager/*" element={<StockApp />} />
+              <Route path="/Dispatch/*" element={<DispatchApp />} />
+            </Route>
 
             <Route
               path="/pricelist"
@@ -122,6 +176,7 @@ function App() {
               }
             />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

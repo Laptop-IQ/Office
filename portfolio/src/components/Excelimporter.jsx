@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/xlsx";
 
 // ─── Column mapping from Excel headers → internal keys ────────────────────────
 const COL_MAP = {

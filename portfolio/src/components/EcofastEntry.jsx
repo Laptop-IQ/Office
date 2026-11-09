@@ -19,6 +19,16 @@ import {
   X,
 } from "lucide-react";
 
+// Fonts are added as a <link> (the old CSS @import blocked rendering).
+if (typeof document !== "undefined" && !document.getElementById("ecofast-fonts")) {
+  const fl = document.createElement("link");
+  fl.id = "ecofast-fonts";
+  fl.rel = "stylesheet";
+  fl.href =
+    "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap";
+  document.head.appendChild(fl);
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
   /\/+$/,
   "",

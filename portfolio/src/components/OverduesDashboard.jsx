@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import * as XLSX from "xlsx";
+import { XLSX } from "@/lib/xlsx";
 import axios from "axios";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, IndianRupee, Trash2, FolderOpen, Loader2, Search, X } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 const api = axios.create({ baseURL: API_BASE });
@@ -195,7 +197,7 @@ const exportToXLSX = (rows, baseName) => {
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (n) => "₹" + Number(n).toLocaleString("en-IN");
 
-// SIGNATURE: urgency-scaled glow — the more overdue, the brighter the badge aura
+// Urgency badge: colour steps with how overdue the bill is
 const getDueBadge = (days) => {
   if (days === null || days === undefined || isNaN(days))
     return {
@@ -212,9 +214,7 @@ const getDueBadge = (days) => {
       style: {
         background: T.dangerBg,
         color: T.critical,
-        border: `1px solid rgba(244,63,94,0.35)`,
-        boxShadow:
-          "0 0 12px rgba(244,63,94,0.40), 0 0 4px rgba(244,63,94,0.30)",
+        border: `1px solid var(--ov-critical)`,
       },
     };
   if (days > 90)
@@ -223,9 +223,7 @@ const getDueBadge = (days) => {
       style: {
         background: T.urgentBg,
         color: T.urgent,
-        border: `1px solid rgba(249,115,22,0.35)`,
-        boxShadow:
-          "0 0 10px rgba(249,115,22,0.30), 0 0 3px rgba(249,115,22,0.25)",
+        border: `1px solid var(--ov-urgent)`,
       },
     };
   if (days > 30)
@@ -234,8 +232,7 @@ const getDueBadge = (days) => {
       style: {
         background: T.warnBg,
         color: T.warning,
-        border: `1px solid rgba(234,179,8,0.35)`,
-        boxShadow: "0 0 8px rgba(234,179,8,0.20)",
+        border: `1px solid var(--ov-warning)`,
       },
     };
   if (days > 0)
@@ -244,7 +241,7 @@ const getDueBadge = (days) => {
       style: {
         background: T.infoBg,
         color: T.info,
-        border: `1px solid rgba(59,130,246,0.30)`,
+        border: `1px solid var(--ov-border)`,
       },
     };
   return {
@@ -252,7 +249,7 @@ const getDueBadge = (days) => {
     style: {
       background: T.safeBg,
       color: T.safe,
-      border: `1px solid rgba(16,185,129,0.30)`,
+      border: `1px solid var(--ov-safe)`,
     },
   };
 };
@@ -369,7 +366,6 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => (
       alignItems: "center",
       justifyContent: "center",
       background: "rgba(0,0,0,0.7)",
-      backdropFilter: "blur(4px)",
     }}
   >
     <div
@@ -379,7 +375,7 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => (
         maxWidth: 380,
         width: "100%",
         margin: "0 16px",
-        boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
+        boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
       }}
     >
       <div
@@ -390,8 +386,8 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => (
           marginBottom: 16,
         }}
       >
-        <span style={{ fontSize: 22, lineHeight: 1 }}>🗑️</span>
-        <p style={{ color: T.text1, fontWeight: 700, fontSize: 15 }}>
+        <Trash2 size={22} strokeWidth={1.5} aria-hidden="true" />
+        <p style={{ color: T.text1, fontWeight: 600, fontSize: 15 }}>
           Confirm Delete
         </p>
       </div>
@@ -442,368 +438,207 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => (
   </div>
 );
 
-// ── Payment Modal ──────────────────────────────────────────────────────────
-const PaymentModal = ({ row, onConfirm, onCancel }) => {
-  const [amount, setAmount] = useState("");
-  const pending = row["Pending Amt."] || 0;
-  const entered = Number(amount) || 0;
-  const remaining = Math.max(0, pending - entered);
-  const overpaid = entered > pending;
-  const clearsFully = entered > 0 && remaining === 0;
+// ── Payment pages ─────────────────────────────────────────────────────────
+// Payment received, payment history and row payments are full pages
+// (/OverduesDashboard/payment, /history, /record), not popups.
+const OVP_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+  .ovp { --ovp-pri: var(--ov-gold); --ovp-pri-fg: #1a1408; min-height: 100vh; background: var(--ov-pageBg); color: var(--ov-text1); font-family: 'Geist','Inter','Segoe UI',Arial,sans-serif; -webkit-font-smoothing: antialiased; }
+  html[data-theme="light"] .ovp { --ovp-pri: #171717; --ovp-pri-fg: #ffffff; }
+  .ovp *, .ovp *::before, .ovp *::after { box-sizing: border-box; }
+  .ovp-bar { height: 56px; border-bottom: 1px solid var(--ov-border); }
+  .ovp-bar-in { height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ovp-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ov-text1); text-decoration: none; font-size: 16px; font-weight: 500; }
+  .ovp-mark { width: 12px; height: 12px; border-radius: 3px; background: var(--ov-gold); }
+  .ovp-back { min-height: 36px; padding: 0 12px; margin-right: -12px; display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; color: var(--ov-text2); text-decoration: none; font-size: 14px; transition: color .15s, background-color .15s; }
+  .ovp-back:hover { color: var(--ov-text1); background: var(--ov-elevated); }
+  .ovp-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 96px; }
+  .ovp-wrap.narrow { max-width: 600px; }
+  .ovp-crumbs { display: flex; gap: 8px; font-size: 13px; color: var(--ov-text3); margin-bottom: 8px; }
+  .ovp-crumbs a { color: var(--ov-text2); text-decoration: none; }
+  .ovp-crumbs a:hover { color: var(--ov-text1); }
+  .ovp-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .ovp-title { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 500; letter-spacing: -.02em; }
+  .ovp-sub { margin-top: 6px; font-size: 14px; color: var(--ov-text2); }
+  .ovp-card { background: var(--ov-card); border: 1px solid var(--ov-border); border-radius: 12px; padding: 24px; }
+  .ovp-form { display: grid; gap: 20px; }
+  .ovp-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+  .ovp-in { width: 100%; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--ov-border); background: var(--ov-elevated); color: var(--ov-text1); font: inherit; font-size: 15px; outline: none; transition: border-color .15s; }
+  .ovp-in:hover { border-color: var(--ov-borderHi); }
+  .ovp-in:focus { border-color: var(--ov-gold); box-shadow: 0 0 0 1px var(--ov-gold); }
+  .ovp-amt { position: relative; }
+  .ovp-amt > span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ov-text3); }
+  .ovp-amt .ovp-in { padding-left: 28px; font-variant-numeric: tabular-nums; }
+  .ovp-note { margin: 0; font-size: 13px; line-height: 20px; color: var(--ov-text2); }
+  .ovp-note.ok { color: var(--ov-safe); }
+  .ovp-note.warn { color: var(--ov-warning); }
+  .ovp-note.bad { color: var(--ov-critical); }
+  .ovp-facts { display: grid; gap: 0; border: 1px solid var(--ov-border); border-radius: 10px; overflow: hidden; }
+  .ovp-fact { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 14px; font-size: 14px; color: var(--ov-text2); }
+  .ovp-fact + .ovp-fact { border-top: 1px solid var(--ov-border); }
+  .ovp-fact b { color: var(--ov-text1); font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+  .ovp-foot { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+  .ovp-btn { height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--ov-border); background: var(--ov-elevated); color: var(--ov-text1); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; white-space: nowrap; transition: background-color .15s, border-color .15s, transform .15s; }
+  .ovp-btn:hover:not(:disabled) { border-color: var(--ov-borderHi); }
+  .ovp-btn:active:not(:disabled) { transform: scale(.98); }
+  .ovp-btn.pri { background: var(--ovp-pri); color: var(--ovp-pri-fg); border-color: transparent; }
+  .ovp-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .ovp-btn:focus-visible, .ovp-back:focus-visible, .ovp-brand:focus-visible { outline: 2px solid var(--ov-gold); outline-offset: 2px; }
+  .ovp-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .ovp-kpi { padding: 18px 20px; border-radius: 12px; background: var(--ov-card); border: 1px solid var(--ov-border); }
+  .ovp-kpi span { display: block; font-size: 13px; color: var(--ov-text2); }
+  .ovp-kpi b { display: block; margin-top: 8px; font-size: 26px; font-weight: 500; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .ovp-tbl-wrap { overflow-x: auto; border: 1px solid var(--ov-border); border-radius: 12px; background: var(--ov-card); }
+  .ovp-tbl { width: 100%; min-width: 820px; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+  .ovp-tbl th { text-align: left; padding: 12px 16px; font-size: 13px; font-weight: 500; color: var(--ov-text3); background: var(--ov-elevated); border-bottom: 1px solid var(--ov-border); white-space: nowrap; }
+  .ovp-tbl td { padding: 14px 16px; border-bottom: 1px solid var(--ov-border); vertical-align: top; }
+  .ovp-tbl tbody tr:last-child td { border-bottom: 0; }
+  .ovp-tbl .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .ovp-tbl .mut { color: var(--ov-text2); }
+  .ovp-alloc { display: grid; gap: 4px; }
+  .ovp-alloc div { color: var(--ov-text2); }
+  .ovp-alloc b { color: var(--ov-text1); font-weight: 500; }
+  .ovp-paid { color: var(--ov-safe); }
+  .ovp-empty { padding: 56px 20px; text-align: center; color: var(--ov-text2); }
+  @media (max-width: 720px) {
+    .ovp-bar-in { padding: 0 16px; }
+    .ovp-wrap { padding: 24px 16px 96px; }
+    .ovp-title { font-size: 24px; }
+    .ovp-card { padding: 20px 16px; }
+    .ovp-kpis { grid-template-columns: 1fr; }
+    .ovp-btn { flex: 1 1 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ovp-btn, .ovp-back, .ovp-in { transition: none; } }
+`;
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-      }}
-    >
-      <div
-        style={{
-          ...card,
-          padding: 28,
-          maxWidth: 380,
-          width: "100%",
-          margin: "0 16px",
-          boxShadow: `0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px ${T.borderHi}`,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 4,
-          }}
-        >
-          <span style={{ fontSize: 22 }}>💰</span>
-          <p style={{ color: T.text1, fontWeight: 700, fontSize: 15 }}>
-            Record Payment
-          </p>
-        </div>
-        <p
-          style={{
-            color: T.text1,
-            fontWeight: 600,
-            fontSize: 13,
-            marginTop: 12,
-          }}
-        >
-          {row["Account"]}
-        </p>
-        <p
-          style={{
-            color: T.text3,
-            fontSize: 11,
-            fontFamily: "monospace",
-            marginBottom: 16,
-          }}
-        >
-          {row["Ref. No."]}
-        </p>
-
-        <div
-          style={{
-            background: T.elevated,
-            borderRadius: 8,
-            padding: "10px 14px",
-            marginBottom: 16,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            border: `1px solid ${T.border}`,
-          }}
-        >
-          <span style={{ color: T.text2, fontSize: 12 }}>
-            Currently Pending
-          </span>
-          <span
-            style={{
-              color: T.gold,
-              fontWeight: 700,
-              fontVariantNumeric: "tabular-nums",
-              fontSize: 15,
-            }}
-          >
-            {fmt(pending)}
-          </span>
-        </div>
-
-        <p
-          style={{
-            color: T.text2,
-            fontSize: 11,
-            fontWeight: 600,
-            marginBottom: 6,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-          }}
-        >
-          Amount Received
-        </p>
-        <div style={{ position: "relative" }}>
-          <span
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: T.text3,
-              fontSize: 13,
-            }}
-          >
-            ₹
-          </span>
-          <input
-            type="number"
-            inputMode="decimal"
-            autoFocus
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            style={{
-              ...inputStyle,
-              paddingLeft: 28,
-              boxShadow: `0 0 0 1px ${T.border}`,
-            }}
-            onFocus={(e) => {
-              e.target.style.boxShadow = `0 0 0 2px color-mix(in srgb, ${T.gold} 25%, transparent)`;
-              e.target.style.borderColor = T.gold;
-            }}
-            onBlur={(e) => {
-              e.target.style.boxShadow = `0 0 0 1px ${T.border}`;
-              e.target.style.borderColor = T.border;
-            }}
-          />
-        </div>
-
-        {entered > 0 && (
-          <p
-            style={{
-              fontSize: 12,
-              marginTop: 8,
-              color: overpaid ? T.warning : clearsFully ? T.safe : T.text2,
-            }}
-          >
-            {overpaid
-              ? `That's ${fmt(entered - pending)} over — entry will be cleared.`
-              : clearsFully
-                ? "Full payment — entry will be removed from overdue list."
-                : `Remaining: ${fmt(remaining)}`}
-          </p>
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            justifyContent: "flex-end",
-            marginTop: 20,
-          }}
-        >
-          <button
-            onClick={onCancel}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: "transparent",
-              color: T.text2,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => entered > 0 && onConfirm(entered)}
-            disabled={entered <= 0}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: entered > 0 ? "rgba(16,185,129,0.15)" : T.elevated,
-              color: entered > 0 ? T.safe : T.text3,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: entered > 0 ? "pointer" : "not-allowed",
-              boxShadow:
-                entered > 0 ? "inset 0 0 0 1px rgba(16,185,129,0.4)" : "none",
-            }}
-          >
-            Confirm Payment
-          </button>
-        </div>
+const OvPage = ({ title, subtitle, crumb, narrow, actions, children }) => (
+  <div className="ovp">
+    <style>{OVP_CSS}</style>
+    <header className="ovp-bar">
+      <div className="ovp-bar-in">
+        <Link to="/" className="ovp-brand">
+          <span className="ovp-mark" aria-hidden="true" />
+          My Office Workplace
+        </Link>
+        <Link to="/OverduesDashboard" className="ovp-back">
+          <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+          Back to overdues
+        </Link>
       </div>
-    </div>
-  );
-};
+    </header>
+    <main className={`ovp-wrap${narrow ? " narrow" : ""}`}>
+      <nav className="ovp-crumbs" aria-label="Breadcrumb">
+        <Link to="/OverduesDashboard">Overdues</Link>
+        <span aria-hidden="true">/</span>
+        <span style={{ color: "var(--ov-text1)" }}>{crumb || title}</span>
+      </nav>
+      <div className="ovp-head">
+        <div>
+          <h1 className="ovp-title">{title}</h1>
+          {subtitle && <div className="ovp-sub">{subtitle}</div>}
+        </div>
+        {actions}
+      </div>
+      {children}
+    </main>
+  </div>
+);
 
-// ── Customer payment modal ────────────────────────────────────────────────
-const CustomerPaymentModal = ({ accounts, onConfirm, onCancel, busy }) => {
+// ── Customer payment received (FIFO allocation) ───────────────────────────
+const PaymentReceivedPage = ({ rows, onConfirm, busy, error }) => {
+  const navigate = useNavigate();
+  const accounts = [...new Set(rows.map((r) => r["Account"]).filter(Boolean))].sort();
   const [account, setAccount] = useState(accounts[0] || "");
   const [amount, setAmount] = useState("");
   const value = Number(amount);
+  const mine = rows.filter((r) => r["Account"] === account);
+  const pending = mine.reduce((sum, r) => sum + (Number(r["Pending Amt."]) || 0), 0);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 120,
-        background: "rgba(2,6,15,.78)",
-        backdropFilter: "blur(8px)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+    <OvPage
+      title="Payment received"
+      subtitle="Payment is adjusted against the oldest pending bills first (FIFO)"
+      narrow
     >
-      <div
-        style={{
-          ...card,
-          width: "min(460px,100%)",
-          padding: 24,
-          boxShadow: "0 24px 80px rgba(0,0,0,.5)",
+      <form
+        className="ovp-card ovp-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (account && value > 0 && !busy) onConfirm(account, value);
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: T.gold,
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: 1,
-              }}
-            >
-              PAYMENT COLLECTION
-            </div>
-            <h2 style={{ color: T.text1, fontSize: 20, margin: "6px 0 0" }}>
-              Payment Received
-            </h2>
-          </div>
-          <button
-            onClick={onCancel}
-            style={{
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              background: "transparent",
-              color: T.text2,
-              padding: "7px 10px",
-              cursor: "pointer",
-            }}
+        <div>
+          <label className="ovp-label" htmlFor="ovp-account">Customer</label>
+          <select
+            id="ovp-account"
+            className="ovp-in"
+            value={account}
+            onChange={(e) => setAccount(e.target.value)}
           >
-            ✕
-          </button>
+            {accounts.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
         </div>
-        <p style={{ color: T.text2, fontSize: 12, margin: "10px 0 18px" }}>
-          Payment is adjusted against the oldest pending bills first (FIFO).
-        </p>
-        <label
-          style={{
-            display: "block",
-            color: T.text2,
-            fontSize: 11,
-            fontWeight: 700,
-            marginBottom: 7,
-          }}
-        >
-          CUSTOMER / ACCOUNT
-        </label>
-        <select
-          value={account}
-          onChange={(e) => setAccount(e.target.value)}
-          style={{ ...inputStyle, marginBottom: 16 }}
-        >
-          {accounts.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <label
-          style={{
-            display: "block",
-            color: T.text2,
-            fontSize: 11,
-            fontWeight: 700,
-            marginBottom: 7,
-          }}
-        >
-          AMOUNT RECEIVED (₹)
-        </label>
-        <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount received"
-          style={{ ...inputStyle, fontSize: 18, padding: 13 }}
-          autoFocus
-        />
-        {value > 0 && (
-          <p style={{ color: T.safe, fontSize: 12, marginTop: 10 }}>
-            Amount received: <b>{fmt(value)}</b>
-          </p>
+
+        {account && (
+          <div className="ovp-facts">
+            <div className="ovp-fact">
+              <span>Pending bills</span>
+              <b>{mine.length}</b>
+            </div>
+            <div className="ovp-fact">
+              <span>Total pending</span>
+              <b>{fmt(pending)}</b>
+            </div>
+          </div>
         )}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            marginTop: 22,
-          }}
-        >
-          <button
-            onClick={onCancel}
-            style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: "transparent",
-              color: T.text2,
-              cursor: "pointer",
-            }}
-          >
+
+        <div>
+          <label className="ovp-label" htmlFor="ovp-amount">Amount received</label>
+          <div className="ovp-amt">
+            <span aria-hidden="true">₹</span>
+            <input
+              id="ovp-amount"
+              className="ovp-in"
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0"
+              autoFocus
+            />
+          </div>
+          {value > 0 && (
+            <p className={`ovp-note ${value > pending ? "warn" : "ok"}`} style={{ marginTop: 8 }}>
+              {value > pending
+                ? `${fmt(value - pending)} is more than the pending amount and will stay unallocated.`
+                : `Pending after this payment: ${fmt(pending - value)}`}
+            </p>
+          )}
+        </div>
+
+        {error && <p className="ovp-note bad" role="alert">{error}</p>}
+
+        <div className="ovp-foot">
+          <button type="button" className="ovp-btn" onClick={() => navigate("/OverduesDashboard")}>
             Cancel
           </button>
-          <button
-            disabled={!account || !(value > 0) || busy}
-            onClick={() => onConfirm(account, value)}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 8,
-              border: 0,
-              background: T.gold,
-              color: "#111827",
-              fontWeight: 800,
-              cursor: "pointer",
-              opacity: busy ? 0.6 : 1,
-            }}
-          >
-            {busy ? "Saving…" : "Confirm & Allocate"}
+          <button type="submit" className="ovp-btn pri" disabled={!account || !(value > 0) || busy}>
+            {busy ? "Saving" : "Confirm and allocate"}
           </button>
         </div>
-      </div>
-    </div>
+      </form>
+    </OvPage>
   );
 };
 
-const PaymentHistoryModal = ({ payments, onClose }) => {
+
+const PaymentHistoryPage = ({ payments }) => {
   const totalReceived = payments.reduce(
     (s, p) => s + (Number(p.amountReceived) || 0),
     0,
@@ -959,230 +794,79 @@ const PaymentHistoryModal = ({ payments, onClose }) => {
 </main><script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
   };
+  const totalUnallocated = payments.reduce(
+    (s, p) => s + (Number(p.unallocatedAmount) || 0),
+    0,
+  );
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 125,
-        background: "rgba(2,6,15,.82)",
-        backdropFilter: "blur(8px)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+    <OvPage
+      title="Payment history"
+      subtitle={`${payments.length} record${payments.length === 1 ? "" : "s"}`}
+      actions={
+        <button type="button" className="ovp-btn pri" onClick={downloadPDF} disabled={!payments.length}>
+          Download PDF
+        </button>
+      }
     >
-      <div
-        style={{
-          ...card,
-          width: "min(1100px,100%)",
-          maxHeight: "90vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0,0,0,.55)",
-        }}
-      >
-        <div
-          style={{
-            padding: 20,
-            borderBottom: `1px solid ${T.border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                color: T.gold,
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: 1,
-              }}
-            >
-              CLOUD-SYNCED LEDGER
-            </div>
-            <h2 style={{ margin: "5px 0 0", color: T.text1, fontSize: 20 }}>
-              Payment History
-            </h2>
-            <p style={{ margin: "5px 0 0", color: T.text3, fontSize: 12 }}>
-              {payments.length} records · saved to MongoDB
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={downloadPDF}
-              style={{
-                padding: "9px 13px",
-                border: 0,
-                borderRadius: 8,
-                background: T.gold,
-                color: "#111827",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              ⬇ Download PDF
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                padding: "9px 12px",
-                border: `1px solid ${T.border}`,
-                borderRadius: 8,
-                background: "transparent",
-                color: T.text2,
-                cursor: "pointer",
-              }}
-            >
-              ✕
-            </button>
-          </div>
+      <div className="ovp-kpis">
+        <div className="ovp-kpi">
+          <span>Total received</span>
+          <b>{fmt(totalReceived)}</b>
         </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-            gap: 10,
-            padding: 16,
-          }}
-        >
-          {[
-            ["TOTAL RECEIVED", fmt(totalReceived), T.gold],
-            ["ALLOCATED TO BILLS", fmt(totalAllocated), T.safe],
-            [
-              "UNALLOCATED",
-              fmt(
-                payments.reduce(
-                  (s, p) => s + (Number(p.unallocatedAmount) || 0),
-                  0,
-                ),
-              ),
-              T.warning,
-            ],
-          ].map(([label, value, color]) => (
-            <div key={label} style={{ ...card, padding: 14 }}>
-              <div style={{ color: T.text3, fontSize: 10, fontWeight: 800 }}>
-                {label}
-              </div>
-              <div
-                style={{ color, fontSize: 19, fontWeight: 800, marginTop: 6 }}
-              >
-                {value}
-              </div>
-            </div>
-          ))}
+        <div className="ovp-kpi">
+          <span>Allocated to bills</span>
+          <b>{fmt(totalAllocated)}</b>
         </div>
-        <div style={{ overflow: "auto", padding: "0 16px 16px" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 12,
-              minWidth: 760,
-            }}
-          >
+        <div className="ovp-kpi">
+          <span>Unallocated</span>
+          <b>{fmt(totalUnallocated)}</b>
+        </div>
+      </div>
+
+      {payments.length === 0 ? (
+        <div className="ovp-card ovp-empty">No payments recorded yet</div>
+      ) : (
+        <div className="ovp-tbl-wrap">
+          <table className="ovp-tbl">
             <thead>
-              <tr
-                style={{
-                  background: T.elevated,
-                  color: T.text2,
-                  textAlign: "left",
-                }}
-              >
-                {[
-                  "Date / Time",
-                  "Customer",
-                  "Received",
-                  "Allocated",
-                  "Unallocated",
-                  "Bill-wise FIFO allocation",
-                ].map((x) => (
-                  <th
-                    key={x}
-                    style={{
-                      padding: 11,
-                      borderBottom: `1px solid ${T.border}`,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {x}
-                  </th>
-                ))}
+              <tr>
+                <th>Date and time</th>
+                <th>Customer</th>
+                <th className="r">Received</th>
+                <th className="r">Allocated</th>
+                <th className="r">Unallocated</th>
+                <th>Bill-wise allocation (FIFO)</th>
               </tr>
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr
-                  key={p._id}
-                  style={{ borderBottom: `1px solid ${T.border}` }}
-                >
-                  <td
-                    style={{
-                      padding: 11,
-                      color: T.text2,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                <tr key={p._id}>
+                  <td className="mut" style={{ whiteSpace: "nowrap" }}>
                     {new Date(p.createdAt).toLocaleString("en-IN")}
                   </td>
-                  <td style={{ padding: 11, color: T.text1, fontWeight: 700 }}>
-                    {p.account}
-                  </td>
-                  <td
-                    style={{
-                      padding: 11,
-                      textAlign: "right",
-                      color: T.gold,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {fmt(p.amountReceived)}
-                  </td>
-                  <td
-                    style={{ padding: 11, textAlign: "right", color: T.safe }}
-                  >
-                    {fmt(p.allocatedAmount)}
-                  </td>
-                  <td
-                    style={{
-                      padding: 11,
-                      textAlign: "right",
-                      color: T.warning,
-                    }}
-                  >
+                  <td style={{ fontWeight: 500 }}>{p.account}</td>
+                  <td className="r" style={{ fontWeight: 500 }}>{fmt(p.amountReceived)}</td>
+                  <td className="r mut">{fmt(p.allocatedAmount)}</td>
+                  <td className="r" style={{ color: Number(p.unallocatedAmount) > 0 ? "var(--ov-warning)" : "var(--ov-text3)" }}>
                     {fmt(p.unallocatedAmount)}
                   </td>
-                  <td style={{ padding: 11, color: T.text2 }}>
-                    {(p.allocations || []).map((a) => (
-                      <div
-                        key={`${a.refNo}-${a.amount}`}
-                        style={{ marginBottom: 3 }}
-                      >
-                        <b style={{ color: T.text1 }}>{a.refNo}</b> ·{" "}
-                        {fmt(a.amount)}
-                        {a.pendingAfter === 0 ? (
-                          <span style={{ color: T.safe }}> · Paid</span>
-                        ) : null}
-                      </div>
-                    ))}
+                  <td>
+                    <div className="ovp-alloc">
+                      {(p.allocations || []).map((a) => (
+                        <div key={`${a.refNo}-${a.amount}`}>
+                          <b>{a.refNo}</b> · {fmt(a.amount)}
+                          {a.pendingAfter === 0 ? <span className="ovp-paid"> · Paid</span> : null}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {payments.length === 0 && (
-            <div style={{ padding: 48, textAlign: "center", color: T.text3 }}>
-              No payment records yet. Payments will appear here after they are
-              saved.
-            </div>
-          )}
         </div>
-      </div>
-    </div>
+      )}
+    </OvPage>
   );
 };
 
@@ -1204,13 +888,13 @@ export default function App() {
   const [summarySort, setSummarySort] = useState("total");
   const [expandedAccount, setExpandedAccount] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
-  const [paymentRow, setPaymentRow] = useState(null);
   const [storageSaving, setStorageSaving] = useState(false);
   const [storageSavedAt, setStorageSavedAt] = useState(null);
   const [storageError, setStorageError] = useState("");
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [paymentReceivedOpen, setPaymentReceivedOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const sub = location.pathname.replace(/^\/OverduesDashboard\/?/i, "").replace(/\/$/, "");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [syncReady, setSyncReady] = useState(false);
   const fileRef = useRef();
@@ -1369,23 +1053,6 @@ export default function App() {
     });
   };
 
-  const handleRecordPayment = async (amountReceived) => {
-    const row = paymentRow;
-    if (!row) return;
-    setStorageSaving(true);
-    setStorageError("");
-    try {
-      await api.put(`/overdues/${row._id}/payment`, { amount: amountReceived });
-      await refreshCloudData();
-      setPaymentRow(null);
-    } catch (error) {
-      setStorageError(
-        error.response?.data?.message || "Payment could not be saved",
-      );
-    } finally {
-      setStorageSaving(false);
-    }
-  };
 
   const handleCustomerPayment = async (account, amount) => {
     setPaymentBusy(true);
@@ -1393,7 +1060,7 @@ export default function App() {
     try {
       await api.post("/overdues/payments", { account, amount });
       await refreshCloudData();
-      setPaymentReceivedOpen(false);
+      navigate("/OverduesDashboard");
     } catch (error) {
       setStorageError(
         error.response?.data?.message || "Payment could not be saved to cloud",
@@ -1498,10 +1165,9 @@ export default function App() {
     alignItems: "center",
     padding: "3px 10px",
     borderRadius: 999,
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.02em",
-  };
+    fontSize: 12,
+    fontWeight: 600,
+    };
   const actionBtn = {
     display: "inline-flex",
     alignItems: "center",
@@ -1516,9 +1182,23 @@ export default function App() {
     lineHeight: 1,
   };
 
+  if (sub === "payment")
+    return (
+      <PaymentReceivedPage
+        key={data.length}
+        rows={data}
+        onConfirm={handleCustomerPayment}
+        busy={paymentBusy}
+        error={storageError}
+      />
+    );
+  if (sub === "history") return <PaymentHistoryPage payments={paymentHistory} />;
+  if (sub) return <Navigate to="/OverduesDashboard" replace />;
+
   return (
     <>
       <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
       * { box-sizing: border-box; }
       html, body, #root { width: 100%; min-width: 0; margin: 0; }
       button, input, select { font: inherit; }
@@ -1528,7 +1208,8 @@ export default function App() {
       .sf-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
       .sf-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:20px; }
       .sf-filters { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
-      .sf-tabs { display:flex; gap:0; border-bottom:1px solid ${T.border}; margin-bottom:20px; overflow-x:auto; }
+      .sf-tabs { display:flex; gap:0; border-bottom:1px solid ${T.border}; margin-bottom:20px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+      .sf-tabs::-webkit-scrollbar { display:none; }
       .sf-tabs button { flex:0 0 auto; }
       .desktop-table { display:block; }
       .mobile-list { display:none; }
@@ -1540,9 +1221,9 @@ export default function App() {
         .sf-container { padding:16px 12px 32px !important; }
         .sf-header-inner { padding:12px; align-items:flex-start; }
         .sf-header-inner h1 { font-size:18px !important; }
-        .sf-header-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .sf-header-actions { width:100%; display:grid; grid-template-columns:1fr 1fr !important; gap:8px; }
         .sf-header-actions button { width:100%; justify-content:center; }
-        .sf-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+        .sf-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:8px; margin-bottom:14px; }
         .sf-kpi-grid > div { min-width:0; padding:14px 12px !important; }
         .sf-kpi-grid > div p:nth-child(3) { font-size:18px !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .sf-filters { display:grid; grid-template-columns:1fr; gap:8px; }
@@ -1552,7 +1233,7 @@ export default function App() {
         .mobile-list { display:flex; flex-direction:column; gap:10px; }
         .mobile-card { background:${T.card}; border:1px solid ${T.border}; border-radius:12px; padding:13px; width:100%; min-width:0; }
         .mobile-card-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; min-width:0; }
-        .mobile-card-label { color:${T.text3}; font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+        .mobile-card-label { color:${T.text3}; font-size:12px; font-weight:500; }
         .mobile-card-value { color:${T.text1}; font-size:13px; font-weight:600; overflow-wrap:anywhere; min-width:0; }
         .mobile-card-account { font-size:14px; font-weight:700; overflow-wrap:anywhere; min-width:0; }
         .mobile-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
@@ -1567,15 +1248,15 @@ export default function App() {
         .mobile-summary-main { padding:13px; cursor:pointer; }
         .mobile-summary-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
         .mobile-summary-grid > div { min-width:0; }
-        .mobile-summary-expanded { border-top:1px solid ${T.border}; padding:10px 13px 13px; background:rgba(212,160,23,.025); }
+        .mobile-summary-expanded { border-top:1px solid ${T.border}; padding:10px 13px 13px; background:var(--ov-elevated); }
         .mobile-sub-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:10px 0; border-bottom:1px solid ${T.border}; }
         .mobile-sub-row:last-child { border-bottom:0; }
         .mobile-sub-actions { display:flex; gap:4px; justify-content:flex-end; }
         .mobile-sub-actions button { width:34px; height:34px; border-radius:7px; border:1px solid ${T.border}; background:${T.elevated}; cursor:pointer; }
-        .mobile-summary-total { padding:13px; background:rgba(212,160,23,.05); border:1px solid color-mix(in srgb, ${T.gold} 25%, transparent); border-radius:12px; }
+        .mobile-summary-total { padding:13px; background:var(--ov-elevated); border:1px solid color-mix(in srgb, ${T.gold} 25%, transparent); border-radius:12px; }
       }
       @media (max-width: 380px) {
-        .sf-kpi-grid { grid-template-columns:1fr; }
+        .sf-kpi-grid { grid-template-columns:1fr !important; }
         .sf-header-actions { grid-template-columns:1fr; }
         .mobile-summary-grid { grid-template-columns:1fr 1fr; }
       }
@@ -1585,11 +1266,8 @@ export default function App() {
         style={{
           minHeight: "100vh",
           background: T.pageBg,
-          fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+          fontFamily: "'Geist','Inter','Segoe UI',Arial,sans-serif",
           color: T.text1,
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--wash) 2.5%, transparent) 1px, transparent 0)",
-          backgroundSize: "28px 28px",
         }}
       >
         {confirmModal && (
@@ -1597,29 +1275,6 @@ export default function App() {
             message={confirmModal.message}
             onConfirm={confirmModal.onConfirm}
             onCancel={() => setConfirmModal(null)}
-          />
-        )}
-        {paymentReceivedOpen && (
-          <CustomerPaymentModal
-            accounts={[
-              ...new Set(data.map((r) => r["Account"]).filter(Boolean)),
-            ].sort()}
-            onConfirm={handleCustomerPayment}
-            onCancel={() => setPaymentReceivedOpen(false)}
-            busy={paymentBusy}
-          />
-        )}
-        {historyOpen && (
-          <PaymentHistoryModal
-            payments={paymentHistory}
-            onClose={() => setHistoryOpen(false)}
-          />
-        )}
-        {paymentRow && (
-          <PaymentModal
-            row={paymentRow}
-            onConfirm={handleRecordPayment}
-            onCancel={() => setPaymentRow(null)}
           />
         )}
 
@@ -1630,8 +1285,6 @@ export default function App() {
             top: 0,
             zIndex: 50,
             background: "var(--ov-headerBg)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
             borderBottom: `1px solid ${T.border}`,
           }}
         >
@@ -1652,21 +1305,20 @@ export default function App() {
               <h1
                 style={{
                   fontSize: 20,
-                  fontWeight: 800,
+                  fontWeight: 600,
                   letterSpacing: "-0.02em",
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
                 }}
               >
-                <span style={{ fontSize: 18 }}>📊</span>
                 <span style={{ color: T.gold }}>SF</span>
                 <span style={{ color: T.text1 }}>&nbsp;Overdues</span>
               </h1>
               <p
                 style={{
                   color: T.text3,
-                  fontSize: 11,
+                  fontSize: 12,
                   marginTop: 3,
                   display: "flex",
                   alignItems: "center",
@@ -1689,12 +1341,12 @@ export default function App() {
                 </span>
                 <span style={{ marginLeft: 4 }}>
                   {storageSaving ? (
-                    <span style={{ color: T.info }}>🔄 Syncing…</span>
+                    <span style={{ color: T.info }}>Syncing…</span>
                   ) : storageError ? (
-                    <span style={{ color: T.warning }}>⚠ {storageError}</span>
+                    <span style={{ color: T.warning }}>{storageError}</span>
                   ) : storageSavedAt ? (
                     <span style={{ color: T.safe }}>
-                      ✓ Cloud synced{" "}
+                      Cloud synced{" "}
                       {storageSavedAt.toLocaleTimeString("en-IN", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -1722,27 +1374,33 @@ export default function App() {
                   background: "transparent",
                   color: T.text2,
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: storageSaving ? "wait" : "pointer",
                 }}
               >
-                {storageSaving ? "↻ Syncing…" : "↻ Sync now"}
+                {storageSaving ? "Syncing…" : "Sync now"}
               </button>
               <button
-                onClick={() => setPaymentReceivedOpen(true)}
+                onClick={() => {
+                  setStorageError("");
+                  navigate("/OverduesDashboard/payment");
+                }}
                 disabled={!data.length}
                 style={{
                   padding: "8px 13px",
                   borderRadius: 8,
-                  border: `1px solid rgba(16,185,129,.35)`,
-                  background: "rgba(16,185,129,.10)",
-                  color: T.safe,
+                  border: `1px solid ${T.border}`,
+                  background: T.elevated,
+                  color: T.text1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                   fontSize: 13,
-                  fontWeight: 800,
+                  fontWeight: 500,
                   cursor: data.length ? "pointer" : "not-allowed",
                 }}
               >
-                💰 Payment Received
+                <IndianRupee size={14} strokeWidth={1.5} aria-hidden="true" /> Payment received
               </button>
               <button
                 onClick={async () => {
@@ -1750,7 +1408,7 @@ export default function App() {
                   try {
                     const r = await api.get("/overdues/payments");
                     setPaymentHistory(r.data?.payments || []);
-                    setHistoryOpen(true);
+                    navigate("/OverduesDashboard/history");
                   } catch (e) {
                     setStorageError(
                       e.response?.data?.message ||
@@ -1767,11 +1425,11 @@ export default function App() {
                   background: "transparent",
                   color: T.text1,
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
                 }}
               >
-                🧾 Payment History ({paymentHistory.length})
+                Payment history ({paymentHistory.length})
               </button>
               <button
                 onClick={handleSaveToFile}
@@ -1789,7 +1447,7 @@ export default function App() {
                   gap: 6,
                 }}
               >
-                💾 <span>Excel</span>
+                <span>Excel</span>
               </button>
               <button
                 onClick={() => generatePDF(filtered, pdfTitle)}
@@ -1800,15 +1458,14 @@ export default function App() {
                   background: T.gold,
                   color: "#000",
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  boxShadow: `0 0 16px ${T.goldGlow}`,
                 }}
               >
-                ⬇ <span>PDF</span>
+                <span>PDF</span>
               </button>
             </div>
           </div>
@@ -1840,7 +1497,7 @@ export default function App() {
               alignItems: "center",
               gap: 16,
               cursor: "pointer",
-              background: dragOver ? `rgba(212,160,23,0.05)` : T.card,
+              background: dragOver ? T.elevated : T.card,
               transition: "all 0.2s",
               marginBottom: 20,
             }}
@@ -1853,7 +1510,7 @@ export default function App() {
               onChange={(e) => handleFile(e.target.files[0])}
             />
             <span style={{ fontSize: 26, lineHeight: 1 }}>
-              {uploading ? "⏳" : "📂"}
+              {uploading ? <Loader2 size={26} strokeWidth={1.5} aria-hidden="true" /> : <FolderOpen size={26} strokeWidth={1.5} aria-hidden="true" />}
             </span>
             <div style={{ flex: 1 }}>
               <p style={{ color: T.text1, fontWeight: 600, fontSize: 14 }}>
@@ -1871,7 +1528,7 @@ export default function App() {
                   handleClearStorage();
                 }}
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   color: T.critical,
                   background: "transparent",
                   border: `1px solid rgba(244,63,94,0.25)`,
@@ -1919,40 +1576,24 @@ export default function App() {
                 style={{
                   ...card,
                   padding: "18px 20px",
-                  borderTop: `2px solid ${color}`,
                   position: "relative",
                   overflow: "hidden",
                 }}
               >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    right: 14,
-                    fontSize: 18,
-                    opacity: 0.08,
-                    fontWeight: 900,
-                    color,
-                  }}
-                >
-                  {icon}
-                </div>
                 <p
                   style={{
                     color: T.text3,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
+                    fontSize: 12,
+                    fontWeight: 600,
+                    }}
                 >
                   {lbl}
                 </p>
                 <p
                   style={{
-                    color,
-                    fontSize: 22,
-                    fontWeight: 800,
+                    color: T.text1,
+                    fontSize: 24,
+                    fontWeight: 500,
                     marginTop: 6,
                     fontVariantNumeric: "tabular-nums",
                     letterSpacing: "-0.01em",
@@ -1960,7 +1601,7 @@ export default function App() {
                 >
                   {val}
                 </p>
-                <p style={{ color: T.text3, fontSize: 11, marginTop: 4 }}>
+                <p style={{ color: T.text3, fontSize: 12, marginTop: 4 }}>
                   {sub}
                 </p>
               </div>
@@ -1978,8 +1619,8 @@ export default function App() {
             }}
           >
             {[
-              ["detail", "📋  Detail View"],
-              ["summary", "📊  Account Summary"],
+              ["detail", "Detail view"],
+              ["summary", "Account summary"],
             ].map(([tab, label]) => (
               <button
                 key={tab}
@@ -1994,7 +1635,7 @@ export default function App() {
                   background: "transparent",
                   color: activeTab === tab ? T.gold : T.text3,
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
                   marginBottom: -1,
                   transition: "all 0.15s",
@@ -2029,7 +1670,7 @@ export default function App() {
                       fontSize: 14,
                     }}
                   >
-                    🔍
+                    <Search size={16} strokeWidth={1.5} aria-hidden="true" />
                   </span>
                   <input
                     type="text"
@@ -2112,9 +1753,6 @@ export default function App() {
                         </div>
                       </div>
                       <div className="mobile-actions">
-                        <button onClick={() => setPaymentRow(r)}>
-                          💰 Record Payment
-                        </button>
                         <button
                           onClick={() => confirmDeleteRow(r)}
                           style={{
@@ -2122,7 +1760,7 @@ export default function App() {
                             borderColor: "rgba(244,63,94,.25)",
                           }}
                         >
-                          ✕ Delete
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -2147,7 +1785,7 @@ export default function App() {
                 className="desktop-table"
                 style={{ ...card, overflow: "hidden" }}
               >
-                <div style={{ overflowX: "auto" }}>
+                <div style={{ overflowX: "auto", overflowY: "hidden" }}>
                   <table
                     style={{
                       width: "100%",
@@ -2176,10 +1814,8 @@ export default function App() {
                                     ? "center"
                                     : "left",
                               color: T.text3,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.08em",
+                              fontSize: 12,
+                              fontWeight: 600,
                               borderBottom: `1px solid ${T.border}`,
                               cursor: "pointer",
                               userSelect: "none",
@@ -2206,10 +1842,8 @@ export default function App() {
                           style={{
                             padding: "11px 16px",
                             color: T.text3,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
+                            fontSize: 12,
+                            fontWeight: 600,
                             borderBottom: `1px solid ${T.border}`,
                             textAlign: "center",
                           }}
@@ -2272,7 +1906,7 @@ export default function App() {
                                 padding: "11px 16px",
                                 color: T.text3,
                                 fontFamily: "monospace",
-                                fontSize: 11,
+                                fontSize: 12,
                               }}
                             >
                               {r["Ref. No."]}
@@ -2282,7 +1916,7 @@ export default function App() {
                                 padding: "11px 16px",
                                 textAlign: "right",
                                 color: T.text1,
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 fontVariantNumeric: "tabular-nums",
                               }}
                             >
@@ -2290,7 +1924,7 @@ export default function App() {
                                 style={{
                                   color: T.text3,
                                   marginRight: 1,
-                                  fontSize: 11,
+                                  fontSize: 12,
                                 }}
                               >
                                 ₹
@@ -2323,21 +1957,6 @@ export default function App() {
                                 }}
                               >
                                 <button
-                                  onClick={() => setPaymentRow(r)}
-                                  title="Record payment"
-                                  style={{ ...actionBtn }}
-                                  onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                      "rgba(16,185,129,0.12)")
-                                  }
-                                  onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background =
-                                      "transparent")
-                                  }
-                                >
-                                  💰
-                                </button>
-                                <button
                                   onClick={() => confirmDeleteRow(r)}
                                   title="Delete entry"
                                   style={{ ...actionBtn }}
@@ -2350,7 +1969,7 @@ export default function App() {
                                       "transparent")
                                   }
                                 >
-                                  ✕
+                                  <X size={14} strokeWidth={1.5} aria-hidden="true" />
                                 </button>
                               </div>
                             </td>
@@ -2359,7 +1978,7 @@ export default function App() {
                       })}
                       <tr
                         style={{
-                          background: `rgba(212,160,23,0.05)`,
+                          background: T.elevated,
                           borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                         }}
                       >
@@ -2369,11 +1988,9 @@ export default function App() {
                             padding: "12px 16px",
                             textAlign: "right",
                             color: T.text2,
-                            fontWeight: 700,
+                            fontWeight: 600,
                             fontSize: 12,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                          }}
+                            }}
                         >
                           Total · {filtered.length} records
                         </td>
@@ -2382,7 +1999,7 @@ export default function App() {
                             padding: "12px 16px",
                             textAlign: "right",
                             color: T.gold,
-                            fontWeight: 800,
+                            fontWeight: 600,
                             fontSize: 16,
                             fontVariantNumeric: "tabular-nums",
                           }}
@@ -2413,7 +2030,6 @@ export default function App() {
                     color: T.text3,
                   }}
                 >
-                  <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
                   <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
                     No data loaded yet
                   </p>
@@ -2430,7 +2046,6 @@ export default function App() {
                     color: T.text3,
                   }}
                 >
-                  <p style={{ fontSize: 40, marginBottom: 12 }}>🔍</p>
                   <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
                     No records match your filters
                   </p>
@@ -2444,7 +2059,6 @@ export default function App() {
             <div
               style={{ textAlign: "center", padding: "64px 0", color: T.text3 }}
             >
-              <p style={{ fontSize: 40, marginBottom: 12 }}>📂</p>
               <p style={{ fontWeight: 600, fontSize: 15, color: T.text2 }}>
                 No data loaded yet
               </p>
@@ -2468,11 +2082,9 @@ export default function App() {
                 <span
                   style={{
                     color: T.text3,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
+                    fontSize: 12,
+                    fontWeight: 600,
+                    }}
                 >
                   Sort by
                 </span>
@@ -2596,7 +2208,7 @@ export default function App() {
                           />
                         </div>
                         <div
-                          style={{ marginTop: 9, color: T.text3, fontSize: 11 }}
+                          style={{ marginTop: 9, color: T.text3, fontSize: 12 }}
                         >
                           {isExpanded ? "▲ Hide bills" : "▼ Show bills"} · Tap
                           card to expand
@@ -2621,7 +2233,7 @@ export default function App() {
                                   <div
                                     style={{
                                       color: T.text3,
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       marginTop: 4,
                                     }}
                                   >
@@ -2641,17 +2253,11 @@ export default function App() {
                                 </div>
                                 <div className="mobile-sub-actions">
                                   <button
-                                    onClick={() => setPaymentRow(r)}
-                                    title="Record payment"
-                                  >
-                                    💰
-                                  </button>
-                                  <button
                                     onClick={() => confirmDeleteRow(r)}
                                     title="Delete entry"
                                     style={{ color: T.critical }}
                                   >
-                                    ✕
+                                    <X size={14} strokeWidth={1.5} aria-hidden="true" />
                                   </button>
                                 </div>
                               </div>
@@ -2670,11 +2276,11 @@ export default function App() {
                               border: "1px solid rgba(244,63,94,.25)",
                               background: "transparent",
                               color: T.critical,
-                              fontWeight: 700,
+                              fontWeight: 600,
                               cursor: "pointer",
                             }}
                           >
-                            ✕ Delete all {row.entries} bills
+                            Delete all {row.entries} bills
                           </button>
                         </div>
                       )}
@@ -2691,7 +2297,7 @@ export default function App() {
                       marginTop: 5,
                       color: T.gold,
                       fontSize: 18,
-                      fontWeight: 800,
+                      fontWeight: 600,
                     }}
                   >
                     ₹{grandTotal.toLocaleString("en-IN")}
@@ -2728,10 +2334,8 @@ export default function App() {
                           style={{
                             padding: "11px 16px",
                             color: T.text3,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
+                            fontSize: 12,
+                            fontWeight: 600,
                             borderBottom: `1px solid ${T.border}`,
                             textAlign:
                               i >= 2 && i <= 4
@@ -2793,7 +2397,7 @@ export default function App() {
                                 padding: "12px 16px",
                                 color: T.text3,
                                 fontFamily: "monospace",
-                                fontSize: 11,
+                                fontSize: 12,
                               }}
                             >
                               {i + 1}
@@ -2815,7 +2419,7 @@ export default function App() {
                                 <span
                                   style={{
                                     color: T.text3,
-                                    fontSize: 10,
+                                    fontSize: 12,
                                     display: "inline-block",
                                     transition: "transform 0.2s",
                                     transform: isExpanded
@@ -2850,8 +2454,8 @@ export default function App() {
                                   color: T.text2,
                                   padding: "2px 8px",
                                   borderRadius: 999,
-                                  fontSize: 11,
-                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  fontWeight: 600,
                                 }}
                               >
                                 {row.entries}
@@ -2862,14 +2466,14 @@ export default function App() {
                                 padding: "12px 16px",
                                 textAlign: "right",
                                 color: T.text1,
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 fontVariantNumeric: "tabular-nums",
                               }}
                             >
                               <span
                                 style={{
                                   color: T.text3,
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   marginRight: 1,
                                 }}
                               >
@@ -2890,7 +2494,7 @@ export default function App() {
                                 >
                                   <span
                                     style={{
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       opacity: 0.7,
                                       marginRight: 1,
                                     }}
@@ -2937,7 +2541,7 @@ export default function App() {
                                       width: `${barW}%`,
                                       height: 4,
                                       borderRadius: 999,
-                                      background: `linear-gradient(90deg,color-mix(in srgb, ${T.gold} 60%, transparent),${T.gold})`,
+                                      background: T.gold,
                                       transition: "width 0.3s",
                                     }}
                                   />
@@ -2945,7 +2549,7 @@ export default function App() {
                                 <span
                                   style={{
                                     color: T.text3,
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: 600,
                                     width: 38,
                                     textAlign: "right",
@@ -2971,15 +2575,15 @@ export default function App() {
                                 style={{
                                   padding: "4px 10px",
                                   borderRadius: 6,
-                                  fontSize: 11,
-                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  fontWeight: 600,
                                   color: T.critical,
                                   border: `1px solid rgba(244,63,94,0.25)`,
                                   background: "transparent",
                                   cursor: "pointer",
                                 }}
                               >
-                                ✕ All
+                                All
                               </button>
                             </td>
                           </tr>
@@ -2990,7 +2594,7 @@ export default function App() {
                                 <tr
                                   key={`${row.account}-${j}`}
                                   style={{
-                                    background: `rgba(212,160,23,0.03)`,
+                                    background: T.elevated,
                                     borderBottom: `1px solid ${T.border}`,
                                   }}
                                 >
@@ -3007,7 +2611,7 @@ export default function App() {
                                       padding: "8px 16px",
                                       color: T.text3,
                                       fontFamily: "monospace",
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       paddingLeft: 32,
                                     }}
                                   >
@@ -3018,7 +2622,7 @@ export default function App() {
                                       padding: "8px 16px",
                                       textAlign: "center",
                                       color: T.text3,
-                                      fontSize: 11,
+                                      fontSize: 12,
                                     }}
                                   >
                                     {r["Dated"]}
@@ -3035,7 +2639,7 @@ export default function App() {
                                   >
                                     <span
                                       style={{
-                                        fontSize: 10,
+                                        fontSize: 12,
                                         opacity: 0.7,
                                         marginRight: 1,
                                       }}
@@ -3051,7 +2655,7 @@ export default function App() {
                                       padding: "8px 16px",
                                       textAlign: "right",
                                       color: T.text3,
-                                      fontSize: 11,
+                                      fontSize: 12,
                                     }}
                                   >
                                     {r["Type"]}
@@ -3081,20 +2685,6 @@ export default function App() {
                                       }}
                                     >
                                       <button
-                                        onClick={() => setPaymentRow(r)}
-                                        style={{ ...actionBtn }}
-                                        onMouseEnter={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "rgba(16,185,129,0.12)")
-                                        }
-                                        onMouseLeave={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "transparent")
-                                        }
-                                      >
-                                        💰
-                                      </button>
-                                      <button
                                         onClick={() => confirmDeleteRow(r)}
                                         style={{ ...actionBtn }}
                                         onMouseEnter={(e) =>
@@ -3106,7 +2696,7 @@ export default function App() {
                                             "transparent")
                                         }
                                       >
-                                        ✕
+                                        <X size={14} strokeWidth={1.5} aria-hidden="true" />
                                       </button>
                                     </div>
                                   </td>
@@ -3118,7 +2708,7 @@ export default function App() {
                     })}
                     <tr
                       style={{
-                        background: `rgba(212,160,23,0.05)`,
+                        background: T.elevated,
                         borderTop: `1px solid color-mix(in srgb, ${T.gold} 25%, transparent)`,
                       }}
                     >
@@ -3127,11 +2717,9 @@ export default function App() {
                         style={{
                           padding: "13px 16px",
                           color: T.text2,
-                          fontWeight: 700,
+                          fontWeight: 600,
                           fontSize: 12,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                        }}
+                          }}
                       >
                         Grand Total · {accountSummary.length} accounts
                       </td>
@@ -3140,7 +2728,7 @@ export default function App() {
                           padding: "13px 16px",
                           textAlign: "center",
                           color: T.text2,
-                          fontWeight: 700,
+                          fontWeight: 600,
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
@@ -3151,7 +2739,7 @@ export default function App() {
                           padding: "13px 16px",
                           textAlign: "right",
                           color: T.gold,
-                          fontWeight: 800,
+                          fontWeight: 600,
                           fontSize: 16,
                           fontVariantNumeric: "tabular-nums",
                         }}
@@ -3168,12 +2756,12 @@ export default function App() {
                           padding: "13px 16px",
                           textAlign: "right",
                           color: T.critical,
-                          fontWeight: 700,
+                          fontWeight: 600,
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
                         <span
-                          style={{ fontSize: 11, opacity: 0.7, marginRight: 1 }}
+                          style={{ fontSize: 12, opacity: 0.7, marginRight: 1 }}
                         >
                           ₹
                         </span>

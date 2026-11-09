@@ -12,6 +12,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@heroicons/react": "^2.2.0",
+    "@remixicon/react": "^4.9.0",
     "@tailwindcss/vite": "^4.1.17",
     "axios": "^1.18.0",
     "dotenv": "^17.4.2",
