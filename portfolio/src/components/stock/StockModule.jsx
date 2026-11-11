@@ -18,7 +18,7 @@ export function StockLayout() {
 
 function Gate({ section, children }) {
   const { status, reload } = useStock();
-  if (status === "loading") return <Loading />;
+  if (status === "loading") return <Loading section={section} />;
   if (status === "error") return <LoadError onRetry={reload} />;
   return <Shell section={section}>{children}</Shell>;
 }

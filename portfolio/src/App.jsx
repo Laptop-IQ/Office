@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import PrivateRoute from "@/components/PrivateRoute";
+import AppLoader from "@/components/AppLoader";
 
 // Layout Components
 import { Navbar } from "@/layout/Navbar";
@@ -48,12 +49,8 @@ const StockLayout = lazy(() => loaders.stock().then((m) => ({ default: m.StockLa
 const StockApp = lazy(() => loaders.stock().then((m) => ({ default: m.StockApp })));
 const DispatchApp = lazy(() => loaders.stock().then((m) => ({ default: m.DispatchApp })));
 
-function RouteFallback() {
-  return (
-    <div className="route-fallback" role="status" aria-label="Loading">
-      <div className="route-spinner" />
-    </div>
-  );
+function RouteFallback({ page = false }) {
+  return <AppLoader variant={page ? "page" : "full"} label="Loading" />;
 }
 
 // Shared layout for every logged-in page: one navbar on top, the page below.
@@ -67,7 +64,7 @@ function AppLayout() {
     <>
       <Navbar />
       <div className="app-shell-body">
-        <Suspense fallback={<RouteFallback />}>
+        <Suspense fallback={<RouteFallback page />}>
           <Outlet />
         </Suspense>
       </div>

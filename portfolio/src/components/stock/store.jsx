@@ -159,8 +159,7 @@ export const normalizeWorkspace = (d = {}) => {
   };
 };
 
-const fetchWorkspace = async () => {
-  const local = lsLoad();
+const fetchWorkspace = async (local = lsLoad()) => {
   if (!getToken()) return { authError: true };
   try {
     const res = await fetch(API_BASE, { headers: apiHeaders() });
@@ -185,6 +184,10 @@ export const useStock = () => useContext(Ctx);
 export function StockProvider({ children }) {
   const [data, setData] = useState(EMPTY);
   const [status, setStatus] = useState("loading"); // loading | ready | error
+  // false while a cached copy is shown and the server copy is still being checked
+  const [synced, setSynced] = useState(false);
+  const base = useRef(null); // the data object the page was last hydrated with
+  const edited = useRef(false); // user changed something before the server answered
   const [syncState, setSyncState] = useState("idle");
   const [toasts, setToasts] = useState([]);
   const dirty = useRef(false);
@@ -197,10 +200,22 @@ export function StockProvider({ children }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3400);
   }, []);
 
-  /* initial load */
+  /* initial load – cache first: if this browser already has the workspace the
+     page opens instantly from it, and the server copy is checked in the
+     background (a slow / cold backend no longer blocks the screen). */
   const load = useCallback(async () => {
-    setStatus("loading");
-    const r = await fetchWorkspace();
+    const cached = getToken() ? lsLoad() : null;
+    edited.current = false;
+    setSynced(false);
+    if (cached) {
+      const first = normalizeWorkspace(cached);
+      base.current = first;
+      setData(first);
+      setStatus("ready");
+    } else {
+      setStatus("loading");
+    }
+    const r = await fetchWorkspace(cached);
     if (r.authError) {
       window.location.href = "/login";
       return;
@@ -209,8 +224,14 @@ export function StockProvider({ children }) {
       setStatus("error");
       return;
     }
-    setData(normalizeWorkspace(r.data));
+    // r.data is the cached object itself when the local copy is the newer one
+    if (!cached || (r.data !== cached && !edited.current)) {
+      const next = normalizeWorkspace(r.data);
+      base.current = next;
+      setData(next);
+    }
     setStatus("ready");
+    setSynced(true);
     if (r.offline) toast("Offline — working from local data", "error");
   }, [toast]);
   useEffect(() => {
@@ -235,12 +256,18 @@ export function StockProvider({ children }) {
   }, []);
   useEffect(() => {
     if (status !== "ready") return;
+    if (data !== base.current) edited.current = true;
+    if (!synced) {
+      // server copy not checked yet: keep local edits safe, but don't push
+      if (edited.current) lsSave({ ...data, savedAt: Date.now() });
+      return undefined;
+    }
     const payload = { ...data, savedAt: Date.now() };
     dirty.current = true;
     setSyncState(lsSave(payload) ? "saving" : "error");
     const t = setTimeout(() => pushRemote(payload), 800);
     return () => clearTimeout(t);
-  }, [data, status, pushRemote]);
+  }, [data, status, synced, pushRemote]);
   // flush pending changes when the tab is closed / reloaded
   useEffect(() => {
     const flush = () => {

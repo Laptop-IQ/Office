@@ -809,23 +809,34 @@ const persistSavedOrders = (m) => {
   }
 };
 
-// ── Remembered price list (localStorage) ────────────────────────────────────
+// ── Saved price list (localStorage) — survives page refresh ─────────────────
 
 const PRICELIST_KEY = "sf-po-price-list";
+const DEFAULT_UPLOAD_LABEL = "Upload price list (.xlsx / .csv)";
 const loadPriceList = () => {
   try {
     const o = JSON.parse(localStorage.getItem(PRICELIST_KEY) || "null");
-    return o && Array.isArray(o.products) && o.products.length ? o : null;
+    return o && Array.isArray(o.products) && o.products.length > 0 ? o : null;
   } catch {
     return null;
   }
 };
-const savePriceList = (data) => {
+const savePriceList = (products, label) => {
   try {
-    localStorage.setItem(PRICELIST_KEY, JSON.stringify(data));
+    localStorage.setItem(
+      PRICELIST_KEY,
+      JSON.stringify({ products, label, savedAt: new Date().toISOString() }),
+    );
     return true;
   } catch {
-    return false;
+    return false; // storage full or unavailable
+  }
+};
+const clearPriceList = () => {
+  try {
+    localStorage.removeItem(PRICELIST_KEY);
+  } catch {
+    /* ignore */
   }
 };
 
@@ -844,12 +855,14 @@ export default function SFDyesPurchaseOrder() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [orderItems, setOrderItems] = useState([]);
-  const [initialList] = useState(loadPriceList);
-  const [products, setProducts] = useState(initialList?.products || []);
-  const [uploadLabel, setUploadLabel] = useState(
-    initialList?.label || "Upload price list (.xlsx / .csv)",
+  const [initialPriceList] = useState(loadPriceList);
+  const [products, setProducts] = useState(
+    () => initialPriceList?.products || [],
   );
-  const [uploadedFile, setUploadedFile] = useState(Boolean(initialList));
+  const [uploadLabel, setUploadLabel] = useState(
+    () => initialPriceList?.label || DEFAULT_UPLOAD_LABEL,
+  );
+  const [uploadedFile, setUploadedFile] = useState(Boolean(initialPriceList));
   const [uploadStatus, setUploadStatus] = useState(null);
   const [pkgDefaults, setPkgDefaults] = useState(() => ({
     ...Object.fromEntries(PKG_DEFAULTS_CONFIG.map((c) => [c.key, c.defaultKg])),
@@ -1120,18 +1133,19 @@ export default function SFDyesPurchaseOrder() {
       setUploadedFile(true);
       const label = `${parsed.length} products · ${file.name}`;
       setUploadLabel(label);
-      // persist so the list survives a page refresh
-      const saved = savePriceList({ products: parsed, label });
+      const persisted = savePriceList(parsed, label);
       const note =
         sheetsUsed.length > 1
           ? ` (merged from ${sheetsUsed.length} sheets: ${sheetsUsed.join(", ")})`
           : "";
       flashStatus(
         {
-          type: saved ? "success" : "error",
-          msg: saved
-            ? `${parsed.length} products loaded from ${file.name}${note}`
-            : `${parsed.length} products loaded, but could not be saved for next time (storage full/unavailable)`,
+          type: "success",
+          msg: `${parsed.length} products loaded from ${file.name}${note}${
+            persisted
+              ? ""
+              : " — could not be saved, you will need to upload again after refresh"
+          }`,
         },
         5000,
       );

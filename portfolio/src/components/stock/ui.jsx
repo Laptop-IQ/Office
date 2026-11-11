@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { useStock } from "./store";
 import { Ico } from "./icons";
+import AppLoader from "../AppLoader";
 import "./stock.css";
 
 export const Search = ({ size = 16 }) => (
@@ -168,17 +169,14 @@ export const StatusPill = ({ status }) => (
   <span className={`sk-pill ${status}`}>{status === "ok" ? "In stock" : status === "low" ? "Low" : "Out of stock"}</span>
 );
 
-export const Loading = () => (
-  <div className="sk-root">
-    <div className="sk-wrap">
-      <div className="sk-skel" style={{ height: 36, width: 260, marginBottom: 24 }} />
-      <div className="sk-kpis">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="sk-skel" style={{ height: 96 }} />
-        ))}
-      </div>
-      <div className="sk-skel" style={{ height: 280 }} />
-    </div>
+export const Loading = ({ section = "stock" }) => (
+  <div className="sk-root" style={{ minHeight: 0, paddingBottom: 0 }}>
+    <AppLoader
+      variant="page"
+      icon={<Ico v={section === "dispatch" ? "📤" : "⚗"} />}
+      label={section === "dispatch" ? "Opening Dispatch" : "Opening Stock Manager"}
+      hint="Fetching your latest stock data"
+    />
   </div>
 );
 
