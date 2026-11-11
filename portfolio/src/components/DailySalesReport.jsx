@@ -4,7 +4,9 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  useLayoutEffect,
 } from "react";
+import { createPortal } from "react-dom";
 import { XLSX } from "@/lib/xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -48,14 +50,46 @@ const PROJECT_STAGE_OPTIONS = [
 ];
 
 const STAGE_COLOR = {
-  A: { bg: "var(--st-A-bg)", text: "var(--st-A-text)", border: "var(--ds-primary)" },
-  B: { bg: "var(--st-B-bg)", text: "var(--st-B-text)", border: "var(--ds-primary)" },
-  C: { bg: "var(--st-C-bg)", text: "var(--st-C-text)", border: "var(--ds-primary)" },
-  D: { bg: "var(--st-D-bg)", text: "var(--st-D-text)", border: "var(--ds-primary)" },
-  E: { bg: "var(--st-E-bg)", text: "var(--st-E-text)", border: "var(--ds-primary)" },
-  F: { bg: "var(--st-F-bg)", text: "var(--st-F-text)", border: "var(--ds-primary)" },
-  G: { bg: "var(--st-G-bg)", text: "var(--st-G-text)", border: "var(--ds-primary)" },
-  H: { bg: "var(--st-H-bg)", text: "var(--st-H-text)", border: "var(--ds-success)" },
+  A: {
+    bg: "var(--st-A-bg)",
+    text: "var(--st-A-text)",
+    border: "var(--ds-primary)",
+  },
+  B: {
+    bg: "var(--st-B-bg)",
+    text: "var(--st-B-text)",
+    border: "var(--ds-primary)",
+  },
+  C: {
+    bg: "var(--st-C-bg)",
+    text: "var(--st-C-text)",
+    border: "var(--ds-primary)",
+  },
+  D: {
+    bg: "var(--st-D-bg)",
+    text: "var(--st-D-text)",
+    border: "var(--ds-primary)",
+  },
+  E: {
+    bg: "var(--st-E-bg)",
+    text: "var(--st-E-text)",
+    border: "var(--ds-primary)",
+  },
+  F: {
+    bg: "var(--st-F-bg)",
+    text: "var(--st-F-text)",
+    border: "var(--ds-primary)",
+  },
+  G: {
+    bg: "var(--st-G-bg)",
+    text: "var(--st-G-text)",
+    border: "var(--ds-primary)",
+  },
+  H: {
+    bg: "var(--st-H-bg)",
+    text: "var(--st-H-text)",
+    border: "var(--ds-success)",
+  },
 };
 
 const stageColor = (stage) => {
@@ -739,6 +773,10 @@ const injectGlobalStyles = () => {
     .dsr-customer-row:focus-visible { outline:2px solid var(--ds-primary);outline-offset:-2px; }
     .dsr-customer-row:hover { background:var(--ds-surface)!important; }
     .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
+        .dsr-cust-ladder { flex:0 0 140px; width:140px; display:block; text-align:left; }
+    .dsr-cust-ladder > div { display:inline-flex; }
+    .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0;width:102px;justify-content:flex-end; }
+    @media(max-width:520px){ .dsr-cust-ladder { flex-basis:104px; width:104px; } }
     .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
     @media(max-width:767px){.dsr-row-actions{opacity:1!important;}}
     .dsr-topbar-btn:hover { background:color-mix(in srgb, var(--wash) 12.0%, transparent)!important; }
@@ -1042,7 +1080,6 @@ const IS = {
   boxSizing: "border-box",
   outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
-  colorScheme: "dark",
 };
 
 const IH = {
@@ -1284,7 +1321,7 @@ const ExcelImporter = ({
         justifyContent: "center",
         zIndex: 300,
         padding: 16,
-              }}
+      }}
     >
       {eiToast.msg && (
         <div
@@ -1312,8 +1349,7 @@ const ExcelImporter = ({
           maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow:
-            "var(--ds-shadow-modal)",
+          boxShadow: "var(--ds-shadow-modal)",
           overflow: "hidden",
         }}
       >
@@ -1338,7 +1374,7 @@ const ExcelImporter = ({
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-                          }}
+            }}
           >
             <Icon
               name="upload"
@@ -1391,8 +1427,7 @@ const ExcelImporter = ({
                   width: 64,
                   height: 64,
                   borderRadius: "50%",
-                  background:
-                    DS.surface,
+                  background: DS.surface,
                   border: `1px solid ${DS.border}`,
                   display: "flex",
                   alignItems: "center",
@@ -1432,7 +1467,7 @@ const ExcelImporter = ({
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
-                                  }}
+                }}
               >
                 <Icon name="upload" size={13} strokeWidth={2.1} /> Browse File
               </div>
@@ -2167,7 +2202,7 @@ const FieldLabel = ({ children, required, keyBadge }) => (
       color: DS.text2,
       marginBottom: 5,
       fontWeight: 600,
-      }}
+    }}
   >
     {children}
     {required && <span style={{ color: DS.danger, marginLeft: 2 }}>*</span>}
@@ -2207,7 +2242,10 @@ const FormInput = ({ label, required, keyBadge, highlight, ...props }) => (
   </div>
 );
 
-// ── CustomSelect — fully dark-themed replacement for native <select> ───────
+// ── CustomSelect — themed replacement for native <select> ──────────────────
+// The menu is rendered in a portal with fixed positioning, so it is never
+// clipped by a card / modal (overflow:hidden), flips upward when there is no
+// room below, and works with the keyboard (↑ ↓ Enter Esc Home End).
 const CustomSelect = ({
   value,
   onChange,
@@ -2217,48 +2255,163 @@ const CustomSelect = ({
   placeholder = "Select…",
   children,
   style,
+  compact = false,
+  allowEmpty = false,
+  ariaLabel,
 }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [hi, setHi] = useState(-1);
+  const [pos, setPos] = useState(null);
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
 
   const options = React.Children.toArray(children)
     .filter((c) => React.isValidElement(c) && c.type === "option")
     .map((c) => ({
-      value: String(c.props.value ?? ""),
+      value:
+        c.props.value !== undefined
+          ? String(c.props.value)
+          : String(c.props.children ?? ""),
       label: String(c.props.children ?? ""),
     }));
 
-  const selected = options.find((o) => o.value === String(value ?? ""));
+  const cur = String(value ?? "");
+  const selIdx = options.findIndex((o) => o.value === cur);
+  const selected = options[selIdx];
+  const canPick = (o) => allowEmpty || o.value !== "";
+
+  const place = useCallback(() => {
+    const b = btnRef.current;
+    if (!b) return;
+    const r = b.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const below = vh - r.bottom - 12;
+    const above = r.top - 12;
+    const want = Math.min(260, options.length * 38 + 12);
+    const up = below < Math.min(want, 190) && above > below;
+    const width = Math.max(r.width, compact ? 190 : r.width);
+    setPos({
+      left: Math.max(8, Math.min(r.left, vw - width - 8)),
+      width,
+      top: up ? undefined : r.bottom + 5,
+      bottom: up ? vh - r.top + 5 : undefined,
+      maxH: Math.max(120, Math.min(260, up ? above : below)),
+    });
+  }, [options.length, compact]);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, place]);
 
   useEffect(() => {
+    if (!open) return undefined;
     const h = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
-  }, []);
+  }, [open]);
+
+  // keep the highlighted option visible
+  useEffect(() => {
+    if (!open || hi < 0) return;
+    menuRef.current
+      ?.querySelector(`[data-i="${hi}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [open, hi, pos]);
+
+  const openMenu = () => {
+    if (disabled) return;
+    setHi(selIdx >= 0 ? selIdx : options.findIndex(canPick));
+    setOpen(true);
+  };
 
   const pick = (v) => {
     if (onChange) onChange({ target: { name, value: v } });
     setOpen(false);
+    btnRef.current?.focus();
+  };
+
+  const move = (dir) => {
+    if (!options.length) return;
+    let i = hi;
+    for (let n = 0; n < options.length; n++) {
+      i = (i + dir + options.length) % options.length;
+      if (canPick(options[i])) break;
+    }
+    setHi(i);
+  };
+
+  const onKeyDown = (e) => {
+    if (!open) {
+      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
+        e.preventDefault();
+        openMenu();
+      }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+    } else if (e.key === "Tab") {
+      setOpen(false);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      move(1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      move(-1);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setHi(options.findIndex(canPick));
+    } else if (e.key === "End") {
+      e.preventDefault();
+      for (let i = options.length - 1; i >= 0; i--)
+        if (canPick(options[i])) {
+          setHi(i);
+          break;
+        }
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (hi >= 0 && canPick(options[hi])) pick(options[hi].value);
+    }
   };
 
   const base = highlight ? IH : IS;
   const isEmpty = !selected?.value;
 
   return (
-    <div ref={ref} style={{ position: "relative", ...style }}>
+    <div ref={wrapRef} style={{ position: "relative", ...style }}>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => !disabled && setOpen((p) => !p)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        onKeyDown={onKeyDown}
+        disabled={disabled}
         style={{
           ...base,
           display: "flex",
           alignItems: "center",
           gap: 8,
+          height: compact ? 36 : base.height,
+          minWidth: compact ? 130 : undefined,
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.5 : 1,
-          color: isEmpty ? DS.text2 : DS.text1,
+          color: isEmpty && !allowEmpty ? DS.text2 : DS.text1,
           borderColor: open ? DS.primary : highlight ? DS.amber : DS.border,
           boxShadow: open
             ? `0 0 0 1px ${DS.primary}`
@@ -2285,104 +2438,117 @@ const CustomSelect = ({
           style={{
             flexShrink: 0,
             color: open ? DS.primary : DS.text3,
-            transition: "color 0.15s, transform 0.2s",
+            transition: "color 0.15s",
           }}
         />
       </button>
 
-      {open && !disabled && (
-        <div
-          className="dsr-scroll"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 5px)",
-            left: 0,
-            right: 0,
-            zIndex: 200,
-            background: DS.surface,
-            border: `1px solid ${DS.borderHi}`,
-            borderRadius: 12,
-            padding: 5,
-            maxHeight: 260,
-            overflowY: "auto",
-            boxShadow:
-              "var(--ds-shadow-pop)",
-            scrollbarWidth: "thin",
-            scrollbarColor: `${DS.border} transparent`,
-          }}
-        >
-          {options.map((opt) => {
-            const isSel = opt.value === String(value ?? "");
-            const isEmptyOpt = !opt.value;
-            const isStageOpt = PROJECT_STAGE_OPTIONS.some(
-              (s) => s === opt.label,
-            );
-            const sc = isStageOpt ? stageColor(opt.label) : null;
-
-            return (
-              <div
-                key={opt.value || "__empty__"}
-                onClick={() => !isEmptyOpt && pick(opt.value)}
-                style={{
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  cursor: isEmptyOpt ? "default" : "pointer",
-                  fontSize: 13,
-                  color: isEmptyOpt ? DS.text3 : isSel ? DS.primary : DS.text1,
-                  background: isSel ? DS.primaryDim : "transparent",
-                  fontWeight: isSel ? 600 : 400,
-                  transition: "background 0.1s, color 0.1s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  borderLeft: `2px solid ${isSel ? DS.primary : "transparent"}`,
-                  userSelect: "none",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSel && !isEmptyOpt)
-                    e.currentTarget.style.background = "color-mix(in srgb, var(--wash) 5.0%, transparent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = isSel
-                    ? DS.primaryDim
-                    : "transparent";
-                }}
-              >
-                {sc && (
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 2,
-                      flexShrink: 0,
-                      background: sc.border,
-                                          }}
-                  />
-                )}
-                <span
+      {open &&
+        !disabled &&
+        pos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            className="dsr-scroll"
+            style={{
+              position: "fixed",
+              left: pos.left,
+              width: pos.width,
+              top: pos.top,
+              bottom: pos.bottom,
+              zIndex: 1200,
+              background: DS.surface,
+              border: `1px solid ${DS.borderHi}`,
+              borderRadius: 12,
+              padding: 5,
+              maxHeight: pos.maxH,
+              overflowY: "auto",
+              boxShadow: "var(--ds-shadow-pop)",
+              scrollbarWidth: "thin",
+              scrollbarColor: `${DS.border} transparent`,
+              fontFamily:
+                "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+            }}
+          >
+            {options.map((opt, i) => {
+              const isSel = opt.value === cur;
+              const isEmptyOpt = !opt.value;
+              const disabledOpt = !canPick(opt);
+              const isStageOpt = PROJECT_STAGE_OPTIONS.some(
+                (st) => st === opt.label,
+              );
+              const sc = isStageOpt ? stageColor(opt.label) : null;
+              const active = i === hi && !disabledOpt;
+              return (
+                <div
+                  key={opt.value || "__empty__"}
+                  role="option"
+                  aria-selected={isSel}
+                  data-i={i}
+                  onClick={() => !disabledOpt && pick(opt.value)}
+                  onMouseEnter={() => !disabledOpt && setHi(i)}
                   style={{
-                    flex: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    lineHeight: 1.4,
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    cursor: disabledOpt ? "default" : "pointer",
+                    fontSize: 13,
+                    color: disabledOpt
+                      ? DS.text3
+                      : isSel
+                        ? DS.primary
+                        : DS.text1,
+                    background: isSel
+                      ? DS.primaryDim
+                      : active
+                        ? "color-mix(in srgb, var(--wash) 6%, transparent)"
+                        : "transparent",
+                    fontWeight: isSel ? 600 : 400,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    borderLeft: `2px solid ${isSel ? DS.primary : "transparent"}`,
+                    userSelect: "none",
+                    opacity: isEmptyOpt && allowEmpty && !isSel ? 0.85 : 1,
                   }}
                 >
-                  {opt.label}
-                </span>
-                {isSel && !isEmptyOpt && (
-                  <Icon
-                    name="check"
-                    size={13}
-                    strokeWidth={2.5}
-                    style={{ color: DS.primary, flexShrink: 0 }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  {sc && (
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 2,
+                        flexShrink: 0,
+                        background: sc.border,
+                      }}
+                    />
+                  )}
+                  <span
+                    style={{
+                      flex: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1.4,
+                    }}
+                    title={opt.label}
+                  >
+                    {opt.label}
+                  </span>
+                  {isSel && !disabledOpt && (
+                    <Icon
+                      name="check"
+                      size={13}
+                      strokeWidth={2.5}
+                      style={{ color: DS.primary, flexShrink: 0 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };
@@ -2443,9 +2609,16 @@ const Toast = ({ msg, type }) => {
 // ══════════════════════════════════════════════════════════════════════════
 //  RECORDS PRO UI – toolbar, insights, premium cards, compact table
 // ══════════════════════════════════════════════════════════════════════════
-const dsrHue = (s) => [...String(s || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const dsrHue = (s) =>
+  [...String(s || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const dsrInitials = (n) =>
-  String(n || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+  String(n || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "?";
 const agoLabel = (d) => {
   const n = daysSince(d);
   if (n === null) return "";
@@ -2471,16 +2644,24 @@ const REC_PRESETS = [
 const presetRange = (id) => {
   const now = new Date();
   const sod = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const eod = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const eod = (d) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
   if (id === "today") return [sod(now), eod(now)];
   if (id === "7") {
     const s = sod(now);
     s.setDate(s.getDate() - 6);
     return [s, eod(now)];
   }
-  if (id === "month") return [new Date(now.getFullYear(), now.getMonth(), 1), eod(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+  if (id === "month")
+    return [
+      new Date(now.getFullYear(), now.getMonth(), 1),
+      eod(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    ];
   if (id === "lastmonth")
-    return [new Date(now.getFullYear(), now.getMonth() - 1, 1), eod(new Date(now.getFullYear(), now.getMonth(), 0))];
+    return [
+      new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      eod(new Date(now.getFullYear(), now.getMonth(), 0)),
+    ];
   return null;
 };
 const recPot = (r) => toNum(r.potDyes) + toNum(r.potAux);
@@ -2497,13 +2678,24 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
     setTimeout(() => setArmed(false), 3000);
   };
   return (
-    <article className={`dsr-rc${expanded ? " open" : ""}`} style={{ "--sc": sc.border }}>
+    <article
+      className={`dsr-rc${expanded ? " open" : ""}`}
+      style={{ "--sc": sc.border }}
+    >
       <header className="dsr-rc-h">
-        <span className="dsr-rc-av" style={{ "--h": dsrHue(record.customer) }} aria-hidden="true">
+        <span
+          className="dsr-rc-av"
+          style={{ "--h": dsrHue(record.customer) }}
+          aria-hidden="true"
+        >
           {dsrInitials(record.customer)}
         </span>
         <div className="dsr-rc-id">
-          <button className="dsr-rc-name" onClick={onOpen} title="Open customer history">
+          <button
+            className="dsr-rc-name"
+            onClick={onOpen}
+            title="Open customer history"
+          >
             {record.customer}
           </button>
           <div className="dsr-rc-meta">
@@ -2515,7 +2707,10 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
         </div>
         <div
           className="dsr-rc-ring"
-          style={{ "--p": Math.min(Number(record.pct) || 0, 100), "--c": color }}
+          style={{
+            "--p": Math.min(Number(record.pct) || 0, 100),
+            "--c": color,
+          }}
           title={`YTD vs ABP: ${record.pct}%`}
         >
           <b>
@@ -2526,10 +2721,19 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
       </header>
 
       <div className="dsr-rc-tags">
-        <span className="dsr-rc-stage" style={{ background: sc.bg, color: sc.text, borderColor: `color-mix(in srgb, ${sc.border} 35%, transparent)` }}>
+        <span
+          className="dsr-rc-stage"
+          style={{
+            background: sc.bg,
+            color: sc.text,
+            borderColor: `color-mix(in srgb, ${sc.border} 35%, transparent)`,
+          }}
+        >
           {record.stage || "No stage"}
         </span>
-        {record.distributor && <span className="dsr-rc-dist">{record.distributor}</span>}
+        {record.distributor && (
+          <span className="dsr-rc-dist">{record.distributor}</span>
+        )}
       </div>
       <div style={{ margin: "2px 0 10px" }}>
         <StageLadder stage={record.stage} size="sm" />
@@ -2549,8 +2753,16 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
       )}
 
       <footer className="dsr-rc-f">
-        <button className="dsr-rc-more" onClick={() => setExpanded((p) => !p)} aria-expanded={expanded}>
-          <Icon name={expanded ? "chevronUp" : "chevronDown"} size={13} strokeWidth={2.2} />
+        <button
+          className="dsr-rc-more"
+          onClick={() => setExpanded((p) => !p)}
+          aria-expanded={expanded}
+        >
+          <Icon
+            name={expanded ? "chevronUp" : "chevronDown"}
+            size={13}
+            strokeWidth={2.2}
+          />
           {expanded ? "Less" : "Financials"}
         </button>
         <div className="dsr-rc-acts">
@@ -2560,7 +2772,11 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
           <button className="dsr-rc-btn info" onClick={() => onEdit(record)}>
             <Icon name="edit" size={13} strokeWidth={2} /> Edit
           </button>
-          <button className={`dsr-rc-btn danger${armed ? " armed" : ""}`} onClick={askDelete} aria-label="Delete record">
+          <button
+            className={`dsr-rc-btn danger${armed ? " armed" : ""}`}
+            onClick={askDelete}
+            aria-label="Delete record"
+          >
             <Icon name="trash" size={13} strokeWidth={2} />
             {armed && " Confirm?"}
           </button>
@@ -2584,11 +2800,15 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
           ))}
           <div className="wide">
             <span>Total potential</span>
-            <b className="dsr-mono" style={{ color: DS.primary }}>₹{recPot(record).toFixed(2)}L/mth</b>
+            <b className="dsr-mono" style={{ color: DS.primary }}>
+              ₹{recPot(record).toFixed(2)}L/mth
+            </b>
           </div>
           <div className="wide">
             <span>Total existing</span>
-            <b className="dsr-mono" style={{ color: DS.info }}>₹{(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth</b>
+            <b className="dsr-mono" style={{ color: DS.info }}>
+              ₹{(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth
+            </b>
           </div>
         </div>
       )}
@@ -2614,7 +2834,12 @@ const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
         return (
           <div key={id} className="dsr-rt-r" style={{ "--sc": sc.border }}>
             <button className="dsr-rt-name" onClick={() => onOpen(r.customer)}>
-              <span className="dsr-rc-av sm" style={{ "--h": dsrHue(r.customer) }}>{dsrInitials(r.customer)}</span>
+              <span
+                className="dsr-rc-av sm"
+                style={{ "--h": dsrHue(r.customer) }}
+              >
+                {dsrInitials(r.customer)}
+              </span>
               {r.customer}
             </button>
             <span>
@@ -2624,14 +2849,39 @@ const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
             <span>{r.area || "—"}</span>
             <span>{r.distributor || "—"}</span>
             <span>
-              <em className="dsr-rc-letter" style={{ background: sc.bg, color: sc.text, borderColor: sc.border }} title={r.stage}>
+              <em
+                className="dsr-rc-letter"
+                style={{
+                  background: sc.bg,
+                  color: sc.text,
+                  borderColor: sc.border,
+                }}
+                title={r.stage}
+              >
                 {stageLetter(r.stage) || "–"}
               </em>
             </span>
-            <span className="dsr-mono" style={{ color: pctColor(r.pct), fontWeight: 600 }}>{r.pct}%</span>
+            <span
+              className="dsr-mono"
+              style={{ color: pctColor(r.pct), fontWeight: 600 }}
+            >
+              {r.pct}%
+            </span>
             <span className="acts">
-              <button className="dsr-rc-btn info icon" onClick={() => onEdit(r)} aria-label="Edit record"><Icon name="edit" size={13} strokeWidth={2} /></button>
-              <button className="dsr-rc-btn danger icon" onClick={() => onDelete(id)} aria-label="Delete record"><Icon name="trash" size={13} strokeWidth={2} /></button>
+              <button
+                className="dsr-rc-btn info icon"
+                onClick={() => onEdit(r)}
+                aria-label="Edit record"
+              >
+                <Icon name="edit" size={13} strokeWidth={2} />
+              </button>
+              <button
+                className="dsr-rc-btn danger icon"
+                onClick={() => onDelete(id)}
+                aria-label="Delete record"
+              >
+                <Icon name="trash" size={13} strokeWidth={2} />
+              </button>
             </span>
           </div>
         );
@@ -2640,7 +2890,16 @@ const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
   </div>
 );
 
-const RecordsInsights = ({ latest, todayCount, followCount, followOnly, onFollow, stage, onStage, topArea }) => {
+const RecordsInsights = ({
+  latest,
+  todayCount,
+  followCount,
+  followOnly,
+  onFollow,
+  stage,
+  onStage,
+  topArea,
+}) => {
   const counts = {};
   latest.forEach((r) => {
     const l = stageLetter(r.stage);
@@ -2657,24 +2916,48 @@ const RecordsInsights = ({ latest, todayCount, followCount, followOnly, onFollow
             const n = counts[l] || 0;
             const col = stageColor(st).border;
             return (
-              <button key={l} className={`dsr-fun-b${stage === l ? " on" : ""}`} style={{ "--c": col }} onClick={() => onStage(stage === l ? "" : l)} title={st} aria-pressed={stage === l}>
+              <button
+                key={l}
+                className={`dsr-fun-b${stage === l ? " on" : ""}`}
+                style={{ "--c": col }}
+                onClick={() => onStage(stage === l ? "" : l)}
+                title={st}
+                aria-pressed={stage === l}
+              >
                 <span className="n">{n}</span>
-                <span className="bar"><i style={{ height: `${Math.max(6, (n / max) * 100)}%` }} /></span>
+                <span className="bar">
+                  <i style={{ height: `${Math.max(6, (n / max) * 100)}%` }} />
+                </span>
                 <span className="l">{l}</span>
               </button>
             );
           })}
         </div>
       </div>
-      <button className={`dsr-ins-card stat${followOnly ? " on" : ""}`} onClick={onFollow} aria-pressed={followOnly}>
+      <button
+        className={`dsr-ins-card stat${followOnly ? " on" : ""}`}
+        onClick={onFollow}
+        aria-pressed={followOnly}
+      >
         <div className="dsr-ins-t">Follow-ups due</div>
-        <div className="dsr-ins-v dsr-mono" style={{ color: followCount ? DS.warning : DS.success }}>{followCount}</div>
-        <div className="dsr-ins-s">no visit in 14+ days · {followOnly ? "showing" : "tap to filter"}</div>
+        <div
+          className="dsr-ins-v dsr-mono"
+          style={{ color: followCount ? DS.warning : DS.success }}
+        >
+          {followCount}
+        </div>
+        <div className="dsr-ins-s">
+          no visit in 14+ days · {followOnly ? "showing" : "tap to filter"}
+        </div>
       </button>
       <div className="dsr-ins-card stat">
         <div className="dsr-ins-t">Visits today</div>
-        <div className="dsr-ins-v dsr-mono" style={{ color: DS.text1 }}>{todayCount}</div>
-        <div className="dsr-ins-s">{topArea ? `Top area: ${topArea}` : "no data yet"}</div>
+        <div className="dsr-ins-v dsr-mono" style={{ color: DS.text1 }}>
+          {todayCount}
+        </div>
+        <div className="dsr-ins-s">
+          {topArea ? `Top area: ${topArea}` : "no data yet"}
+        </div>
       </div>
     </div>
   );
@@ -2682,7 +2965,13 @@ const RecordsInsights = ({ latest, todayCount, followCount, followOnly, onFollow
 
 const RecordsToolbar = (p) => {
   const active = [
-    p.preset !== "all" && ["preset", p.preset === "custom" ? "Custom range" : REC_PRESETS.find((x) => x[0] === p.preset)?.[1], () => p.setPreset("all")],
+    p.preset !== "all" && [
+      "preset",
+      p.preset === "custom"
+        ? "Custom range"
+        : REC_PRESETS.find((x) => x[0] === p.preset)?.[1],
+      () => p.setPreset("all"),
+    ],
     p.stage && ["stage", `Stage ${p.stage}`, () => p.setStage("")],
     p.dist && ["dist", p.dist, () => p.setDist("")],
     p.area && ["area", p.area, () => p.setArea("")],
@@ -2693,10 +2982,26 @@ const RecordsToolbar = (p) => {
     <div className="dsr-tb">
       <div className="dsr-tb-row">
         <div className="dsr-tb-search">
-          <span className="ic"><Icon name="search" size={15} strokeWidth={2} /></span>
-          <input ref={p.searchRef} className="dsr-input" style={{ ...IS, paddingLeft: 36, paddingRight: 64 }} placeholder="Search customer, area, distributor, objective…" value={p.q} onChange={(e) => p.setQ(e.target.value)} aria-label="Search records" />
+          <span className="ic">
+            <Icon name="search" size={15} strokeWidth={2} />
+          </span>
+          <input
+            ref={p.searchRef}
+            className="dsr-input"
+            style={{ ...IS, paddingLeft: 36, paddingRight: 64 }}
+            placeholder="Search customer, area, distributor, objective…"
+            value={p.q}
+            onChange={(e) => p.setQ(e.target.value)}
+            aria-label="Search records"
+          />
           {p.q ? (
-            <button className="clr" onClick={() => p.setQ("")} aria-label="Clear search"><Icon name="close" size={12} strokeWidth={2.4} /></button>
+            <button
+              className="clr"
+              onClick={() => p.setQ("")}
+              aria-label="Clear search"
+            >
+              <Icon name="close" size={12} strokeWidth={2.4} />
+            </button>
           ) : (
             <kbd>/</kbd>
           )}
@@ -2705,51 +3010,138 @@ const RecordsToolbar = (p) => {
       </div>
       <div className="dsr-tb-row chips" role="group" aria-label="Date range">
         {REC_PRESETS.map(([id, label]) => (
-          <button key={id} className={`dsr-filter-chip${p.preset === id ? " active" : ""}`} onClick={() => p.setPreset(id)}>
+          <button
+            key={id}
+            className={`dsr-filter-chip${p.preset === id ? " active" : ""}`}
+            onClick={() => p.setPreset(id)}
+          >
             {label} <span className="cnt">{p.counts[id]}</span>
           </button>
         ))}
-        <button className={`dsr-filter-chip${p.preset === "custom" ? " active" : ""}`} onClick={() => p.setPreset("custom")}>
+        <button
+          className={`dsr-filter-chip${p.preset === "custom" ? " active" : ""}`}
+          onClick={() => p.setPreset("custom")}
+        >
           <Icon name="calendar" size={12} strokeWidth={2} /> Custom
         </button>
       </div>
       {p.preset === "custom" && (
         <div className="dsr-tb-custom">
           <span>From</span>
-          <input type="date" value={p.start} onChange={(e) => p.setStart(e.target.value)} className="dsr-input" style={{ ...IS, height: 34, flex: 1 }} aria-label="From date" />
+          <input
+            type="date"
+            value={p.start}
+            onChange={(e) => p.setStart(e.target.value)}
+            className="dsr-input"
+            style={{ ...IS, height: 34, flex: 1 }}
+            aria-label="From date"
+          />
           <span>To</span>
-          <input type="date" value={p.end} onChange={(e) => p.setEnd(e.target.value)} className="dsr-input" style={{ ...IS, height: 34, flex: 1 }} aria-label="To date" />
+          <input
+            type="date"
+            value={p.end}
+            onChange={(e) => p.setEnd(e.target.value)}
+            className="dsr-input"
+            style={{ ...IS, height: 34, flex: 1 }}
+            aria-label="To date"
+          />
         </div>
       )}
       <div className="dsr-tb-row sel">
-        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.stage} onChange={(e) => p.setStage(e.target.value)} aria-label="Stage">
+        <CustomSelect
+          compact
+          allowEmpty
+          ariaLabel="Stage"
+          style={{ maxWidth: 210 }}
+          value={p.stage}
+          onChange={(e) => p.setStage(e.target.value)}
+        >
           <option value="">All stages</option>
-          {PROJECT_STAGE_OPTIONS.map((st) => <option key={st[0]} value={st[0]}>{st}</option>)}
-        </select>
-        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.dist} onChange={(e) => p.setDist(e.target.value)} aria-label="Distributor">
+          {PROJECT_STAGE_OPTIONS.map((st) => (
+            <option key={st[0]} value={st[0]}>
+              {st}
+            </option>
+          ))}
+        </CustomSelect>
+        <CustomSelect
+          compact
+          allowEmpty
+          ariaLabel="Distributor"
+          style={{ maxWidth: 210 }}
+          value={p.dist}
+          onChange={(e) => p.setDist(e.target.value)}
+        >
           <option value="">All distributors</option>
-          {p.dists.map((d) => <option key={d}>{d}</option>)}
-        </select>
-        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.area} onChange={(e) => p.setArea(e.target.value)} aria-label="Area">
+          {p.dists.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </CustomSelect>
+        <CustomSelect
+          compact
+          allowEmpty
+          ariaLabel="Area"
+          style={{ maxWidth: 210 }}
+          value={p.area}
+          onChange={(e) => p.setArea(e.target.value)}
+        >
           <option value="">All areas</option>
-          {p.areas.map((a) => <option key={a}>{a}</option>)}
-        </select>
+          {p.areas.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </CustomSelect>
         <div className="grow" />
-        <select className="dsr-input" style={{ ...IS, height: 36, width: "auto", maxWidth: 210 }} value={p.sort} onChange={(e) => p.setSort(e.target.value)} aria-label="Sort records">
-          {REC_SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
+        <CustomSelect
+          compact
+          ariaLabel="Sort records"
+          style={{ maxWidth: 210 }}
+          value={p.sort}
+          onChange={(e) => p.setSort(e.target.value)}
+        >
+          {REC_SORTS.map(([k, l]) => (
+            <option key={k} value={k}>
+              {l}
+            </option>
+          ))}
+        </CustomSelect>
         <div className="dsr-seg2" role="group" aria-label="View">
-          <button className={p.view === "cards" ? "on" : ""} onClick={() => p.setView("cards")} aria-label="Card view" title="Card view">▦</button>
-          <button className={p.view === "table" ? "on" : ""} onClick={() => p.setView("table")} aria-label="Table view" title="Table view">☰</button>
+          <button
+            className={p.view === "cards" ? "on" : ""}
+            onClick={() => p.setView("cards")}
+            aria-label="Card view"
+            title="Card view"
+          >
+            ▦
+          </button>
+          <button
+            className={p.view === "table" ? "on" : ""}
+            onClick={() => p.setView("table")}
+            aria-label="Table view"
+            title="Table view"
+          >
+            ☰
+          </button>
         </div>
       </div>
       {(active.length > 0 || p.total !== p.shown) && (
         <div className="dsr-tb-row act">
-          <span className="res"><b>{p.shown}</b> of {p.total} records</span>
+          <span className="res">
+            <b>{p.shown}</b> of {p.total} records
+          </span>
           {active.map(([k, label, off]) => (
-            <button key={k} className="dsr-x" onClick={off}>{label}<Icon name="close" size={10} strokeWidth={2.6} /></button>
+            <button key={k} className="dsr-x" onClick={off}>
+              {label}
+              <Icon name="close" size={10} strokeWidth={2.6} />
+            </button>
           ))}
-          {active.length > 0 && <button className="dsr-x clear" onClick={p.onClear}>Clear all</button>}
+          {active.length > 0 && (
+            <button className="dsr-x clear" onClick={p.onClear}>
+              Clear all
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -2760,11 +3152,21 @@ const MonthAnalysisList = ({ rows, onOpen }) => (
   <div className="dsr-mlist" role="table" aria-label="Monthly visit analysis">
     <div className="dsr-mrow head" role="row">
       <span role="columnheader">Month</span>
-      <span role="columnheader" className="num">Visits</span>
-      <span role="columnheader" className="num">Customers</span>
-      <span role="columnheader" className="num hide-sm">Potential</span>
-      <span role="columnheader" className="num hide-sm">Avg YTD/ABP</span>
-      <span role="columnheader" className="hide-sm">Vs last month</span>
+      <span role="columnheader" className="num">
+        Visits
+      </span>
+      <span role="columnheader" className="num">
+        Customers
+      </span>
+      <span role="columnheader" className="num hide-sm">
+        Potential
+      </span>
+      <span role="columnheader" className="num hide-sm">
+        Avg YTD/ABP
+      </span>
+      <span role="columnheader" className="hide-sm">
+        Vs last month
+      </span>
       <span role="columnheader" />
     </div>
     {rows.map(({ month, delta }) => (
@@ -2776,15 +3178,36 @@ const MonthAnalysisList = ({ rows, onOpen }) => (
         onClick={() => onOpen(month)}
         aria-label={`Open full report for ${month.label}`}
       >
-        <span className="mon" role="cell">{month.label}</span>
-        <span className="num" role="cell">{month.totalVisits}</span>
-        <span className="num" role="cell">{month.uniqueCustomers}</span>
+        <span className="mon" role="cell">
+          {month.label}
+        </span>
+        <span className="num" role="cell">
+          {month.totalVisits}
+        </span>
+        <span className="num" role="cell">
+          {month.uniqueCustomers}
+        </span>
         <span className="num hide-sm" role="cell">{`₹${month.totalPot}L`}</span>
         <span className="num hide-sm" role="cell">{`${month.avgPct}%`}</span>
-        <span className="chg hide-sm" role="cell" style={{ color: delta === null || delta === 0 ? DS.text3 : delta > 0 ? DS.success : DS.danger }}>
-          {delta === null || delta === 0 ? "—" : `${delta > 0 ? "+" : ""}${delta} visits`}
+        <span
+          className="chg hide-sm"
+          role="cell"
+          style={{
+            color:
+              delta === null || delta === 0
+                ? DS.text3
+                : delta > 0
+                  ? DS.success
+                  : DS.danger,
+          }}
+        >
+          {delta === null || delta === 0
+            ? "—"
+            : `${delta > 0 ? "+" : ""}${delta} visits`}
         </span>
-        <span className="go" role="cell">Full report ›</span>
+        <span className="go" role="cell">
+          Full report ›
+        </span>
       </button>
     ))}
   </div>
@@ -2891,10 +3314,7 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
                 style={{
                   textAlign: "center",
                   padding: ri === 0 ? "12px 6px" : "9px 6px",
-                  background:
-                    ri === 0
-                      ? DS.card
-                      : DS.surface,
+                  background: ri === 0 ? DS.card : DS.surface,
                   borderRadius: 10,
                   border: `1px solid ${ri === 0 ? DS.borderHi : DS.border}`,
                   minWidth: 0,
@@ -2930,10 +3350,30 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
 );
 
 const TABS = [
-  { id: "records", icon: "records", label: "Records", hint: "All visit entries" },
-  { id: "add", icon: "addRecord", label: "Add Record", hint: "Log a new visit" },
-  { id: "customers", icon: "store", label: "Customers", hint: "Customer master" },
-  { id: "analysis", icon: "trending", label: "Analysis", hint: "Monthly insights" },
+  {
+    id: "records",
+    icon: "records",
+    label: "Records",
+    hint: "All visit entries",
+  },
+  {
+    id: "add",
+    icon: "addRecord",
+    label: "Add Record",
+    hint: "Log a new visit",
+  },
+  {
+    id: "customers",
+    icon: "store",
+    label: "Customers",
+    hint: "Customer master",
+  },
+  {
+    id: "analysis",
+    icon: "trending",
+    label: "Analysis",
+    hint: "Monthly insights",
+  },
 ];
 
 const Sidebar = ({ active, onChange, recordCount }) => (
@@ -2970,7 +3410,7 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             fontWeight: 900,
             color: "#0A0B10",
             flexShrink: 0,
-                      }}
+          }}
         >
           D
         </div>
@@ -2990,23 +3430,27 @@ const Sidebar = ({ active, onChange, recordCount }) => (
               fontSize: 12,
               color: DS.text3,
               fontWeight: 500,
-              }}
+            }}
           >
             Sales Management
           </div>
         </div>
       </div>
     </div>
-    <div style={{ padding: "14px 14px 0" }}>
-      <HomeLink />
-    </div>
+   
     <nav className="dsr-nv" aria-label="DSR sections">
       <div className="dsr-nv-lab">Workspace</div>
       <div className="dsr-nv-list">
         <span
           className="dsr-nv-ind"
           aria-hidden="true"
-          style={{ "--i": Math.max(0, TABS.findIndex((t) => t.id === active)), opacity: TABS.some((t) => t.id === active) ? 1 : 0 }}
+          style={{
+            "--i": Math.max(
+              0,
+              TABS.findIndex((t) => t.id === active),
+            ),
+            opacity: TABS.some((t) => t.id === active) ? 1 : 0,
+          }}
         />
         {TABS.map((t) => (
           <button
@@ -3016,14 +3460,24 @@ const Sidebar = ({ active, onChange, recordCount }) => (
             aria-current={active === t.id ? "page" : undefined}
           >
             <span className="dsr-nv-ic">
-              <Icon name={t.icon} size={17} strokeWidth={active === t.id ? 2.1 : 1.8} />
+              <Icon
+                name={t.icon}
+                size={17}
+                strokeWidth={active === t.id ? 2.1 : 1.8}
+              />
             </span>
             <span className="dsr-nv-t">
               <b>{t.label}</b>
               <small>{t.hint}</small>
             </span>
-            {t.id === "records" && recordCount > 0 && <span className="dsr-nv-cnt">{recordCount}</span>}
-            {t.id === "add" && <kbd className="dsr-nv-kbd" title="Keyboard shortcut">N</kbd>}
+            {t.id === "records" && recordCount > 0 && (
+              <span className="dsr-nv-cnt">{recordCount}</span>
+            )}
+            {t.id === "add" && (
+              <kbd className="dsr-nv-kbd" title="Keyboard shortcut">
+                N
+              </kbd>
+            )}
           </button>
         ))}
       </div>
@@ -3055,7 +3509,9 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
     }}
   >
     <button onClick={() => window.history.back()} aria-label="Back">
-      <span className="ic"><Icon name="back" size={18} strokeWidth={1.9} /></span>
+      <span className="ic">
+        <Icon name="back" size={18} strokeWidth={1.9} />
+      </span>
       <span>Back</span>
     </button>
     {TABS.map((t) => (
@@ -3066,7 +3522,11 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
         aria-current={active === t.id ? "page" : undefined}
       >
         <span className="ic">
-          <Icon name={t.icon} size={18} strokeWidth={active === t.id ? 2.2 : 1.8} />
+          <Icon
+            name={t.icon}
+            size={18}
+            strokeWidth={active === t.id ? 2.2 : 1.8}
+          />
         </span>
         <span>{t.label.replace("Add Record", "Add")}</span>
         {t.id === "records" && recordCount > 0 && (
@@ -3075,7 +3535,9 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
       </button>
     ))}
     <button onClick={() => onChange("records")} aria-label="Home">
-      <span className="ic"><Icon name="home" size={18} strokeWidth={1.8} /></span>
+      <span className="ic">
+        <Icon name="home" size={18} strokeWidth={1.8} />
+      </span>
       <span>Home</span>
     </button>
   </nav>
@@ -3100,7 +3562,7 @@ const SectionCard = ({ title, children, style }) => (
           fontWeight: 600,
           color: DS.text3,
           marginBottom: 14,
-          }}
+        }}
       >
         {title}
       </div>
@@ -3239,7 +3701,10 @@ const PageShell = ({
 }) => {
   const navigate = useNavigate();
   const goHome = () => {
-    if (homeGuard && !window.confirm("You have unsaved changes. Leave this page?"))
+    if (
+      homeGuard &&
+      !window.confirm("You have unsaved changes. Leave this page?")
+    )
       return;
     navigate(HOME_PATH);
   };
@@ -3330,7 +3795,7 @@ const PageShell = ({
                 borderRadius: "50%",
                 background: DS.surface,
                 border: `1px solid ${DS.primary}`,
-                                display: "flex",
+                display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 18,
@@ -3569,9 +4034,7 @@ const DangerZone = ({ title, text, label, onClick }) => (
       <div style={{ fontSize: 13, fontWeight: 600, color: DS.danger }}>
         {title}
       </div>
-      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>
-        {text}
-      </div>
+      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>{text}</div>
     </div>
     <button
       className="dsr-btn-danger"
@@ -3680,11 +4143,9 @@ const VisitCard = ({ r, index, total, onEdit }) => {
       style={{
         background: DS.card,
         border: `1px solid ${isLatest ? DS.primary + "99" : DS.border}`,
-                borderRadius: 16,
+        borderRadius: 16,
         padding: "15px 16px 16px",
-        boxShadow: isLatest
-          ? `0 0 0 1px ${DS.primaryDim}`
-          : undefined,
+        boxShadow: isLatest ? `0 0 0 1px ${DS.primaryDim}` : undefined,
       }}
     >
       <div
@@ -3730,7 +4191,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
                 background: DS.primary,
                 padding: "3px 10px",
                 borderRadius: 20,
-                }}
+              }}
             >
               LATEST
             </span>
@@ -4144,7 +4605,7 @@ const MobileInput = ({
             ...IS,
             paddingLeft: 54,
             paddingRight: 34,
-            }}
+          }}
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
@@ -4471,8 +4932,8 @@ const CustomerFormPage = ({
                 flexWrap: "wrap",
               }}
             >
-              <Icon name="alert" size={13} /> A customer named "{dupName}" already
-              exists.
+              <Icon name="alert" size={13} /> A customer named "{dupName}"
+              already exists.
               {onOpenOther && (
                 <button
                   className="dsr-ghost-btn"
@@ -4571,8 +5032,8 @@ const CustomerFormPage = ({
         </Grid2>
         {dupMob && (
           <FieldNote type="warn">
-            <Icon name="alert" size={13} /> This mobile is also saved with
-            "{dupMob}".
+            <Icon name="alert" size={13} /> This mobile is also saved with "
+            {dupMob}".
           </FieldNote>
         )}
         <FormInput
@@ -4603,7 +5064,7 @@ const CustomerFormPage = ({
           onChange={handleChange}
           placeholder="22AAAAA0000A1Z5"
           maxLength={15}
-          style={{ ...IS, }}
+          style={{ ...IS }}
         />
         {data.gstin && (
           <FieldNote type={isValidGSTIN(data.gstin) ? "ok" : "error"}>
@@ -5208,7 +5669,9 @@ const CustomerHistoryPage = ({
         <StatTile
           label="Last visit"
           value={latest ? fmtDate(latest.date) : "—"}
-          sub={since === null ? "" : since === 0 ? "Today" : `${since} days ago`}
+          sub={
+            since === null ? "" : since === 0 ? "Today" : `${since} days ago`
+          }
           accent={since !== null && since > 30 ? DS.warning : DS.gold}
         />
         <StatTile
@@ -5299,7 +5762,7 @@ const CustomerHistoryPage = ({
                 fontSize: 12,
                 fontWeight: 600,
                 color: DS.text3,
-                }}
+              }}
             >
               <span>{g.label}</span>
               <span style={{ color: DS.primary }}>
@@ -5784,7 +6247,9 @@ const InsightPage = ({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, meta.short.slice(0, 28));
     const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const safe = String(active.id).replace(/[^\w-]+/g, "_").slice(0, 30);
+    const safe = String(active.id)
+      .replace(/[^\w-]+/g, "_")
+      .slice(0, 30);
     downloadBlob(
       new Blob([out], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -5820,7 +6285,13 @@ const InsightPage = ({
         {groups.length} {meta.short.toLowerCase()}
         {groups.length === 1 ? "" : "s"} · {periodTitle}
       </SubHead>
-      <div style={{ display: "grid", gap: 6, gridTemplateColumns: "minmax(0,1fr)" }}>
+      <div
+        style={{
+          display: "grid",
+          gap: 6,
+          gridTemplateColumns: "minmax(0,1fr)",
+        }}
+      >
         {groups.map((g) => {
           const on = active && g.id === active.id;
           const sc = kind === "stage" ? stageColor(g.id) : null;
@@ -5868,7 +6339,9 @@ const InsightPage = ({
       eyebrow={`${meta.short} insights`}
       title={title.length > 44 ? `${title.slice(0, 43)}…` : title}
       subtitle={`${periodTitle} · ${month.label}${
-        active ? ` · ${Math.round((active.visits / periodVisits) * 100)}% of period visits` : ""
+        active
+          ? ` · ${Math.round((active.visits / periodVisits) * 100)}% of period visits`
+          : ""
       }`}
       avatar={meta.short[0]}
       onBack={onBack}
@@ -5897,11 +6370,18 @@ const InsightPage = ({
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0,1fr)" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "minmax(0,1fr)",
+          }}
+        >
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,170px),1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(min(100%,170px),1fr))",
               gap: 12,
             }}
           >
@@ -5971,7 +6451,9 @@ const InsightPage = ({
                 >
                   <div
                     className="dsr-trend-bar"
-                    style={{ height: `${Math.max(x.n ? 8 : 3, (x.n / maxDaily) * 100)}%` }}
+                    style={{
+                      height: `${Math.max(x.n ? 8 : 3, (x.n / maxDaily) * 100)}%`,
+                    }}
                   />
                   <span>{x.d % 5 === 0 || x.d === dFrom ? x.d : ""}</span>
                 </div>
@@ -5992,7 +6474,8 @@ const InsightPage = ({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit,minmax(min(100%,260px),1fr))",
               gap: 16,
             }}
           >
@@ -6008,7 +6491,9 @@ const InsightPage = ({
                 {list.map((x) => (
                   <BarRow
                     key={x.id}
-                    label={x.label.length > 30 ? `${x.label.slice(0, 29)}…` : x.label}
+                    label={
+                      x.label.length > 30 ? `${x.label.slice(0, 29)}…` : x.label
+                    }
                     value={x.n}
                     max={list[0].n}
                     color={
@@ -6028,11 +6513,15 @@ const InsightPage = ({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(min(100%,260px),1fr))",
                 gap: 16,
               }}
             >
-              <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+              <div
+                className="dsr-glass"
+                style={{ borderRadius: 16, padding: 18 }}
+              >
                 <SubHead icon="clock">Follow-up due · 10+ days silent</SubHead>
                 {silent.length === 0 ? (
                   <div style={{ fontSize: 12, color: DS.text2 }}>
@@ -6059,7 +6548,10 @@ const InsightPage = ({
                     ))
                 )}
               </div>
-              <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+              <div
+                className="dsr-glass"
+                style={{ borderRadius: 16, padding: 18 }}
+              >
                 <SubHead icon="lightbulb">Biggest headroom</SubHead>
                 {opportunity.length === 0 ? (
                   <div style={{ fontSize: 12, color: DS.text2 }}>
@@ -6106,12 +6598,12 @@ const InsightPage = ({
                 style={{ ...IS, height: 34, width: 200, maxWidth: "100%" }}
                 aria-label="Search customers"
               />
-              <select
-                className="dsr-input"
+              <CustomSelect
+                compact
+                ariaLabel="Sort customers"
+                style={{ minWidth: 150 }}
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                style={{ ...IS, height: 34, width: "auto" }}
-                aria-label="Sort customers"
               >
                 <option value="visits">Most visits</option>
                 <option value="recent">Latest visit</option>
@@ -6119,7 +6611,7 @@ const InsightPage = ({
                 <option value="headroom">Headroom</option>
                 <option value="pct">YTD / ABP %</option>
                 <option value="name">Name</option>
-              </select>
+              </CustomSelect>
             </div>
             <div className="dsr-itable-wrap">
               <div className="dsr-itable">
@@ -6683,7 +7175,8 @@ const PeriodReportPage = ({
                       <div
                         key={lbl}
                         style={{
-                          background: "color-mix(in srgb, var(--wash) 3.0%, transparent)",
+                          background:
+                            "color-mix(in srgb, var(--wash) 3.0%, transparent)",
                           border: `1px solid ${DS.border}`,
                           borderRadius: 9,
                           padding: "8px 10px",
@@ -6695,7 +7188,7 @@ const PeriodReportPage = ({
                             fontSize: 12,
                             color: DS.text3,
                             fontWeight: 600,
-                            }}
+                          }}
                         >
                           {lbl}
                         </div>
@@ -6848,9 +7341,7 @@ const PeriodReportPage = ({
               >
                 {ttl}
               </div>
-              <div
-                style={{ fontSize: 12, color: DS.text2, marginBottom: 10 }}
-              >
+              <div style={{ fontSize: 12, color: DS.text2, marginBottom: 10 }}>
                 {sub}
               </div>
               <div
@@ -6991,9 +7482,7 @@ const PeriodReportPage = ({
                   >
                     {c.name}
                   </div>
-                  <div
-                    style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}
-                  >
+                  <div style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}>
                     {c.latest.area} · {c.latest.distributor} · last{" "}
                     {fmtDate(c.latest.date)}
                   </div>
@@ -7079,7 +7568,9 @@ const DailySalesReport = () => {
   });
   const [analysisView, setAnalysisView] = useState(() => {
     try {
-      return localStorage.getItem("dsr_analysis_view") === "list" ? "list" : "cards";
+      return localStorage.getItem("dsr_analysis_view") === "list"
+        ? "list"
+        : "cards";
     } catch {
       return "cards";
     }
@@ -7277,7 +7768,20 @@ const DailySalesReport = () => {
       /* ignore */
     }
   }, [viewMode]);
-  useEffect(() => setVisibleCount(30), [activeFilter, filterStart, filterEnd, stageFilter, distFilter, areaFilter, followOnly, sortBy, searchQuery]);
+  useEffect(
+    () => setVisibleCount(30),
+    [
+      activeFilter,
+      filterStart,
+      filterEnd,
+      stageFilter,
+      distFilter,
+      areaFilter,
+      followOnly,
+      sortBy,
+      searchQuery,
+    ],
+  );
 
   const filteredByDate = useMemo(() => {
     if (activeFilter === "all") return records;
@@ -7289,7 +7793,9 @@ const DailySalesReport = () => {
       return records.filter((r) => inRange(r.date, s, e));
     }
     const range = presetRange(activeFilter);
-    return range ? records.filter((r) => inRange(r.date, range[0], range[1])) : records;
+    return range
+      ? records.filter((r) => inRange(r.date, range[0], range[1]))
+      : records;
   }, [records, activeFilter, filterStart, filterEnd]);
 
   const uniqueLatestRecords = useMemo(() => {
@@ -7310,16 +7816,28 @@ const DailySalesReport = () => {
   const latestAll = useMemo(() => {
     const m = {};
     records.forEach((r) => {
-      if (r.customer && (!m[r.customer] || new Date(r.date) > new Date(m[r.customer].date))) m[r.customer] = r;
+      if (
+        r.customer &&
+        (!m[r.customer] || new Date(r.date) > new Date(m[r.customer].date))
+      )
+        m[r.customer] = r;
     });
     return m;
   }, [records]);
   const followUps = useMemo(
-    () => Object.values(latestAll).filter((r) => (daysSince(r.date) ?? 0) >= 14),
+    () =>
+      Object.values(latestAll).filter((r) => (daysSince(r.date) ?? 0) >= 14),
     [latestAll],
   );
-  const distOptions = useMemo(() => [...new Set(records.map((r) => r.distributor).filter(Boolean))].sort(), [records]);
-  const areaOptions = useMemo(() => [...new Set(records.map((r) => r.area).filter(Boolean))].sort(), [records]);
+  const distOptions = useMemo(
+    () =>
+      [...new Set(records.map((r) => r.distributor).filter(Boolean))].sort(),
+    [records],
+  );
+  const areaOptions = useMemo(
+    () => [...new Set(records.map((r) => r.area).filter(Boolean))].sort(),
+    [records],
+  );
   const presetCounts = useMemo(() => {
     const out = { all: records.length };
     REC_PRESETS.slice(1).forEach(([id]) => {
@@ -7364,7 +7882,16 @@ const DailySalesReport = () => {
       pot: (a, b) => recPot(b) - recPot(a),
     }[sortBy];
     return sortBy === "new" ? list : [...list].sort(by);
-  }, [filteredByDate, searchQuery, stageFilter, distFilter, areaFilter, followOnly, latestAll, sortBy]);
+  }, [
+    filteredByDate,
+    searchQuery,
+    stageFilter,
+    distFilter,
+    areaFilter,
+    followOnly,
+    latestAll,
+    sortBy,
+  ]);
 
   const clearAllFilters = () => {
     setActiveFilter("all");
@@ -7379,7 +7906,10 @@ const DailySalesReport = () => {
   useEffect(() => {
     const h = (e) => {
       const t = e.target;
-      const typing = t && (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.isContentEditable);
+      const typing =
+        t &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) ||
+          t.isContentEditable);
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (route.type !== "list") return;
       if (e.key === "/" && !typing && activeTab === "records") {
@@ -8175,26 +8705,58 @@ const DailySalesReport = () => {
               shown={filteredRecords.length}
               total={records.length}
               onClear={clearAllFilters}
-              exportNode={<ExportDropdown records={filteredRecords} onExport={doExport} />}
+              exportNode={
+                <ExportDropdown records={filteredRecords} onExport={doExport} />
+              }
             />
             {loading ? (
-              <div style={{ textAlign: "center", padding: "56px 16px", color: DS.text2 }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "56px 16px",
+                  color: DS.text2,
+                }}
+              >
                 <div className="dsr-spinner" />
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Loading records…</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  Loading records…
+                </div>
               </div>
             ) : filteredRecords.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "56px 16px", color: DS.text2 }}>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "56px 16px",
+                  color: DS.text2,
+                }}
+              >
                 <div className="dsr-empty-icon">
-                  <Icon name="inbox" size={26} strokeWidth={1.6} style={{ color: DS.primary }} />
+                  <Icon
+                    name="inbox"
+                    size={26}
+                    strokeWidth={1.6}
+                    style={{ color: DS.primary }}
+                  />
                 </div>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: DS.text1, letterSpacing: "-0.01em" }}>
+                <div
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    color: DS.text1,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
                   No records found
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
                   Try a different filter or search
                 </div>
                 {filteredRecords.length < records.length && (
-                  <button className="dsr-ghost-btn" style={{ marginTop: 14 }} onClick={clearAllFilters}>
+                  <button
+                    className="dsr-ghost-btn"
+                    style={{ marginTop: 14 }}
+                    onClick={clearAllFilters}
+                  >
                     Clear all filters
                   </button>
                 )}
@@ -8215,14 +8777,19 @@ const DailySalesReport = () => {
                         key={r._id || r.id}
                         record={r}
                         onDelete={(id) => deleteRecord(id, true)}
-                        onEdit={(rec) => navigate(ROUTES.editRecord(rec._id || rec.id))}
+                        onEdit={(rec) =>
+                          navigate(ROUTES.editRecord(rec._id || rec.id))
+                        }
                         onOpen={() => navigate(ROUTES.history(r.customer))}
                       />
                     ))}
                   </div>
                 )}
                 {filteredRecords.length > visibleCount && (
-                  <button className="dsr-ghost-btn dsr-more-btn" onClick={() => setVisibleCount((n) => n + 30)}>
+                  <button
+                    className="dsr-ghost-btn dsr-more-btn"
+                    onClick={() => setVisibleCount((n) => n + 30)}
+                  >
                     Show 30 more · {filteredRecords.length - visibleCount} left
                   </button>
                 )}
@@ -8603,7 +9170,7 @@ const DailySalesReport = () => {
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
-                                      }}
+                  }}
                 >
                   <Icon name="upload" size={13} strokeWidth={2.1} /> Excel
                   Upload
@@ -8777,14 +9344,14 @@ const DailySalesReport = () => {
                         </span>
                       </div>
                     </div>
-                    <div style={{ flexShrink: 0 }}>
+                    <div className="dsr-cust-ladder">
                       <StageLadder stage={c.stage} size="sm" />
                     </div>
                     <div
                       className="dsr-row-actions"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {isValidMobile(c.mobile) && (
+                      {isValidMobile(c.mobile) ? (
                         <a
                           href={`tel:+91${c.mobile}`}
                           aria-label={`Call ${name}`}
@@ -8802,6 +9369,11 @@ const DailySalesReport = () => {
                         >
                           <Icon name="phone" size={13} strokeWidth={2} />
                         </a>
+                      ) : (
+                        <span
+                          style={{ width: 30, height: 30 }}
+                          aria-hidden="true"
+                        />
                       )}
                       <button
                         className="dsr-btn-edit"
@@ -8880,7 +9452,11 @@ const DailySalesReport = () => {
                   {monthlyAnalysis.length !== 1 ? "s" : ""} tracked
                 </span>
                 {monthlyAnalysis.length > 0 && (
-                  <div className="dsr-seg2" role="group" aria-label="Analysis view">
+                  <div
+                    className="dsr-seg2"
+                    role="group"
+                    aria-label="Analysis view"
+                  >
                     <button
                       className={analysisView === "cards" ? "on" : ""}
                       onClick={() => setAnalysisView("cards")}
@@ -8937,7 +9513,10 @@ const DailySalesReport = () => {
               <MonthAnalysisList
                 rows={monthlyAnalysis.map((m, idx) => {
                   const prev = monthlyAnalysis[idx + 1];
-                  return { month: m, delta: prev ? m.totalVisits - prev.totalVisits : null };
+                  return {
+                    month: m,
+                    delta: prev ? m.totalVisits - prev.totalVisits : null,
+                  };
                 })}
                 onOpen={(m) => navigate(ROUTES.period(m.key, "full"))}
               />

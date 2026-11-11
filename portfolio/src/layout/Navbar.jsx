@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
@@ -86,6 +86,19 @@ const NAV = [
     ],
   },
 ];
+
+// Short labels for the inline (desktop) menu
+const SHORT_LABEL = {
+  "/": "Home",
+  "/purchase": "Purchase",
+  "/pricelist": "Price List",
+  "/Stockmanager": "Stock",
+  "/Dispatch": "Dispatch",
+  "/OverduesDashboard": "Overdues",
+  "/DailySalesReport": "Visits",
+  "/Ecofast": "Ecofast",
+};
+const ALL_LINKS = NAV.flatMap((g) => g.items);
 
 /* ══════════════════════════════════════════════════════════════════════
    NAV ITEM
@@ -180,11 +193,13 @@ function AccountItem({ user, onLogout }) {
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [acctOpen, setAcctOpen] = useState(false);
+  const acctRef = useRef(null);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
 
   /* ══════════════════════════════════════════════════════════════════
      ACTIVE ROUTE
@@ -226,7 +241,23 @@ export function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setAcctOpen(false);
   }, [location.pathname]);
+
+  /* Account menu: close on outside click / Escape */
+  useEffect(() => {
+    if (!acctOpen) return undefined;
+    const onDown = (e) => {
+      if (acctRef.current && !acctRef.current.contains(e.target)) setAcctOpen(false);
+    };
+    const onKey = (e) => e.key === "Escape" && setAcctOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [acctOpen]);
 
   /* ══════════════════════════════════════════════════════════════════
      ESC KEY
@@ -296,7 +327,7 @@ export function Navbar() {
           ════════════════════════════════════════════════════════════ */}
 
       <nav
-        className="app-navbar"
+        className={`app-navbar${token ? " app-navbar--inline" : ""}`}
         aria-label="Main navigation"
         data-scrolled={scrolled}
       >
@@ -306,7 +337,58 @@ export function Navbar() {
             My Office Workplace
           </Link>
 
-          <div className="app-desktop-menu" aria-hidden="true" />
+          {token && (
+            <div className="app-desktop-menu">
+              {ALL_LINKS.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`app-top-link${active ? " active" : ""}`}
+                    aria-current={active ? "page" : undefined}
+                    title={item.name}
+                  >
+                    <Icon aria-hidden="true" />
+                    <span>{SHORT_LABEL[item.path] || item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {token && (
+            <div className="app-top-account" ref={acctRef}>
+              <button
+                type="button"
+                className="app-top-avatar"
+                aria-haspopup="menu"
+                aria-expanded={acctOpen}
+                aria-label="Account menu"
+                title={user?.name || user?.email || "Account"}
+                onClick={() => setAcctOpen((o) => !o)}
+              >
+                {user?.profilePic ? (
+                  <img src={user.profilePic} alt="" />
+                ) : (
+                  (user?.name || user?.email || "U").charAt(0).toUpperCase()
+                )}
+              </button>
+              {acctOpen && (
+                <div className="app-top-pop" role="menu">
+                  <div className="who">
+                    <div className="n">{user?.name || user?.email || "User"}</div>
+                    {user?.name && user?.email && <div className="e">{user.email}</div>}
+                  </div>
+                  <button type="button" role="menuitem" onClick={handleLogout}>
+                    <ArrowRightOnRectangleIcon aria-hidden="true" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* MENU */}
 

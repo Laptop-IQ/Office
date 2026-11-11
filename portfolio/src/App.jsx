@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { loadXLSX } from "@/lib/xlsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -53,6 +53,25 @@ function RouteFallback() {
     <div className="route-fallback" role="status" aria-label="Loading">
       <div className="route-spinner" />
     </div>
+  );
+}
+
+// Shared layout for every logged-in page: one navbar on top, the page below.
+// Suspense sits inside, so the navbar stays put while a page chunk loads.
+function AppLayout() {
+  useEffect(() => {
+    document.documentElement.classList.add("has-appnav");
+    return () => document.documentElement.classList.remove("has-appnav");
+  }, []);
+  return (
+    <>
+      <Navbar />
+      <div className="app-shell-body">
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
+      </div>
+    </>
   );
 }
 
@@ -120,61 +139,27 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            <Route
-              path="/DailySalesReport/*"
-              element={
-                <PrivateRoute>
-                  <DailySalesReport />
-                </PrivateRoute>
-              }
-            />
-
-            <Route
-              path="/OverduesDashboard/*"
-              element={
-                <PrivateRoute>
-                  <OverduesDashboard />
-                </PrivateRoute>
-              }
-            />
-            {/* Stock Manager + Dispatch share one data provider */}
+            {/* Private pages – all share the navbar layout */}
             <Route
               element={
                 <PrivateRoute>
-                  <StockLayout />
+                  <AppLayout />
                 </PrivateRoute>
               }
             >
-              <Route path="/Stockmanager/*" element={<StockApp />} />
-              <Route path="/Dispatch/*" element={<DispatchApp />} />
+              <Route path="/DailySalesReport/*" element={<DailySalesReport />} />
+              <Route path="/OverduesDashboard/*" element={<OverduesDashboard />} />
+
+              {/* Stock Manager + Dispatch share one data provider */}
+              <Route element={<StockLayout />}>
+                <Route path="/Stockmanager/*" element={<StockApp />} />
+                <Route path="/Dispatch/*" element={<DispatchApp />} />
+              </Route>
+
+              <Route path="/pricelist" element={<PriceListApp />} />
+              <Route path="/Ecofast" element={<EcofastEntry />} />
+              <Route path="/purchase" element={<SFDyesPurchaseOrder />} />
             </Route>
-
-            <Route
-              path="/pricelist"
-              element={
-                <PrivateRoute>
-                  <PriceListApp />
-                </PrivateRoute>
-              }
-            />
-
-            <Route
-              path="/Ecofast"
-              element={
-                <PrivateRoute>
-                  <EcofastEntry />
-                </PrivateRoute>
-              }
-            />
-
-            <Route
-              path="/purchase"
-              element={
-                <PrivateRoute>
-                  <SFDyesPurchaseOrder />
-                </PrivateRoute>
-              }
-            />
           </Routes>
           </Suspense>
         </BrowserRouter>

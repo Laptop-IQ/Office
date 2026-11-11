@@ -338,23 +338,6 @@ export default function HeroSection() {
             </div>
           </section>
         </div>
-
-        <div className="hq-strip">
-          <div className="hq-container hq-strip-inner">
-            <span className="hq-strip-label">Also in the workspace</span>
-            <ul className="hq-strip-list">
-              {MORE.map(({ name, path, icon: Icon }) => (
-                <li key={path}>
-                  <Link to={path} className="hq-link">
-                    <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
-                    {name}
-                    <ChevronRight size={14} strokeWidth={1.5} aria-hidden="true" style={{ marginLeft: -2 }} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
       </div>
     </>
   );
