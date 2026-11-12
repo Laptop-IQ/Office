@@ -37,7 +37,6 @@ const PKG_DEFAULTS_CONFIG = [
   { key: "ecofast", label: "Ecofast", defaultKg: 12 },
   { key: "ecosol", label: "Ecosol", defaultKg: 35 },
 ];
-const OTHER_KEY = "_other";
 
 const TIER_INFO = {
   DP7: { color: "var(--po-accent)", desc: "Dealer ≥7 days" },
@@ -79,10 +78,22 @@ function detectHeaderRowIndex(rawRows, scanLimit = 15) {
 const findCol = (cols, keywords) =>
   cols.find((c) => keywords.some((k) => normalize(c).includes(normalize(k))));
 
-function detectCategory(name, category) {
+// Returns the category whose name appears in the product name/category
+// (the longest match wins), or null when nothing matches.
+function detectCategory(name, category, cats) {
   const s = `${name} ${category}`.toLowerCase();
-  for (const { key } of PKG_DEFAULTS_CONFIG) if (s.includes(key)) return key;
-  return null;
+  let best = null;
+  let bestLen = 0;
+  for (const c of cats || []) {
+    const k = String(c.label ?? "")
+      .trim()
+      .toLowerCase();
+    if (k && s.includes(k) && k.length > bestLen) {
+      best = c;
+      bestLen = k.length;
+    }
+  }
+  return best;
 }
 
 function formatDate(d) {
@@ -296,6 +307,13 @@ const SCREEN_CSS = `
 
 .po-link { background: none; border: none; padding: 0; margin-top: 6px; color: var(--po-accent); font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .po-link:hover { color: var(--po-accent-hover); }
+.po-upload-wrap { position: relative; }
+.po-upload-wrap.has-file .po-upload { padding-right: 78px; }
+.po-upload span.t { min-width: 0; }
+.po-upload-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 4px 9px; border-radius: 6px; border: 1px solid var(--po-redline); background: var(--po-errbg); color: var(--po-red); font-size: 10px; font-weight: 800; letter-spacing: .02em; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .15s, background .15s, color .15s; }
+.po-upload-wrap:hover .po-upload-clear, .po-upload-wrap:focus-within .po-upload-clear { opacity: 1; pointer-events: auto; }
+.po-upload-clear:hover { background: var(--po-red); color: var(--po-on-accent); border-color: transparent; }
+@media (hover: none) { .po-upload-clear { opacity: 1; pointer-events: auto; } }
 .po-link.danger { color: var(--po-red); }
 .po-link.danger:hover { color: var(--po-red); opacity: .8; }
 .po-empty .po-link { margin-top: 16px; font-size: 12px; }
@@ -324,11 +342,21 @@ const SCREEN_CSS = `
 .po-status.success { color: var(--po-accent); border-color: color-mix(in srgb, var(--po-accent) 35%, transparent); background: color-mix(in srgb, var(--po-accent) 8%, var(--po-bg0)); }
 .po-status.error { color: var(--po-red); border-color: var(--po-redline); background: var(--po-errbg); }
 
-.po-pkg { padding: 14px 16px; margin-bottom: 14px; border-radius: 12px; }
-.po-pkg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
-.po-pkg-cell { display: flex; align-items: center; gap: 8px; background: var(--po-bg); border: 1px solid var(--po-line); border-radius: 8px; padding: 8px 11px; }
-.po-pkg-cell .po-badge { padding: 2px 7px; font-size: 10px; }
-.po-mini { width: 60px; background: var(--po-bg0); border: 1px solid var(--po-line2); border-radius: 6px; padding: 5px 8px; color: var(--po-violet); font-size: 13px; font-weight: 700; text-align: center; outline: none; font-family: inherit; }
+.po-pkg { margin-bottom: 14px; overflow: hidden; border-radius: 12px; }
+.po-pkg-body { border-top: 1px solid var(--po-line); padding: 14px 16px 16px; }
+.po-cat-list { display: flex; flex-direction: column; gap: 8px; }
+.po-cat-row, .po-cat-add { display: grid; grid-template-columns: minmax(0, 1fr) 84px 52px 100px; align-items: center; gap: 10px; }
+.po-cat-row { background: var(--po-bg); border: 1px solid var(--po-line); border-radius: 8px; padding: 8px 10px; }
+.po-cat-add { margin-top: 12px; }
+.po-cat-text { width: 100%; min-width: 0; background: var(--po-bg0); border: 1px solid var(--po-line2); border-radius: 6px; padding: 7px 10px; color: var(--po-text); font-size: 13px; font-weight: 700; outline: none; font-family: inherit; }
+.po-cat-text::placeholder { font-weight: 500; color: var(--po-dim); }
+.po-cat-text:focus { border-color: var(--po-accent); }
+.po-cat-fixed { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.po-hint-inline { font-size: 11px; color: var(--po-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po-cat-del { justify-self: end; width: 34px; padding: 6px 0; background: none; border: 1px solid transparent; border-radius: 6px; font-size: 14px; line-height: 1; cursor: pointer; filter: grayscale(1); opacity: .65; transition: all .15s; }
+.po-cat-del:hover { opacity: 1; filter: none; border-color: var(--po-redline); background: var(--po-errbg); }
+.po-cat-addbtn { justify-self: end; width: 100%; padding: 8px 0; }
+.po-mini { width: 100%; max-width: 84px; background: var(--po-bg0); border: 1px solid var(--po-line2); border-radius: 6px; padding: 5px 8px; color: var(--po-violet); font-size: 13px; font-weight: 700; text-align: center; outline: none; font-family: inherit; }
 .po-mini:focus { border-color: var(--po-violet); }
 .po-unit { font-size: 11px; color: var(--po-dim); font-weight: 600; }
 
@@ -445,6 +473,7 @@ const SCREEN_CSS = `
 @media (max-width: 820px) {
   .po-saved-row { flex-wrap: wrap; }
   .po-saved-btns { width: 100%; }
+  .po-cat-row, .po-cat-add { grid-template-columns: minmax(0, 1fr) 72px 44px 70px; gap: 8px; }
   .po-main { padding: 16px 12px 260px; }
   .po-grid3 { grid-template-columns: 1fr; }
   .po-stats { grid-template-columns: repeat(3, 1fr); }
@@ -877,6 +906,41 @@ const saveCustomerList = (list) => {
   }
 };
 
+// ── Package size categories (localStorage) ──────────────────────────────────
+
+const PKGCFG_KEY = "sf-po-pkg-categories";
+const defaultPkgCats = () =>
+  PKG_DEFAULTS_CONFIG.map((c) => ({
+    id: `d_${c.key}`,
+    label: c.label,
+    kg: c.defaultKg,
+  }));
+const loadPkgSettings = () => {
+  try {
+    const o = JSON.parse(localStorage.getItem(PKGCFG_KEY) || "null");
+    if (o && Array.isArray(o.cats)) {
+      const cats = o.cats
+        .filter((c) => c && typeof c.label === "string")
+        .map((c, i) => ({
+          id: String(c.id || `c_${i}`),
+          label: c.label,
+          kg: c.kg,
+        }));
+      return { cats, otherKg: parseFloat(o.otherKg) > 0 ? o.otherKg : 12 };
+    }
+  } catch {
+    /* ignore — fall back to defaults */
+  }
+  return { cats: defaultPkgCats(), otherKg: 12 };
+};
+const savePkgSettings = (cats, otherKg) => {
+  try {
+    localStorage.setItem(PKGCFG_KEY, JSON.stringify({ cats, otherKg }));
+  } catch {
+    /* storage unavailable — settings just won't persist */
+  }
+};
+
 // ── Saved price list (localStorage) — survives page refresh ─────────────────
 
 const PRICELIST_KEY = "sf-po-price-list";
@@ -937,10 +1001,11 @@ function SFDyesPurchaseOrderInner() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [editPkgId, setEditPkgId] = useState(null);
   const [pkgDraft, setPkgDraft] = useState("");
-  const [pkgDefaults, setPkgDefaults] = useState(() => ({
-    ...Object.fromEntries(PKG_DEFAULTS_CONFIG.map((c) => [c.key, c.defaultKg])),
-    [OTHER_KEY]: 12,
-  }));
+  const [pkgCats, setPkgCats] = useState(() => loadPkgSettings().cats);
+  const [otherKg, setOtherKg] = useState(() => loadPkgSettings().otherKg);
+  const [showPkgPanel, setShowPkgPanel] = useState(false);
+  const [newCat, setNewCat] = useState({ name: "", kg: "" });
+  const [catError, setCatError] = useState("");
 
   const fileInputRef = useRef(null);
   const searchWrapRef = useRef(null);
@@ -982,6 +1047,11 @@ function SFDyesPurchaseOrderInner() {
     },
     [],
   );
+
+  // Remember package size categories
+  useEffect(() => {
+    savePkgSettings(pkgCats, otherKg);
+  }, [pkgCats, otherKg]);
 
   // Esc closes the confirm dialog
   useEffect(() => {
@@ -1077,10 +1147,12 @@ function SFDyesPurchaseOrderInner() {
 
   const getDefaultPkg = useCallback(
     (product) => {
-      const cat = detectCategory(product.name, product.category || "");
-      return (cat && pkgDefaults[cat]) || pkgDefaults[OTHER_KEY] || 12;
+      const cat = detectCategory(product.name, product.category || "", pkgCats);
+      const fallback = parseFloat(otherKg) > 0 ? parseFloat(otherKg) : 12;
+      const n = cat ? parseFloat(cat.kg) : NaN;
+      return n > 0 ? n : fallback;
     },
-    [pkgDefaults],
+    [pkgCats, otherKg],
   );
 
   const getPrice = (item) => item.prices?.[priceTier] ?? 0;
@@ -1371,11 +1443,39 @@ function SFDyesPurchaseOrderInner() {
       }),
     );
 
-  const updatePkgDefault = (key, value) => {
-    const n = parseFloat(value);
-    if (!(n > 0)) return;
-    setPkgDefaults((prev) => ({ ...prev, [key]: n }));
+  // ── Package size categories ───────────────────────────────────────────────
+
+  const updateCat = (id, patch) =>
+    setPkgCats((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    );
+
+  const addCat = () => {
+    const name = newCat.name.trim();
+    const kg = parseFloat(newCat.kg);
+    if (!name) return setCatError("Enter a category name.");
+    if (!(kg > 0)) return setCatError("Enter a package size greater than 0.");
+    if (pkgCats.some((c) => custKey(c.label) === custKey(name)))
+      return setCatError(`"${name}" already exists.`);
+    setPkgCats((prev) => [
+      ...prev,
+      {
+        id: `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        label: name,
+        kg,
+      },
+    ]);
+    setNewCat({ name: "", kg: "" });
+    setCatError("");
   };
+
+  const deleteCat = (cat) =>
+    askConfirm({
+      title: `Delete "${cat.label}"?`,
+      msg: `Products matching "${cat.label}" will use the "Others" package size instead. Items already in your order are not changed.`,
+      yesLabel: "Yes, delete",
+      onYes: () => setPkgCats((prev) => prev.filter((c) => c.id !== cat.id)),
+    });
 
   const clearOrder = () => {
     if (
@@ -2032,14 +2132,31 @@ function SFDyesPurchaseOrderInner() {
 
             <div>
               <span className="po-label">Price List</span>
-              <button
-                type="button"
-                className={`po-upload${uploadedFile ? " done" : ""}`}
-                onClick={() => fileInputRef.current?.click()}
+              <div
+                className={`po-upload-wrap${uploadedFile ? " has-file" : ""}`}
               >
-                <span style={{ fontSize: 14 }}>{uploadedFile ? "✓" : "↑"}</span>
-                <span className="t">{uploadLabel}</span>
-              </button>
+                <button
+                  type="button"
+                  className={`po-upload${uploadedFile ? " done" : ""}`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <span style={{ fontSize: 14 }}>
+                    {uploadedFile ? "✓" : "↑"}
+                  </span>
+                  <span className="t">{uploadLabel}</span>
+                </button>
+                {uploadedFile && (
+                  <button
+                    type="button"
+                    className="po-upload-clear"
+                    title="Clear uploaded price list"
+                    aria-label="Clear uploaded price list"
+                    onClick={handleClearPriceList}
+                  >
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -2049,15 +2166,7 @@ function SFDyesPurchaseOrderInner() {
               />
               {uploadedFile && (
                 <div className="po-hint">
-                  {products.length} products available ·{" "}
-                  <button
-                    type="button"
-                    className="po-link danger"
-                    style={{ marginTop: 0, fontSize: 10 }}
-                    onClick={handleClearPriceList}
-                  >
-                    ✕ Clear file
-                  </button>
+                  {products.length} products available
                 </div>
               )}
             </div>
@@ -2124,7 +2233,11 @@ function SFDyesPurchaseOrderInner() {
                       </div>
                       {filteredProducts.map((p) => {
                         const inOrder = orderItems.some((i) => i._id === p._id);
-                        const cat = detectCategory(p.name, p.category || "");
+                        const cat = detectCategory(
+                          p.name,
+                          p.category || "",
+                          pkgCats,
+                        );
                         return (
                           <button
                             key={p._id}
@@ -2188,43 +2301,135 @@ function SFDyesPurchaseOrderInner() {
             </div>
           )}
 
-          {/* Package defaults */}
-          {uploadedFile && (
-            <section className="po-card po-pkg">
-              <div
-                className="po-eyebrow"
-                style={{ marginBottom: 10, fontSize: 9 }}
-              >
-                Default Package Sizes
-              </div>
-              <div className="po-pkg-grid">
-                {[
-                  ...PKG_DEFAULTS_CONFIG,
-                  { key: OTHER_KEY, label: "Others" },
-                ].map((cfg) => (
-                  <div key={cfg.key} className="po-pkg-cell">
-                    <span className="po-badge">{cfg.label}</span>
+          {/* Default package sizes (collapsible) */}
+          <section className="po-card po-pkg">
+            <button
+              type="button"
+              className="po-saved-toggle"
+              aria-expanded={showPkgPanel}
+              onClick={() => setShowPkgPanel((v) => !v)}
+            >
+              <span>
+                📦 Default Package Sizes
+                <span className="po-saved-count">{pkgCats.length + 1}</span>
+              </span>
+              <span aria-hidden="true">{showPkgPanel ? "▲" : "▼"}</span>
+            </button>
+            {showPkgPanel && (
+              <div className="po-pkg-body">
+                <div className="po-cat-list">
+                  {pkgCats.map((cat) => (
+                    <div key={cat.id} className="po-cat-row">
+                      <input
+                        className="po-cat-text"
+                        type="text"
+                        value={cat.label}
+                        aria-label="Category name"
+                        onChange={(e) =>
+                          updateCat(cat.id, { label: e.target.value })
+                        }
+                      />
+                      <input
+                        className="po-mini"
+                        type="number"
+                        min="1"
+                        step="any"
+                        aria-label={`${cat.label} package size in kg`}
+                        value={cat.kg}
+                        onChange={(e) =>
+                          updateCat(cat.id, { kg: e.target.value })
+                        }
+                      />
+                      <span className="po-unit">kg/pkg</span>
+                      <button
+                        type="button"
+                        className="po-cat-del"
+                        title="Delete category"
+                        aria-label={`Delete category ${cat.label}`}
+                        onClick={() => deleteCat(cat)}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="po-cat-row other">
+                    <div className="po-cat-fixed">
+                      <span className="po-badge">Others</span>
+                      <span className="po-hint-inline">
+                        used when no category matches
+                      </span>
+                    </div>
                     <input
                       className="po-mini"
                       type="number"
                       min="1"
-                      step="1"
-                      aria-label={`${cfg.label} package size in kg`}
-                      value={pkgDefaults[cfg.key]}
-                      onChange={(e) =>
-                        updatePkgDefault(cfg.key, e.target.value)
-                      }
+                      step="any"
+                      aria-label="Others package size in kg"
+                      value={otherKg}
+                      onChange={(e) => setOtherKg(e.target.value)}
                     />
                     <span className="po-unit">kg/pkg</span>
+                    <span />
                   </div>
-                ))}
+                </div>
+
+                <div
+                  className="po-cat-add"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addCat();
+                  }}
+                >
+                  <input
+                    className="po-cat-text"
+                    type="text"
+                    placeholder="New category name (e.g. Ecofast)"
+                    aria-label="New category name"
+                    value={newCat.name}
+                    onChange={(e) => {
+                      setNewCat((c) => ({ ...c, name: e.target.value }));
+                      setCatError("");
+                    }}
+                  />
+                  <input
+                    className="po-mini"
+                    type="number"
+                    min="1"
+                    step="any"
+                    placeholder="kg"
+                    aria-label="New category package size in kg"
+                    value={newCat.kg}
+                    onChange={(e) => {
+                      setNewCat((c) => ({ ...c, kg: e.target.value }));
+                      setCatError("");
+                    }}
+                  />
+                  <span className="po-unit">kg/pkg</span>
+                  <button
+                    type="button"
+                    className="po-mini-btn po-cat-addbtn"
+                    onClick={addCat}
+                  >
+                    + Add
+                  </button>
+                </div>
+                {catError && (
+                  <div
+                    className="po-hint"
+                    role="alert"
+                    style={{ color: "var(--po-red)", fontWeight: 700 }}
+                  >
+                    {catError}
+                  </div>
+                )}
+                <div className="po-hint" style={{ marginTop: 10 }}>
+                  A product uses a category when its name or category contains
+                  the category name. Defaults apply to newly added items —
+                  change a single row with ✎ in the order table.
+                </div>
               </div>
-              <div className="po-hint" style={{ marginTop: 8 }}>
-                Auto-detected per product · Defaults apply to newly added items
-                · Override per row below
-              </div>
-            </section>
-          )}
+            )}
+          </section>
 
           {/* Empty state */}
           {!uploadedFile && orderItems.length === 0 && (
