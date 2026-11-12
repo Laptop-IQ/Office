@@ -4,7 +4,38 @@ import { SF_LOGO } from "./sfLogo";
 import { XLSX } from "@/lib/xlsx";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-const calcCustomerPrice = (dp45) => Math.round((Number(dp45) + 15) * 1.3);
+const num = (v) => Number(v) || 0;
+
+// Price calculation settings.
+//  auto   → DP45 × 1.25 + 15
+//  manual → chosen column × (1 + markup%)
+//  then commission and transport are added in both modes.
+const DEFAULT_PRICING = {
+  mode: "auto",
+  base: "dp45",
+  markup: 25,
+  commission: 0,
+  commType: "pct", // "pct" = % of price · "flat" = ₹ per kg
+  transport: 0,
+  transType: "flat",
+};
+const BASE_LABEL = { dp7: "DP7", dp45: "DP45", rsp: "RSP" };
+const priceParts = (p, pr) => {
+  const auto = pr.mode === "auto";
+  const base = num(auto ? p.dp45 : p[pr.base]);
+  const add = auto ? 15 : 0;
+  const mk = auto ? 25 : num(pr.markup);
+  const core = base * (1 + mk / 100) + add;
+  const com =
+    pr.commType === "pct"
+      ? (core * num(pr.commission)) / 100
+      : num(pr.commission);
+  const tr =
+    pr.transType === "pct"
+      ? (core * num(pr.transport)) / 100
+      : num(pr.transport);
+  return { base, add, mk, core, com, tr, total: Math.round(core + com + tr) };
+};
 const fmtDate = () =>
   new Date().toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -13,10 +44,50 @@ const fmtDate = () =>
   });
 const inr = (n) => Number(n).toLocaleString("en-IN");
 
+// ─── Excel template ───────────────────────────────────────────────────────────
+const TEMPLATE_HEADERS = [
+  "SR",
+  "Code",
+  "Product Name",
+  "Category",
+  "DP7",
+  "DP45",
+  "RSP",
+];
+const TEMPLATE_ROWS = [
+  [1, "RD-001", "Reactive Red 195", "REACTIVE DYES", 310, 325, 420],
+  [2, "RD-002", "Reactive Blue 19", "REACTIVE DYES", 295, 310, 400],
+  [3, "AX-001", "Soaping Agent", "AUXILIARIES", 140, 150, 210],
+];
+const downloadTemplate = () => {
+  try {
+    const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, ...TEMPLATE_ROWS]);
+    ws["!cols"] = [8, 12, 30, 20, 10, 10, 10].map((wch) => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Price Sheet");
+    XLSX.writeFile(wb, "price-sheet-template.xlsx");
+  } catch {
+    // Fallback: CSV
+    const csv = [TEMPLATE_HEADERS, ...TEMPLATE_ROWS]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "price-sheet-template.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+};
+
 const STORAGE_KEY = "sf_pricelist_products";
 const STORAGE_NAME_KEY = "sf_pricelist_filename";
 const CONTACT_KEY = "sf_pricelist_contacts";
 const OPTS_KEY = "sf_pricelist_opts";
+const PRICING_KEY = "sf_pricelist_pricing";
+const CUSTOMERS_KEY = "sf_pricelist_customers";
 const LOGO_KEY = "sf_pricelist_logo";
 const COMPANY_KEY = "sf_pricelist_company";
 
@@ -52,6 +123,24 @@ const EMPTY_CONTACTS = {
   enq: { name: "", phone: "" },
 };
 
+// ─── Server sync (price sheet follows the user across devices) ───────────────
+const PL_API = `${import.meta.env.VITE_API_URL || ""}/pricelist`;
+const plFetch = async (method, body) => {
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
+  if (!token) throw new Error("Not logged in");
+  const res = await fetch(PL_API, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
+
 const readJSON = (key) => {
   try {
     return JSON.parse(localStorage.getItem(key) || "null");
@@ -67,6 +156,14 @@ const writeJSON = (key, val) => {
   }
 };
 
+const loadCustomers = () => {
+  const v = readJSON(CUSTOMERS_KEY);
+  return Array.isArray(v) ? v.filter((c) => c && c.name) : [];
+};
+const loadPricing = () => ({
+  ...DEFAULT_PRICING,
+  ...(readJSON(PRICING_KEY) || {}),
+});
 const loadOpts = () => ({ ...DEFAULT_OPTS, ...(readJSON(OPTS_KEY) || {}) });
 const loadCompany = () => ({
   ...DEFAULT_COMPANY,
@@ -520,6 +617,8 @@ export default function App() {
   const [parseErr, setParseErr] = useState("");
   const [dragging, setDragging] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [sync, setSync] = useState("idle"); // idle | syncing | synced | error
+  const uploadedRef = useRef(false);
 
   const [step, setStep] = useState(0); // 0=upload 1=customer 2=select 3=preview
   const [customerName, setCN] = useState("");
@@ -530,7 +629,9 @@ export default function App() {
   const logoRef = useRef(null);
   const [company, setCompany] = useState(loadCompany);
   const [opts, setOpts] = useState(loadOpts);
-  const [showOpts, setShowOpts] = useState(true);
+  const [pricing, setPricing] = useState(loadPricing);
+  const [customers, setCustomers] = useState(loadCustomers);
+  const [showOpts, setShowOpts] = useState(false);
   const [copied, setCopied] = useState(false);
   const [adjust, setAdjust] = useState("");
   const [adjScope, setAdjScope] = useState("all");
@@ -561,6 +662,21 @@ export default function App() {
   }, [logo]);
   useEffect(() => writeJSON(COMPANY_KEY, company), [company]);
   useEffect(() => writeJSON(OPTS_KEY, opts), [opts]);
+  useEffect(() => writeJSON(PRICING_KEY, pricing), [pricing]);
+  useEffect(() => writeJSON(CUSTOMERS_KEY, customers), [customers]);
+
+  // Auto-save the customer (most recent first) once the user moves past step 2
+  useEffect(() => {
+    const name = customerName.trim();
+    if (step < 2 || !name) return;
+    setCustomers((list) => {
+      const rest = list.filter(
+        (c) => c.name.toLowerCase() !== name.toLowerCase(),
+      );
+      return [{ name, city: customerCity.trim() }, ...rest].slice(0, 200);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   useEffect(() => writeJSON(CONTACT_KEY, contacts), [contacts]);
 
   useEffect(() => {
@@ -571,6 +687,37 @@ export default function App() {
       setFileName(storedName);
       setStep(1);
     }
+  }, []);
+
+  // Load the saved price sheet from the server (source of truth across devices)
+  useEffect(() => {
+    let alive = true;
+    setSync("syncing");
+    plFetch("GET")
+      .then((data) => {
+        if (!alive || uploadedRef.current) return;
+        if (Array.isArray(data.products) && data.products.length) {
+          setProducts(data.products);
+          setFileName(data.fileName || "");
+          saveToStorage(data.products, data.fileName || "");
+          setStep((st) => (st === 0 ? 1 : st));
+          setSync("synced");
+        } else {
+          // Nothing on the server yet: upload what this device already has
+          const { products: local, fileName: localName } = loadFromStorage();
+          if (local.length) {
+            return plFetch("PUT", {
+              products: local,
+              fileName: localName,
+            }).then(() => alive && setSync("synced"));
+          }
+          setSync("idle");
+        }
+      })
+      .catch(() => alive && setSync("error"));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const coName = company.name.trim() || DEFAULT_COMPANY.name;
@@ -656,6 +803,11 @@ export default function App() {
         setFileName(file.name);
         setSelected({});
         saveToStorage(mapped, file.name);
+        uploadedRef.current = true;
+        setSync("syncing");
+        plFetch("PUT", { products: mapped, fileName: file.name })
+          .then(() => setSync("synced"))
+          .catch(() => setSync("error"));
         setStep(1);
       } catch {
         setParseErr(
@@ -668,6 +820,10 @@ export default function App() {
 
   const handleRemoveFile = () => {
     clearStorage();
+    uploadedRef.current = true;
+    plFetch("DELETE")
+      .then(() => setSync("idle"))
+      .catch(() => setSync("error"));
     setProducts([]);
     setFileName("");
     setSelected({});
@@ -747,7 +903,7 @@ export default function App() {
   const roundStep = Number(opts.round) || 1;
   const roundTo = (v) => Math.round(v / roundStep) * roundStep;
   const basePrice = (p) => {
-    const base = Number(calcCustomerPrice(p.dp45));
+    const base = priceParts(p, pricing).total;
     const on = adjPct !== 0 && (adjScope === "all" || adjKeys.includes(key(p)));
     return roundTo(on ? base * (1 + adjPct / 100) : base);
   };
@@ -932,22 +1088,36 @@ export default function App() {
                 paddingTop: 16,
               }}
             >
-              <p className="pl-label">Expected column headers</p>
-              <div className="flex flex-wrap gap-2">
-                {["SR", "Code", "Product Name", "DP7", "DP45", "RSP"].map(
-                  (c) => (
-                    <span key={c} className="pl-pill pl-mono">
-                      {c}
-                    </span>
-                  ),
-                )}
-                <span
-                  className="pl-pill pl-mono"
-                  style={{ color: "var(--ds-text3)", borderStyle: "dashed" }}
-                >
-                  Category (optional)
-                </span>
+              <div
+                className="flex items-center justify-between gap-3 flex-wrap"
+                style={{ marginBottom: 8 }}
+              >
+                <p className="pl-label" style={{ marginBottom: 0 }}>
+                  Expected column headers
+                </p>
+                <button className="pl-btn sm" onClick={downloadTemplate}>
+                  <Icon.File /> Download template
+                </button>
               </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "SR",
+                  "Code",
+                  "Product Name",
+                  "Category",
+                  "DP7",
+                  "DP45",
+                  "RSP",
+                ].map((c) => (
+                  <span key={c} className="pl-pill pl-mono">
+                    {c}
+                  </span>
+                ))}
+              </div>
+              <p className="pl-sub" style={{ fontSize: 12, marginTop: 10 }}>
+                Product Name is required · Empty Category becomes GENERAL · Set
+                the price formula in the next steps (Auto / Manual)
+              </p>
             </div>
           </div>
         </div>
@@ -990,10 +1160,18 @@ export default function App() {
             </div>
 
             <div className="space-y-5">
-              <Field
+              <CustomerField
                 label="Customer / Firm Name *"
                 value={customerName}
                 onChange={setCN}
+                customers={customers}
+                onPick={(c) => {
+                  setCN(c.name);
+                  setCC(c.city || "");
+                }}
+                onRemove={(c) =>
+                  setCustomers((l) => l.filter((x) => x.name !== c.name))
+                }
                 placeholder="e.g. Sai Nath Textiles Pvt Ltd"
               />
               <Field
@@ -1224,8 +1402,14 @@ export default function App() {
                   {fileName}
                 </p>
                 <p style={{ fontSize: 12, color: "var(--ds-text3)" }}>
-                  <span className="pl-mono">{products.length}</span> products ·
-                  saved locally
+                  <span className="pl-mono">{products.length}</span> products ·{" "}
+                  {sync === "synced"
+                    ? "synced to your account"
+                    : sync === "syncing"
+                      ? "syncing…"
+                      : sync === "error"
+                        ? "saved on this device only (sync failed)"
+                        : "saved locally"}
                 </p>
               </div>
               {!confirmRemove ? (
@@ -1367,6 +1551,14 @@ export default function App() {
             </div>
           </div>
 
+          <div className="pl-card mt-4" style={{ padding: 16 }}>
+            <PricingPanel
+              pricing={pricing}
+              setPricing={setPricing}
+              sample={selectedProducts[0] || filtered[0] || products[0]}
+            />
+          </div>
+
           <div className="pl-card mt-4 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="pl-table">
@@ -1447,7 +1639,7 @@ export default function App() {
                               fontWeight: 500,
                             }}
                           >
-                            ₹ {calcCustomerPrice(p.dp45)}
+                            ₹ {priceParts(p, pricing).total}
                           </td>
                           <td>
                             <span className="pl-pill">{p.category}</span>
@@ -1824,6 +2016,22 @@ export default function App() {
                 </div>
               </div>
 
+              <div
+                className="mt-4"
+                style={{
+                  padding: 14,
+                  borderRadius: 10,
+                  background: "var(--ds-surface)",
+                  border: "1px solid var(--ds-border)",
+                }}
+              >
+                <PricingPanel
+                  pricing={pricing}
+                  setPricing={setPricing}
+                  sample={flatSel[0]}
+                />
+              </div>
+
               {/* Price adjustment */}
               <div
                 className="mt-4"
@@ -1947,7 +2155,7 @@ export default function App() {
                       {flatSel.map((p) => {
                         const k = key(p);
                         const on = adjKeys.includes(k);
-                        const base = Number(calcCustomerPrice(p.dp45));
+                        const base = priceParts(p, pricing).total;
                         return (
                           <button
                             key={k}
@@ -2338,7 +2546,7 @@ function Shell({
             </div>
           </div>
         </div>
-        
+
         <nav className="pl-nv" aria-label="Price list steps">
           <div className="pl-nv-lab">Workflow</div>
           <div className="pl-nv-list">
@@ -2565,6 +2773,295 @@ function Field({ label, value, onChange, placeholder }) {
         placeholder={placeholder}
         className="pl-input"
       />
+    </div>
+  );
+}
+
+function PricingPanel({ pricing, setPricing, sample }) {
+  const [open, setOpen] = useState(false); // hidden by default
+  const set = (k, v) => setPricing((x) => ({ ...x, [k]: v }));
+  const auto = pricing.mode === "auto";
+  const parts = sample ? priceParts(sample, pricing) : null;
+  const unit = (key, label) => (
+    <div className="pl-seg">
+      <button
+        className={pricing[key] === "pct" ? "on" : ""}
+        onClick={() => set(key, "pct")}
+        aria-label={`${label} in percent`}
+      >
+        %
+      </button>
+      <button
+        className={pricing[key] === "flat" ? "on" : ""}
+        onClick={() => set(key, "flat")}
+        aria-label={`${label} flat rupees per kg`}
+      >
+        ₹ / kg
+      </button>
+    </div>
+  );
+  const numInput = (key, ph, w = 110) => (
+    <input
+      type="number"
+      step="any"
+      min="0"
+      placeholder={ph}
+      className="pl-input"
+      style={{ width: w }}
+      value={pricing[key]}
+      onChange={(e) => set(key, e.target.value)}
+      aria-label={key}
+    />
+  );
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "none",
+            border: 0,
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-flex",
+              color: "var(--ds-text3)",
+              transform: open ? "rotate(90deg)" : "none",
+              transition: "transform .15s",
+            }}
+          >
+            <Icon.ChevronRight />
+          </span>
+          <span>
+            <span
+              style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ds-text1)",
+              }}
+            >
+              Price calculation
+            </span>
+            <span
+              className="pl-sub"
+              style={{ display: "block", fontSize: 12, marginTop: 2 }}
+            >
+              {open
+                ? "Saved on this device · applies to all products"
+                : `${auto ? "Auto" : "Manual"} · ${
+                    auto
+                      ? "DP45 × 1.25 + 15"
+                      : `${BASE_LABEL[pricing.base]} × ${(1 + num(pricing.markup) / 100).toFixed(2)}`
+                  }${num(pricing.commission) ? " · commission" : ""}${num(pricing.transport) ? " · transport" : ""}`}
+            </span>
+          </span>
+        </button>
+        {open && (
+          <div className="pl-seg">
+            <button
+              className={auto ? "on" : ""}
+              onClick={() => set("mode", "auto")}
+            >
+              Auto
+            </button>
+            <button
+              className={!auto ? "on" : ""}
+              onClick={() => set("mode", "manual")}
+            >
+              Manual
+            </button>
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <>
+          {auto && (
+            <p
+              className="pl-sub pl-mono"
+              style={{ fontSize: 12.5, marginTop: 12 }}
+            >
+              DP45 × 1.25 + 15
+            </p>
+          )}
+
+          <div
+            className="flex items-end gap-3 flex-wrap"
+            style={{ marginTop: 12 }}
+          >
+            {!auto && (
+              <>
+                <div style={{ width: 104 }}>
+                  <label className="pl-label" style={{ marginBottom: 6 }}>
+                    Base column
+                  </label>
+                  <Dropdown
+                    value={pricing.base}
+                    onChange={(v) => set("base", v)}
+                    options={[
+                      { value: "dp7", label: "DP7" },
+                      { value: "dp45", label: "DP45" },
+                      { value: "rsp", label: "RSP" },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="pl-label" style={{ marginBottom: 6 }}>
+                    Markup %
+                  </label>
+                  {numInput("markup", "0", 84)}
+                </div>
+              </>
+            )}
+            <div>
+              <label className="pl-label" style={{ marginBottom: 6 }}>
+                Commission
+              </label>
+              <div className="flex items-center gap-1.5">
+                {numInput("commission", "0", 84)}
+                {unit("commType", "Commission")}
+              </div>
+            </div>
+            <div>
+              <label className="pl-label" style={{ marginBottom: 6 }}>
+                Transport charge
+              </label>
+              <div className="flex items-center gap-1.5">
+                {numInput("transport", "0", 84)}
+                {unit("transType", "Transport")}
+              </div>
+            </div>
+            <button
+              className="pl-btn ghost sm"
+              style={{ marginBottom: 6 }}
+              onClick={() => setPricing(DEFAULT_PRICING)}
+            >
+              Reset
+            </button>
+          </div>
+
+          {parts && (
+            <p
+              className="pl-sub pl-mono"
+              style={{ fontSize: 12, marginTop: 12, lineHeight: 1.6 }}
+            >
+              Example · {sample.name}: {inr(parts.base)} ×{" "}
+              {(1 + parts.mk / 100).toFixed(2)}
+              {parts.add > 0 && <> + {inr(parts.add)}</>} ={" "}
+              {inr(Math.round(parts.core))}
+              {parts.com > 0 && <> + comm {inr(Math.round(parts.com))}</>}
+              {parts.tr > 0 && (
+                <> + transport {inr(Math.round(parts.tr))}</>
+              )} ={" "}
+              <b style={{ color: "var(--ds-primary)" }}>₹{inr(parts.total)}</b>
+              {!auto && parts.base === 0 && (
+                <span style={{ color: "var(--ds-danger)" }}>
+                  {" "}
+                  · {BASE_LABEL[pricing.base]} is empty for this product
+                </span>
+              )}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CustomerField({
+  label,
+  value,
+  onChange,
+  customers,
+  onPick,
+  onRemove,
+  placeholder,
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) =>
+      ref.current && !ref.current.contains(e.target) && setOpen(false);
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const q = value.trim().toLowerCase();
+  const list = customers.filter((c) => !q || c.name.toLowerCase().includes(q));
+  return (
+    <div className={`pl-dd${open ? " open" : ""}`} ref={ref}>
+      <label className="pl-label">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="pl-input"
+      />
+      {open && list.length > 0 && (
+        <div
+          className="pl-dd-menu"
+          role="listbox"
+          style={{ top: "calc(100% + 4px)", maxHeight: 240, overflowY: "auto" }}
+        >
+          {list.map((c) => (
+            <div
+              key={c.name}
+              className="pl-dd-opt"
+              role="option"
+              aria-selected={c.name === value}
+              style={{ cursor: "pointer" }}
+              onClick={() => {
+                onPick(c);
+                setOpen(false);
+              }}
+            >
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", color: "var(--ds-text1)" }}>
+                  {c.name}
+                </span>
+                {c.city && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 11.5,
+                      color: "var(--ds-text3)",
+                    }}
+                  >
+                    {c.city}
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                className="pl-pe-x"
+                title="Remove from saved"
+                aria-label={`Remove ${c.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(c);
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

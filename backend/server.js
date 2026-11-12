@@ -14,6 +14,7 @@ import stockRoute from "./routes/stockRoute.js";
 import dispatchRoutes from "./routes/dispatchRoutes.js";
 import overdueRoutes from "./routes/overdueRoutes.js";
 import ecofastRoutes from "./routes/ecofastRoutes.js";
+import priceListRoute from "./routes/priceListRoute.js";
 import { protect } from "./middleware/authMiddleware.js";
 
 const app = express();
@@ -80,6 +81,9 @@ app.use("/api/user/login", authLimiter);
 app.use("/api/user/register", authLimiter);
 app.use("/api/user/forgot-password", authLimiter);
 app.use("/api/user/reset-password", authLimiter);
+
+// Price list upload can be larger than 1 MB — must be mounted BEFORE the global parser
+app.use("/api/pricelist", express.json({ limit: "5mb" }), priceListRoute);
 
 // Body parsing
 app.use(express.json({ limit: "1mb" }));

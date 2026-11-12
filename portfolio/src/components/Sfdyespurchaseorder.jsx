@@ -1,4 +1,11 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import {
+  Component,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { XLSX } from "@/lib/xlsx";
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -289,6 +296,8 @@ const SCREEN_CSS = `
 
 .po-link { background: none; border: none; padding: 0; margin-top: 6px; color: var(--po-accent); font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .po-link:hover { color: var(--po-accent-hover); }
+.po-link.danger { color: var(--po-red); }
+.po-link.danger:hover { color: var(--po-red); opacity: .8; }
 .po-empty .po-link { margin-top: 16px; font-size: 12px; }
 
 .po-search-wrap { position: relative; }
@@ -329,7 +338,7 @@ const SCREEN_CSS = `
 .po-empty-sub { font-size: 12px; color: var(--po-dim); opacity: .7; max-width: 320px; margin: 0 auto; }
 
 .po-table { overflow: hidden; }
-.po-row { display: grid; grid-template-columns: 28px 78px 1fr 100px 90px 120px 32px; gap: 8px; padding: 12px 16px; align-items: center; border-bottom: 1px solid var(--po-bg); transition: background .1s; }
+.po-row { display: grid; grid-template-columns: 28px 78px 1fr 100px 190px 110px 32px; gap: 8px; padding: 12px 16px; align-items: center; border-bottom: 1px solid var(--po-bg); transition: background .1s; }
 .po-row:hover { background: var(--po-hover); }
 .po-row.head { padding: 9px 16px; background: var(--po-bg); border-bottom: 1px solid var(--po-line); }
 .po-row.head:hover { background: var(--po-bg); }
@@ -350,6 +359,18 @@ const SCREEN_CSS = `
 .po-num:focus { border-color: var(--po-accent); }
 .po-num.pkg { width: 62px; text-align: center; color: var(--po-violet); font-size: 12px; border-color: color-mix(in srgb, var(--po-violet) 25%, var(--po-line)); }
 .po-num.pkg:focus { border-color: var(--po-violet); }
+.po-num.cnt { width: 54px; text-align: center; padding: 5px 6px; font-size: 13px; color: var(--po-accent); border-color: color-mix(in srgb, var(--po-accent) 40%, var(--po-line)); }
+.po-num.pkg { width: 58px; }
+.po-pkgcell { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.po-pkgsize { font-size: 13px; font-weight: 800; color: var(--po-violet); }
+.po-times { font-size: 11px; color: var(--po-dim); font-weight: 600; }
+.po-iconbtn { background: none; border: 1px solid var(--po-line2); border-radius: 4px; color: var(--po-dim); font-size: 11px; line-height: 1.3; padding: 1px 6px; cursor: pointer; transition: all .15s; }
+.po-iconbtn:hover { color: var(--po-accent); border-color: var(--po-accent); }
+.po-qtyval { font-size: 14px; font-weight: 800; color: var(--po-text); font-variant-numeric: tabular-nums; }
+.po-cust-row { display: flex; align-items: center; border-bottom: 1px solid var(--po-bg0); }
+.po-cust-row .po-dd-item { flex: 1; min-width: 0; border-bottom: none; }
+.po-cust-del { align-self: stretch; background: none; border: none; color: var(--po-dim); cursor: pointer; font-size: 17px; line-height: 1; padding: 0 14px; }
+.po-cust-del:hover { color: var(--po-red); background: var(--po-hover); }
 .po-num.qty { width: 100%; text-align: right; }
 .po-num.invalid { border-color: var(--po-red); color: var(--po-red); }
 
@@ -373,6 +394,18 @@ const SCREEN_CSS = `
 .po-stat-v.lg { font-size: 18px; }
 .po-actions { display: grid; grid-template-columns: 1fr 1.8fr 1fr 1fr; gap: 8px; padding: 10px 20px; }
 .po-toast { padding: 7px 20px; background: color-mix(in srgb, var(--po-accent) 10%, var(--po-bg0)); border-bottom: 1px solid color-mix(in srgb, var(--po-accent) 35%, transparent); font-size: 11px; font-weight: 700; color: var(--po-accent); }
+.po-modal-backdrop { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8,10,9,.62); backdrop-filter: blur(4px); animation: po-fade .15s ease-out; }
+.po-modal { width: 100%; max-width: 420px; background: var(--po-surface); border: 1px solid var(--po-line2); border-radius: 16px; padding: 24px; box-shadow: 0 24px 64px rgba(0,0,0,.45); animation: po-pop .18s ease-out; }
+.po-modal-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; background: color-mix(in srgb, var(--po-red) 12%, transparent); border: 1px solid color-mix(in srgb, var(--po-red) 30%, transparent); }
+.po-modal-title { font-size: 16px; font-weight: 800; color: var(--po-text); margin: 0 0 8px; letter-spacing: -.01em; }
+.po-modal-msg { font-size: 13px; line-height: 1.55; color: var(--po-text3); margin: 0; }
+.po-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.po-modal-btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--po-line2); background: none; color: var(--po-text2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
+.po-modal-btn:hover { border-color: var(--po-accent); color: var(--po-accent); }
+.po-modal-btn.danger { background: var(--po-red); border-color: transparent; color: var(--po-on-accent); }
+.po-modal-btn.danger:hover { filter: brightness(1.08); color: var(--po-on-accent); }
+@keyframes po-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes po-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 .po-btn { padding: 10px 0; border-radius: 8px; border: 1px solid var(--po-line); background: none; color: var(--po-text2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .po-btn.danger { color: var(--po-dim); }
 .po-btn.danger:hover { border-color: var(--po-redline); color: var(--po-red); }
@@ -417,11 +450,11 @@ const SCREEN_CSS = `
   .po-stats { grid-template-columns: repeat(3, 1fr); }
   .po-stat { border-bottom: 1px solid var(--po-surface); }
   .po-table { overflow-x: auto; }
-  .po-row { min-width: 720px; }
+  .po-row { min-width: 800px; }
   .po-actions { grid-template-columns: 1fr 1fr; }
   .po-printwrap { grid-column: 1 / -1; }
 }
-@media (prefers-reduced-motion: reduce) { .po-screen * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .po-screen * { transition: none !important; animation: none !important; } }
 `;
 
 // ── Standalone print document (rendered in an isolated iframe) ──────────────
@@ -809,6 +842,41 @@ const persistSavedOrders = (m) => {
   }
 };
 
+// ── Remembered customer names (localStorage) ────────────────────────────────
+
+const CUST_LIST_KEY = "sf-po-customers";
+const loadCustomerList = () => {
+  try {
+    const raw = localStorage.getItem(CUST_LIST_KEY);
+    if (raw !== null) {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr)
+        ? arr.filter((x) => typeof x === "string" && x.trim())
+        : [];
+    }
+    // first run: seed from customers of already-saved POs
+    const seen = new Set();
+    const out = [];
+    Object.values(loadSavedOrders()).forEach((r) => {
+      const n = String(r?.customerName ?? "").trim();
+      if (n && !seen.has(custKey(n))) {
+        seen.add(custKey(n));
+        out.push(n);
+      }
+    });
+    return out;
+  } catch {
+    return [];
+  }
+};
+const saveCustomerList = (list) => {
+  try {
+    localStorage.setItem(CUST_LIST_KEY, JSON.stringify(list));
+  } catch {
+    /* storage unavailable — list just won't persist */
+  }
+};
+
 // ── Saved price list (localStorage) — survives page refresh ─────────────────
 
 const PRICELIST_KEY = "sf-po-price-list";
@@ -842,7 +910,7 @@ const clearPriceList = () => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function SFDyesPurchaseOrder() {
+function SFDyesPurchaseOrderInner() {
   const [poNumber, setPoNumber] = useState(loadPoNumber);
   const [date, setDate] = useState(todayISO);
   const [customerName, setCustomerName] = useState("");
@@ -864,6 +932,11 @@ export default function SFDyesPurchaseOrder() {
   );
   const [uploadedFile, setUploadedFile] = useState(Boolean(initialPriceList));
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [customers, setCustomers] = useState(loadCustomerList);
+  const [showCust, setShowCust] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [editPkgId, setEditPkgId] = useState(null);
+  const [pkgDraft, setPkgDraft] = useState("");
   const [pkgDefaults, setPkgDefaults] = useState(() => ({
     ...Object.fromEntries(PKG_DEFAULTS_CONFIG.map((c) => [c.key, c.defaultKg])),
     [OTHER_KEY]: 12,
@@ -871,6 +944,7 @@ export default function SFDyesPurchaseOrder() {
 
   const fileInputRef = useRef(null);
   const searchWrapRef = useRef(null);
+  const custWrapRef = useRef(null);
   const statusTimer = useRef(null);
   const copyTimer = useRef(null);
   const tierMapRef = useRef(null);
@@ -908,6 +982,52 @@ export default function SFDyesPurchaseOrder() {
     },
     [],
   );
+
+  // Esc closes the confirm dialog
+  useEffect(() => {
+    if (!confirmDialog) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setConfirmDialog(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirmDialog]);
+
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (custWrapRef.current && !custWrapRef.current.contains(e.target))
+        setShowCust(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Remember customer names for the dropdown
+  const addCustomer = (name) => {
+    const n = String(name ?? "").trim();
+    if (!n) return;
+    setCustomers((prev) => {
+      if (prev.some((c) => custKey(c) === custKey(n))) return prev;
+      const next = [n, ...prev].slice(0, 300);
+      saveCustomerList(next);
+      return next;
+    });
+  };
+  const removeCustomer = (name) =>
+    setCustomers((prev) => {
+      const next = prev.filter((c) => custKey(c) !== custKey(name));
+      saveCustomerList(next);
+      return next;
+    });
+  const custOptions = useMemo(() => {
+    const q = custKey(customerName);
+    const list = customers
+      .filter((n) => !q || custKey(n).includes(q))
+      .sort((a, b) => a.localeCompare(b));
+    // hide the list when the typed text already is the only match
+    return list.length === 1 && custKey(list[0]) === q ? [] : list;
+  }, [customers, customerName]);
 
   // Remember the price tier per customer
   const rememberTier = (tier = priceTier, name = customerName) => {
@@ -1157,6 +1277,29 @@ export default function SFDyesPurchaseOrder() {
     }
   }, []);
 
+  // Confirmation dialog (replaces window.confirm)
+  const askConfirm = ({ title, msg, yesLabel = "Confirm", onYes }) =>
+    setConfirmDialog({ title, msg, yesLabel, onYes });
+  const dismissConfirm = () => setConfirmDialog(null);
+
+  // Remove the uploaded price list (state + localStorage)
+  const doClearPriceList = () => {
+    clearPriceList(); // remove from localStorage
+    setProducts([]);
+    setUploadedFile(false);
+    setUploadLabel(DEFAULT_UPLOAD_LABEL);
+    setSearchQuery("");
+    setShowSearch(false);
+    flashStatus({ type: "success", msg: "Price list cleared" }, 3000);
+  };
+  const handleClearPriceList = () =>
+    askConfirm({
+      title: "Clear price list?",
+      msg: "The uploaded price list will be removed from this device. Items already in your order will stay, but you won't be able to search for new products until you upload a price list again.",
+      yesLabel: "Yes, clear it",
+      onYes: doClearPriceList,
+    });
+
   // ── Order mutations ───────────────────────────────────────────────────────
 
   const addItem = (product) => {
@@ -1188,13 +1331,45 @@ export default function SFDyesPurchaseOrder() {
       prev.map((i) => (i._id === id ? { ...i, qty: value } : i)),
     );
 
+  // Changing the pkg size keeps the package count, so qty (kg) follows it
   const updatePkgSize = (id, value) => {
     const n = parseFloat(value);
     if (!(n > 0)) return;
     setOrderItems((prev) =>
-      prev.map((i) => (i._id === id ? { ...i, pkgSize: n } : i)),
+      prev.map((i) => {
+        if (i._id !== id) return i;
+        const oldPkg = parseFloat(i.pkgSize) || n;
+        const q = parseFloat(i.qty);
+        const count = q > 0 ? Math.max(1, Math.round(q / oldPkg)) : 0;
+        return {
+          ...i,
+          pkgSize: n,
+          qty: count ? round4(count * n) : i.qty,
+        };
+      }),
     );
   };
+
+  const startEditPkg = (item) => {
+    setEditPkgId(item._id);
+    setPkgDraft(String(item.pkgSize));
+  };
+  const commitEditPkg = (id) => {
+    updatePkgSize(id, pkgDraft);
+    setEditPkgId(null);
+  };
+
+  // Type number of packages → qty (kg) = packages × pkg size
+  const updatePkgCount = (id, value) =>
+    setOrderItems((prev) =>
+      prev.map((i) => {
+        if (i._id !== id) return i;
+        if (value === "") return { ...i, qty: "" };
+        const n = parseInt(value, 10);
+        if (!(n >= 0)) return i;
+        return { ...i, qty: round4(n * (parseFloat(i.pkgSize) || 1)) };
+      }),
+    );
 
   const updatePkgDefault = (key, value) => {
     const n = parseFloat(value);
@@ -1246,6 +1421,7 @@ export default function SFDyesPurchaseOrder() {
       return;
 
     rememberTier();
+    addCustomer(customerName);
     const record = {
       poNumber: poNumber.trim(),
       date,
@@ -1299,7 +1475,7 @@ export default function SFDyesPurchaseOrder() {
   const deleteSavedOrder = (key) => {
     const rec = savedOrders[key];
     if (!rec) return;
-    if (!window.confirm(`Saved PO "${rec.poNumber}" delete it?`)) return;
+    if (!window.confirm(`Delete saved PO "${rec.poNumber}"?`)) return;
     const next = { ...loadSavedOrders() };
     delete next[key];
     if (!persistSavedOrders(next)) {
@@ -1513,6 +1689,7 @@ export default function SFDyesPurchaseOrder() {
     const v = resolveView(view);
     if (!orderReady()) return;
     rememberTier();
+    addCustomer(customerName);
     const html = buildPrintHtml(v);
 
     const iframe = document.createElement("iframe");
@@ -1583,6 +1760,7 @@ export default function SFDyesPurchaseOrder() {
     const v = resolveView(view);
     if (!orderReady()) return;
     rememberTier();
+    addCustomer(customerName);
     showCopyMsg("Creating image…");
     const blobPromise = renderOrderPng(buildPrintHtml(v), v === "landscape");
     blobPromise.catch(() => {}); // handled below
@@ -1628,6 +1806,7 @@ export default function SFDyesPurchaseOrder() {
       set: setCustomerName,
       type: "text",
       ph: "Enter customer or firm name",
+      cust: true,
     },
   ];
 
@@ -1670,7 +1849,11 @@ export default function SFDyesPurchaseOrder() {
             <div className="po-eyebrow">Order Details</div>
             <div className="po-grid3">
               {meta.map((f) => (
-                <div key={f.label}>
+                <div
+                  key={f.label}
+                  ref={f.cust ? custWrapRef : undefined}
+                  style={{ position: "relative" }}
+                >
                   <label className="po-label" htmlFor={`po-${f.label}`}>
                     {f.label}
                   </label>
@@ -1681,7 +1864,19 @@ export default function SFDyesPurchaseOrder() {
                       type={f.type}
                       value={f.value}
                       placeholder={f.ph}
-                      onChange={(e) => f.set(e.target.value)}
+                      autoComplete={f.cust ? "off" : undefined}
+                      onChange={(e) => {
+                        f.set(e.target.value);
+                        if (f.cust) setShowCust(true);
+                      }}
+                      onFocus={f.cust ? () => setShowCust(true) : undefined}
+                      onKeyDown={
+                        f.cust
+                          ? (e) => {
+                              if (e.key === "Escape") setShowCust(false);
+                            }
+                          : undefined
+                      }
                     />
                     {f.label === "PO Number" && (
                       <button
@@ -1694,6 +1889,37 @@ export default function SFDyesPurchaseOrder() {
                       </button>
                     )}
                   </div>
+                  {f.cust && showCust && custOptions.length > 0 && (
+                    <div className="po-dropdown" role="listbox">
+                      <div className="po-dd-head">
+                        <span style={{ fontWeight: 600 }}>Saved customers</span>
+                        <span>Click to select</span>
+                      </div>
+                      {custOptions.map((name) => (
+                        <div key={name} className="po-cust-row">
+                          <button
+                            type="button"
+                            className="po-dd-item"
+                            onClick={() => {
+                              setCustomerName(name);
+                              setShowCust(false);
+                            }}
+                          >
+                            <div className="po-dd-name">{name}</div>
+                          </button>
+                          <button
+                            type="button"
+                            className="po-cust-del"
+                            title="Remove from saved list"
+                            aria-label={`Remove ${name} from saved customers`}
+                            onClick={() => removeCustomer(name)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {f.label === "PO Number" && poStatus && (
                     <div
                       className="po-hint"
@@ -1823,7 +2049,15 @@ export default function SFDyesPurchaseOrder() {
               />
               {uploadedFile && (
                 <div className="po-hint">
-                  {products.length} products available
+                  {products.length} products available ·{" "}
+                  <button
+                    type="button"
+                    className="po-link danger"
+                    style={{ marginTop: 0, fontSize: 10 }}
+                    onClick={handleClearPriceList}
+                  >
+                    ✕ Clear file
+                  </button>
                 </div>
               )}
             </div>
@@ -2020,7 +2254,7 @@ export default function SFDyesPurchaseOrder() {
                   "Code",
                   "Product Name",
                   "Rate",
-                  "Pkg Size",
+                  "Pkg Size × Pkgs",
                   "Qty (kg)",
                   "",
                 ].map((h, i) => (
@@ -2095,43 +2329,82 @@ export default function SFDyesPurchaseOrder() {
                           <div className="po-sub">per kg</div>
                         </div>
 
-                        <div
-                          className="po-col"
-                          style={{ alignItems: "center" }}
-                        >
+                        <div className="po-pkgcell">
+                          {editPkgId === item._id ? (
+                            <>
+                              <input
+                                className="po-num pkg"
+                                type="number"
+                                min="1"
+                                step="any"
+                                autoFocus
+                                title="Package size (kg per package)"
+                                aria-label={`Package size for ${item.name}`}
+                                value={pkgDraft}
+                                onChange={(e) => setPkgDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter")
+                                    commitEditPkg(item._id);
+                                  if (e.key === "Escape") setEditPkgId(null);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="po-iconbtn"
+                                title="Save package size"
+                                aria-label="Save package size"
+                                onClick={() => commitEditPkg(item._id)}
+                              >
+                                ✓
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span
+                                className="po-pkgsize"
+                                title="Package size (kg per package)"
+                              >
+                                {fmtQty(item.pkgSize)} kg
+                              </span>
+                              <button
+                                type="button"
+                                className="po-iconbtn"
+                                title="Edit package size"
+                                aria-label={`Edit package size for ${item.name}`}
+                                onClick={() => startEditPkg(item)}
+                              >
+                                ✎
+                              </button>
+                            </>
+                          )}
+                          <span className="po-times">×</span>
                           <input
-                            className="po-num pkg"
+                            className="po-num cnt"
                             type="number"
-                            min="1"
+                            min="0"
                             step="1"
-                            title="Package size (kg per package)"
-                            aria-label={`Package size for ${item.name}`}
-                            value={item.pkgSize}
+                            title="Number of packages"
+                            aria-label={`Number of packages for ${item.name}`}
+                            value={
+                              String(item.qty) === "" ? "" : pkgCountOf(item)
+                            }
                             onChange={(e) =>
-                              updatePkgSize(item._id, e.target.value)
+                              updatePkgCount(item._id, e.target.value)
                             }
                           />
-                          <span className="po-sub" style={{ margin: 0 }}>
-                            {pkgCountOf(item)} pkg
-                          </span>
+                          <span className="po-times">pkg</span>
                         </div>
 
                         <div
                           className="po-col"
                           style={{ alignItems: "flex-end" }}
                         >
-                          <input
-                            className={`po-num qty${err || emptyQty ? " invalid" : ""}`}
-                            type="number"
-                            min="0"
-                            step={item.pkgSize}
-                            aria-label={`Quantity in kg for ${item.name}`}
-                            aria-invalid={Boolean(err)}
-                            value={item.qty}
-                            onChange={(e) =>
-                              updateQty(item._id, e.target.value)
-                            }
-                          />
+                          <div
+                            className="po-qtyval"
+                            title="Auto-calculated: packages × pkg size"
+                          >
+                            {emptyQty ? "—" : `${fmtQty(item.qty)} kg`}
+                          </div>
                           {err ? (
                             <div
                               className="po-col"
@@ -2166,7 +2439,7 @@ export default function SFDyesPurchaseOrder() {
                               </div>
                             </div>
                           ) : emptyQty ? (
-                            <span className="po-err">Enter quantity</span>
+                            <span className="po-err">Enter pkg count</span>
                           ) : (
                             <span className="po-line-total">
                               ₹{fmtMoney(getTotal(item))}
@@ -2314,7 +2587,121 @@ export default function SFDyesPurchaseOrder() {
             </div>
           </div>
         </footer>
+
+        {confirmDialog && (
+          <div
+            className="po-modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) dismissConfirm();
+            }}
+          >
+            <div
+              className="po-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="po-modal-title"
+              aria-describedby="po-modal-msg"
+            >
+              <div className="po-modal-icon" aria-hidden="true">
+                🔔
+              </div>
+              <h2 className="po-modal-title" id="po-modal-title">
+                {confirmDialog.title}
+              </h2>
+              <p className="po-modal-msg" id="po-modal-msg">
+                {confirmDialog.msg}
+              </p>
+              <div className="po-modal-actions">
+                <button
+                  type="button"
+                  className="po-modal-btn"
+                  autoFocus
+                  onClick={dismissConfirm}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="po-modal-btn danger"
+                  onClick={() => {
+                    const fn = confirmDialog.onYes;
+                    dismissConfirm();
+                    fn();
+                  }}
+                >
+                  {confirmDialog.yesLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+// ── Error boundary: show the error on screen instead of a blank page ────────
+
+const ALL_STORAGE_KEYS = [PRICELIST_KEY, TIER_STORE_KEY, PO_STORE_KEY];
+
+class PurchaseOrderBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error("Purchase order page crashed:", error, info?.componentStack);
+  }
+  resetAndReload = () => {
+    try {
+      // saved orders (SAVED_KEY) are kept on purpose
+      ALL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
+    window.location.reload();
+  };
+  render() {
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    return (
+      <div
+        style={{
+          padding: 24,
+          maxWidth: 720,
+          margin: "40px auto",
+          fontFamily: "system-ui, sans-serif",
+          color: "#c0392b",
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Purchase Order page error</h2>
+        <pre
+          style={{
+            whiteSpace: "pre-wrap",
+            background: "#fdecea",
+            border: "1px solid #f1b9b3",
+            borderRadius: 8,
+            padding: 12,
+            fontSize: 13,
+          }}
+        >
+          {String(error?.stack || error?.message || error)}
+        </pre>
+        <button type="button" onClick={() => window.location.reload()}>
+          Reload
+        </button>{" "}
+        <button type="button" onClick={this.resetAndReload}>
+          Reset saved price list &amp; reload
+        </button>
+      </div>
+    );
+  }
+}
+
+export default function SFDyesPurchaseOrder() {
+  return (
+    <PurchaseOrderBoundary>
+      <SFDyesPurchaseOrderInner />
+    </PurchaseOrderBoundary>
   );
 }
