@@ -20,6 +20,21 @@ const DEFAULT_PRICING = {
   transType: "flat",
 };
 const BASE_LABEL = { dp7: "DP7", dp45: "DP45", rsp: "RSP" };
+const pricingSummary = (pr) => {
+  const p = { ...DEFAULT_PRICING, ...(pr || {}) };
+  const parts = [
+    p.mode === "auto" ? "Auto" : `${BASE_LABEL[p.base]} +${num(p.markup)}%`,
+  ];
+  if (num(p.commission))
+    parts.push(
+      `Comm ${num(p.commission)}${p.commType === "pct" ? "%" : "/kg"}`,
+    );
+  if (num(p.transport))
+    parts.push(
+      `Transport ${num(p.transport)}${p.transType === "pct" ? "%" : "/kg"}`,
+    );
+  return parts.join(" · ");
+};
 const priceParts = (p, pr) => {
   const auto = pr.mode === "auto";
   const base = num(auto ? p.dp45 : p[pr.base]);
@@ -88,6 +103,37 @@ const CONTACT_KEY = "sf_pricelist_contacts";
 const OPTS_KEY = "sf_pricelist_opts";
 const PRICING_KEY = "sf_pricelist_pricing";
 const CUSTOMERS_KEY = "sf_pricelist_customers";
+const SAVED_KEY = "sf_pricelist_saved";
+// Options stored with each customer's saved price list
+const SNAP_OPT_KEYS = [
+  "terms",
+  "gst",
+  "round",
+  "sort",
+  "validDays",
+  "notes",
+  "refNo",
+];
+const uid = () =>
+  `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+const roundBy = (v, step) => {
+  const st = Number(step) || 1;
+  return Math.round(v / st) * st;
+};
+const fmtDateTime = (ms) =>
+  new Date(ms).toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+const samePrices = (a, b) => {
+  const ka = Object.keys(a || {});
+  return (
+    ka.length === Object.keys(b || {}).length && ka.every((k) => a[k] === b[k])
+  );
+};
 const LOGO_KEY = "sf_pricelist_logo";
 const COMPANY_KEY = "sf_pricelist_company";
 
@@ -125,11 +171,11 @@ const EMPTY_CONTACTS = {
 
 // ─── Server sync (price sheet follows the user across devices) ───────────────
 const PL_API = `${import.meta.env.VITE_API_URL || ""}/pricelist`;
-const plFetch = async (method, body) => {
+const plFetch = async (method, body, path = "") => {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
   if (!token) throw new Error("Not logged in");
-  const res = await fetch(PL_API, {
+  const res = await fetch(PL_API + path, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -159,6 +205,12 @@ const writeJSON = (key, val) => {
 const loadCustomers = () => {
   const v = readJSON(CUSTOMERS_KEY);
   return Array.isArray(v) ? v.filter((c) => c && c.name) : [];
+};
+const loadSaved = () => {
+  const v = readJSON(SAVED_KEY);
+  return Array.isArray(v)
+    ? v.filter((c) => c && c.id && c.name && c.current && c.current.keys)
+    : [];
 };
 const loadPricing = () => ({
   ...DEFAULT_PRICING,
@@ -340,6 +392,11 @@ const Icon = {
     <Svg cls="w-[17px] h-[17px]">
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
       <line x1="7" y1="7" x2="7.01" y2="7" />
+    </Svg>
+  ),
+  Bookmark: () => (
+    <Svg>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </Svg>
   ),
   Refresh: () => (
@@ -631,6 +688,19 @@ export default function App() {
   const [opts, setOpts] = useState(loadOpts);
   const [pricing, setPricing] = useState(loadPricing);
   const [customers, setCustomers] = useState(loadCustomers);
+  const [savedLists, setSavedLists] = useState(loadSaved);
+  const [activeId, setActiveId] = useState(null); // saved list currently opened
+  const [notice, setNotice] = useState("");
+  const [openHist, setOpenHist] = useState(null);
+  const [savedSearch, setSavedSearch] = useState("");
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [showChanges, setShowChanges] = useState(false);
+  const flashT = useRef(null);
+  const flash = (m) => {
+    setNotice(m);
+    clearTimeout(flashT.current);
+    flashT.current = setTimeout(() => setNotice(""), 3400);
+  };
   const [showOpts, setShowOpts] = useState(false);
   const [copied, setCopied] = useState(false);
   const [adjust, setAdjust] = useState("");
@@ -664,6 +734,31 @@ export default function App() {
   useEffect(() => writeJSON(OPTS_KEY, opts), [opts]);
   useEffect(() => writeJSON(PRICING_KEY, pricing), [pricing]);
   useEffect(() => writeJSON(CUSTOMERS_KEY, customers), [customers]);
+  useEffect(() => writeJSON(SAVED_KEY, savedLists), [savedLists]);
+
+  // Merge customer-wise saved lists with the server (newest save wins)
+  useEffect(() => {
+    let alive = true;
+    plFetch("GET", undefined, "/customers")
+      .then((data) => {
+        if (!alive || !Array.isArray(data.customers)) return;
+        const map = new Map(data.customers.map((c) => [c.id, c]));
+        loadSaved().forEach((c) => {
+          const srv = map.get(c.id);
+          if (!srv || (c.savedAt || 0) > (srv.savedAt || 0)) {
+            map.set(c.id, c);
+            plFetch("PUT", c, `/customers/${c.id}`).catch(() => {});
+          }
+        });
+        setSavedLists(
+          [...map.values()].sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Auto-save the customer (most recent first) once the user moves past step 2
   useEffect(() => {
@@ -829,6 +924,7 @@ export default function App() {
     setSelected({});
     setOverrides({});
     setConfirmRemove(false);
+    setActiveId(null);
     setStep(0);
     setCN("");
     setCC("");
@@ -893,6 +989,15 @@ export default function App() {
 
   const handlePrint = () => {
     injectStyles();
+    // The browser uses the page title as the default PDF file name
+    const prevTitle = document.title;
+    const safe = (customerName || "").replace(/[\\/:*?"<>|]+/g, "").trim();
+    if (safe) document.title = `${safe} - Price List`;
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
     window.print();
   };
 
@@ -989,16 +1094,228 @@ export default function App() {
     }
   };
 
+  // ── Customer-wise saved price lists ──────────────────────────────────────
+  const prodByKey = new Map(products.map((p) => [key(p), p]));
+  const activeRec = savedLists.find(
+    (c) => c.name.toLowerCase() === customerName.trim().toLowerCase(),
+  );
+  const pricesNow = Object.fromEntries(
+    flatSel.map((p) => [key(p), priceOf(p)]),
+  );
+  const isSaved =
+    !!activeRec &&
+    activeRec.name === customerName.trim() &&
+    (activeRec.city || "") === customerCity.trim() &&
+    activeRec.current.keys.length === flatSel.length &&
+    samePrices(activeRec.current.prices, pricesNow);
+  const changes =
+    activeId && activeRec && activeRec.id === activeId
+      ? flatSel.filter((p) => {
+          const o = overrides[key(p)];
+          return o !== undefined && o !== "" && Number(o) !== basePrice(p);
+        })
+      : [];
+
+  const outdatedMap = {};
+  savedLists.forEach((c) => {
+    const pr = { ...DEFAULT_PRICING, ...(c.current.pricing || {}) };
+    const rnd = c.current.opts?.round ?? 1;
+    let n = 0;
+    c.current.keys.forEach((k) => {
+      const p = prodByKey.get(k);
+      if (p && roundBy(priceParts(p, pr).total, rnd) !== c.current.prices[k])
+        n++;
+    });
+    outdatedMap[c.id] = n;
+  });
+
+  const pushSaved = (rec) =>
+    plFetch("PUT", rec, `/customers/${rec.id}`).catch(() =>
+      flash("Saved on this device only (sync failed)"),
+    );
+
+  const saveCurrent = () => {
+    if (!hasCustomer || !selCount) return;
+    const name = customerName.trim();
+    const snap = {
+      keys: flatSel.map(key),
+      prices: pricesNow,
+      pricing,
+      opts: Object.fromEntries(SNAP_OPT_KEYS.map((k) => [k, opts[k]])),
+      savedAt: Date.now(),
+    };
+    let history = activeRec?.history || [];
+    if (activeRec && !samePrices(activeRec.current.prices, snap.prices))
+      history = [activeRec.current, ...history].slice(0, 5);
+    const rec = {
+      id: activeRec?.id || uid(),
+      name,
+      city: customerCity.trim(),
+      current: snap,
+      history,
+      savedAt: snap.savedAt,
+    };
+    setSavedLists((l) => [rec, ...l.filter((c) => c.id !== rec.id)]);
+    setActiveId(rec.id);
+    pushSaved(rec);
+    flash(`Saved price list for ${name}`);
+  };
+
+  const openSaved = (c, snap = c.current) => {
+    const pr = { ...DEFAULT_PRICING, ...(snap.pricing || {}) };
+    const rnd = snap.opts?.round ?? opts.round;
+    const sel = {};
+    const ov = {};
+    let missing = 0;
+    snap.keys.forEach((k) => {
+      const p = prodByKey.get(k);
+      if (!p) {
+        missing++;
+        return;
+      }
+      sel[k] = true;
+      const saved = snap.prices[k];
+      if (
+        saved !== undefined &&
+        Number(saved) !== roundBy(priceParts(p, pr).total, rnd)
+      )
+        ov[k] = saved;
+    });
+    setCN(c.name);
+    setCC(c.city || "");
+    setSelected(sel);
+    setPricing(pr);
+    setOpts((o) => ({ ...o, ...(snap.opts || {}) }));
+    setOverrides(ov);
+    setAdjust("");
+    setAdjScope("all");
+    setAdjKeys([]);
+    setEditMode(false);
+    setActiveId(c.id);
+    setShowChanges(false);
+    setStep(3);
+    flash(
+      missing
+        ? `Opened · ${missing} product${missing > 1 ? "s" : ""} no longer in the sheet`
+        : "Opened saved price list",
+    );
+  };
+
+  // Recalculate every saved price from the current sheet (keeps old version in history)
+  const recalcRecord = (c) => {
+    const snap = c.current;
+    const pr = { ...DEFAULT_PRICING, ...(snap.pricing || {}) };
+    const rnd = snap.opts?.round ?? 1;
+    const keys = [];
+    const prices = {};
+    let changed = 0;
+    snap.keys.forEach((k) => {
+      const p = prodByKey.get(k);
+      if (!p) return;
+      keys.push(k);
+      prices[k] = roundBy(priceParts(p, pr).total, rnd);
+      if (prices[k] !== snap.prices[k]) changed++;
+    });
+    const now = Date.now();
+    return {
+      changed,
+      dropped: snap.keys.length - keys.length,
+      rec: {
+        ...c,
+        current: { ...snap, keys, prices, savedAt: now },
+        history: [snap, ...(c.history || [])].slice(0, 5),
+        savedAt: now,
+      },
+    };
+  };
+  const updateOne = (c) => {
+    const { changed, dropped, rec } = recalcRecord(c);
+    if (!changed && !dropped)
+      return flash(`${c.name}: prices are already up to date`);
+    setSavedLists((l) => [rec, ...l.filter((x) => x.id !== rec.id)]);
+    pushSaved(rec);
+    flash(`${c.name}: ${changed} price${changed === 1 ? "" : "s"} updated`);
+  };
+  const updateAll = () => {
+    const todo = savedLists
+      .filter((c) => outdatedMap[c.id] > 0)
+      .map((c) => recalcRecord(c));
+    if (!todo.length) return flash("All saved price lists are up to date");
+    if (
+      !window.confirm(
+        `Update ${todo.length} saved price list${todo.length > 1 ? "s" : ""} to the current sheet prices? Old versions stay in history.`,
+      )
+    )
+      return;
+    const ids = new Set(todo.map((t) => t.rec.id));
+    setSavedLists((l) => [
+      ...todo.map((t) => t.rec),
+      ...l.filter((c) => !ids.has(c.id)),
+    ]);
+    todo.forEach((t) => pushSaved(t.rec));
+    flash(`Updated ${todo.length} price list${todo.length > 1 ? "s" : ""}`);
+  };
+  const duplicateSaved = (c) => {
+    const nm = (
+      window.prompt("Name for the copy", `${c.name} (copy)`) || ""
+    ).trim();
+    if (!nm) return;
+    if (savedLists.some((x) => x.name.toLowerCase() === nm.toLowerCase()))
+      return flash("A customer with this name already exists");
+    const now = Date.now();
+    const rec = {
+      ...c,
+      id: uid(),
+      name: nm,
+      history: [],
+      savedAt: now,
+      current: { ...c.current, savedAt: now },
+    };
+    setSavedLists((l) => [rec, ...l]);
+    pushSaved(rec);
+    flash(`Copied to ${nm}`);
+  };
+  const deleteSaved = (c) => {
+    setSavedLists((l) => l.filter((x) => x.id !== c.id));
+    if (activeId === c.id) setActiveId(null);
+    setConfirmDel(null);
+    plFetch("DELETE", undefined, `/customers/${c.id}`).catch(() => {});
+    flash(`Deleted ${c.name}`);
+  };
+  const exportExcel = () => {
+    try {
+      const rows = [["Category", "Code", "Product", "Rs / Kg"]];
+      Object.entries(sortedGrouped).forEach(([cat, ps]) =>
+        ps.forEach((x) => rows.push([cat, x.code, x.name, priceOf(x)])),
+      );
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [20, 12, 36, 12].map((wch) => ({ wch }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Price List");
+      const safe = (customerName || "price-list")
+        .replace(/[\\/:*?"<>|]+/g, "")
+        .trim();
+      XLSX.writeFile(wb, `${safe} - price list.xlsx`);
+    } catch {
+      flash("Excel export failed");
+    }
+  };
+  const existingSaved =
+    activeRec && activeRec.id !== activeId ? activeRec : null;
+
   const shell = {
+    toast: notice,
     step,
     setStep,
     navigate,
     productCount: products.length,
+    savedCount: savedLists.length,
     canGo: [
       true,
       products.length > 0,
       products.length > 0 && hasCustomer,
       products.length > 0 && hasCustomer && selCount > 0,
+      true,
     ],
   };
 
@@ -1164,7 +1481,17 @@ export default function App() {
                 label="Customer / Firm Name *"
                 value={customerName}
                 onChange={setCN}
-                customers={customers}
+                customers={[
+                  ...customers,
+                  ...savedLists
+                    .filter(
+                      (s) =>
+                        !customers.some(
+                          (c) => c.name.toLowerCase() === s.name.toLowerCase(),
+                        ),
+                    )
+                    .map((s) => ({ name: s.name, city: s.city })),
+                ]}
                 onPick={(c) => {
                   setCN(c.name);
                   setCC(c.city || "");
@@ -1174,6 +1501,30 @@ export default function App() {
                 }
                 placeholder="e.g. Sai Nath Textiles Pvt Ltd"
               />
+              {existingSaved && (
+                <div
+                  className="flex items-center gap-3 flex-wrap"
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "var(--ds-primaryDim)",
+                    border: "1px solid rgba(212,175,106,0.35)",
+                    fontSize: 12.5,
+                    color: "var(--ds-primary)",
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: 180 }}>
+                    Saved price list found · {existingSaved.current.keys.length}{" "}
+                    products · {fmtDateTime(existingSaved.savedAt)}
+                  </span>
+                  <button
+                    className="pl-btn sm"
+                    onClick={() => openSaved(existingSaved)}
+                  >
+                    Open saved list
+                  </button>
+                </div>
+              )}
               <Field
                 label="City / Address (optional)"
                 value={customerCity}
@@ -1659,6 +2010,276 @@ export default function App() {
   // ════════════════════════════════════════════════════════════════════════════
   // STEP 3 — Print Preview
   // ════════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════════════════
+  // STEP 4 — Saved price lists (customer-wise)
+  // ════════════════════════════════════════════════════════════════════════════
+  if (step === 4) {
+    const q = savedSearch.trim().toLowerCase();
+    const list = savedLists.filter(
+      (c) =>
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        (c.city || "").toLowerCase().includes(q),
+    );
+    const outdatedTotal = savedLists.filter(
+      (c) => outdatedMap[c.id] > 0,
+    ).length;
+    const noSheet = products.length === 0;
+    return (
+      <Shell
+        {...shell}
+        title="Saved Price Lists"
+        icon={<Icon.Bookmark />}
+        meta={
+          <>
+            <span className="pl-mono">{savedLists.length}</span> customers
+          </>
+        }
+      >
+        <div className="max-w-4xl mx-auto">
+          <div className="pl-card" style={{ padding: 16 }}>
+            <div className="flex flex-wrap gap-2.5 items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "var(--ds-text3)" }}
+                >
+                  <Icon.Search />
+                </span>
+                <input
+                  value={savedSearch}
+                  onChange={(e) => setSavedSearch(e.target.value)}
+                  placeholder="Search customer or city…"
+                  aria-label="Search saved price lists"
+                  className="pl-input"
+                  style={{ paddingLeft: 36, height: 38 }}
+                />
+              </div>
+              <button
+                className="pl-btn"
+                onClick={updateAll}
+                disabled={noSheet || outdatedTotal === 0}
+                title="Recalculate every outdated saved list from the current sheet"
+              >
+                <Icon.Refresh /> Update all outdated
+                {outdatedTotal > 0 && (
+                  <span className="pl-mono" style={{ opacity: 0.8 }}>
+                    {outdatedTotal}
+                  </span>
+                )}
+              </button>
+            </div>
+            {noSheet && (
+              <p
+                style={{
+                  fontSize: 12,
+                  marginTop: 10,
+                  color: "var(--ds-primary)",
+                }}
+              >
+                Upload a price sheet to open or update saved lists.
+              </p>
+            )}
+          </div>
+
+          {list.length === 0 ? (
+            <div
+              className="pl-card mt-4"
+              style={{ padding: "48px 16px", textAlign: "center" }}
+            >
+              <div
+                style={{
+                  fontSize: 14.5,
+                  fontWeight: 600,
+                  color: "var(--ds-text1)",
+                }}
+              >
+                {savedLists.length
+                  ? "No customers match"
+                  : "No saved price lists yet"}
+              </div>
+              <div className="pl-sub" style={{ fontSize: 12, marginTop: 4 }}>
+                {savedLists.length
+                  ? "Try a different name or city"
+                  : "Build a price list and press “Save for customer” in the preview"}
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3 mt-4">
+              {list.map((c) => {
+                const out = outdatedMap[c.id] || 0;
+                const hist = c.history || [];
+                const histOpen = openHist === c.id;
+                return (
+                  <div key={c.id} className="pl-card" style={{ padding: 16 }}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div style={{ minWidth: 0 }}>
+                        <p
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 600,
+                            color: "var(--ds-text1)",
+                          }}
+                        >
+                          {c.name}
+                        </p>
+                        <p
+                          className="pl-sub"
+                          style={{ fontSize: 12, marginTop: 2 }}
+                        >
+                          {c.city ? `${c.city} · ` : ""}
+                          <span className="pl-mono">
+                            {c.current.keys.length}
+                          </span>{" "}
+                          products · saved {fmtDateTime(c.savedAt)}
+                        </p>
+                        <div
+                          className="flex gap-2 flex-wrap"
+                          style={{ marginTop: 8 }}
+                        >
+                          <span className="pl-pill">
+                            {pricingSummary(c.current.pricing)}
+                          </span>
+                          {c.current.opts?.terms && (
+                            <span className="pl-pill">
+                              {c.current.opts.terms}
+                            </span>
+                          )}
+                          {c.current.opts?.gst &&
+                            c.current.opts.gst !== "none" && (
+                              <span className="pl-pill">
+                                GST {GST_LABEL[c.current.opts.gst]}
+                              </span>
+                            )}
+                          {out > 0 && (
+                            <span
+                              className="pl-pill"
+                              style={{
+                                color: "var(--ds-primary)",
+                                borderColor: "rgba(212,175,106,0.35)",
+                                background: "var(--ds-primaryDim)",
+                              }}
+                            >
+                              {out} price{out > 1 ? "s" : ""} outdated
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <button
+                          className="pl-btn primary sm"
+                          disabled={noSheet}
+                          onClick={() => openSaved(c)}
+                        >
+                          Open
+                        </button>
+                        <button
+                          className="pl-btn sm"
+                          disabled={noSheet}
+                          onClick={() => updateOne(c)}
+                          title="Recalculate prices from the current sheet"
+                        >
+                          <Icon.Refresh /> Update prices
+                        </button>
+                        <button
+                          className="pl-btn ghost sm"
+                          onClick={() => setOpenHist(histOpen ? null : c.id)}
+                          aria-expanded={histOpen}
+                        >
+                          History ({hist.length})
+                        </button>
+                        <button
+                          className="pl-btn ghost sm"
+                          onClick={() => duplicateSaved(c)}
+                        >
+                          Duplicate
+                        </button>
+                        {confirmDel === c.id ? (
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              style={{ fontSize: 12, color: "var(--ds-text3)" }}
+                            >
+                              Delete?
+                            </span>
+                            <button
+                              className="pl-btn solid-danger sm"
+                              onClick={() => deleteSaved(c)}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              className="pl-btn sm"
+                              onClick={() => setConfirmDel(null)}
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            className="pl-btn danger sm"
+                            onClick={() => setConfirmDel(c.id)}
+                            aria-label={`Delete ${c.name}`}
+                          >
+                            <Icon.Trash />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {histOpen && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          borderTop: "1px solid var(--ds-border)",
+                          paddingTop: 10,
+                        }}
+                      >
+                        {hist.length === 0 ? (
+                          <p className="pl-sub" style={{ fontSize: 12 }}>
+                            No earlier versions yet. A version is kept whenever
+                            prices change.
+                          </p>
+                        ) : (
+                          hist.map((h, i) => (
+                            <div
+                              key={h.savedAt || i}
+                              className="flex items-center justify-between gap-3"
+                              style={{
+                                padding: "7px 0",
+                                borderBottom:
+                                  i < hist.length - 1
+                                    ? "1px solid var(--ds-border)"
+                                    : 0,
+                                fontSize: 12.5,
+                              }}
+                            >
+                              <span style={{ color: "var(--ds-text2)" }}>
+                                {fmtDateTime(h.savedAt)} ·{" "}
+                                <span className="pl-mono">{h.keys.length}</span>{" "}
+                                products · {pricingSummary(h.pricing)}
+                              </span>
+                              <button
+                                className="pl-btn ghost sm"
+                                disabled={noSheet}
+                                onClick={() => openSaved(c, h)}
+                              >
+                                Open this version
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Shell>
+    );
+  }
+
   const contactRows = [
     ["Technical Support", contacts.tech],
     ["Enquiry / Orders", contacts.enq],
@@ -1767,6 +2388,23 @@ export default function App() {
               +
             </button>
           </div>
+          <button
+            onClick={saveCurrent}
+            disabled={isSaved}
+            className={`pl-btn${isSaved ? " ghost" : ""}`}
+            title="Save this price list for the customer"
+          >
+            {isSaved ? (
+              <>
+                <Icon.Check size="w-3.5 h-3.5" /> Saved
+              </>
+            ) : (
+              <>
+                <Icon.Bookmark />{" "}
+                {activeRec ? "Save changes" : "Save for customer"}
+              </>
+            )}
+          </button>
           <button onClick={handlePrint} className="pl-btn primary">
             <Icon.Print /> Print / Save PDF
           </button>
@@ -1825,6 +2463,9 @@ export default function App() {
               </button>
               <button onClick={shareWhatsApp} className="pl-btn sm">
                 Share on WhatsApp
+              </button>
+              <button onClick={exportExcel} className="pl-btn sm">
+                Excel
               </button>
             </div>
           </div>
@@ -2243,6 +2884,106 @@ export default function App() {
         </div>
       )}
 
+      {changes.length > 0 && (
+        <div
+          className="no-print"
+          style={{ maxWidth: 794, margin: "14px auto 0", padding: "0 16px" }}
+        >
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "var(--ds-primaryDim)",
+              border: "1px solid rgba(212,175,106,0.35)",
+              color: "var(--ds-primary)",
+              fontSize: 12.5,
+            }}
+          >
+            <div className="flex items-center gap-3 flex-wrap">
+              <span style={{ flex: 1, minWidth: 200 }}>
+                <b className="pl-mono">{changes.length}</b> saved price
+                {changes.length > 1 ? "s differ" : " differs"} from the current
+                sheet / formula
+              </span>
+              <button
+                className="pl-btn ghost sm"
+                onClick={() => setShowChanges((v) => !v)}
+              >
+                {showChanges ? "Hide" : "Review"}
+              </button>
+              <button
+                className="pl-btn sm"
+                onClick={() =>
+                  setOverrides((o) => {
+                    const n = { ...o };
+                    changes.forEach((p) => delete n[key(p)]);
+                    return n;
+                  })
+                }
+              >
+                Update all to new
+              </button>
+            </div>
+            {showChanges && (
+              <div style={{ marginTop: 10, maxHeight: 220, overflowY: "auto" }}>
+                {changes.map((p) => {
+                  const old = Number(overrides[key(p)]);
+                  const nw = basePrice(p);
+                  const d = nw - old;
+                  return (
+                    <div
+                      key={key(p)}
+                      className="flex items-center gap-3"
+                      style={{
+                        padding: "6px 0",
+                        borderTop: "1px solid rgba(212,175,106,0.2)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          color: "var(--ds-text1)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                      <span
+                        className="pl-mono"
+                        style={{ color: "var(--ds-text2)" }}
+                      >
+                        ₹{inr(old)} → ₹{inr(nw)}
+                      </span>
+                      <span
+                        className="pl-mono"
+                        style={{
+                          width: 54,
+                          textAlign: "right",
+                          color:
+                            d > 0 ? "var(--ds-danger)" : "var(--ds-success)",
+                        }}
+                      >
+                        {d > 0 ? "+" : ""}
+                        {inr(d)}
+                      </span>
+                      <button
+                        className="pl-btn ghost sm"
+                        onClick={() => restoreOriginal(key(p))}
+                      >
+                        Use new
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ─── PRINT DOCUMENT ─────────────────────────────────────────────── */}
       <div id="sf-print-area" className="pl-paper-wrap">
         <article
@@ -2491,6 +3232,11 @@ const STEPS = [
   { label: "Customer", hint: "Who it's for", icon: () => <Icon.User /> },
   { label: "Products", hint: "Pick items to list", icon: () => <Icon.Tag /> },
   { label: "Preview", hint: "Print / save PDF", icon: () => <Icon.Eye /> },
+  {
+    label: "Saved",
+    hint: "Customer price lists",
+    icon: () => <Icon.Bookmark />,
+  },
 ];
 
 function Shell({
@@ -2505,6 +3251,8 @@ function Shell({
   children,
   footer,
   bare,
+  toast,
+  savedCount,
 }) {
   const goHome = (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) return;
@@ -2552,7 +3300,7 @@ function Shell({
           <div className="pl-nv-list">
             {STEPS.map((s, i) => {
               const active = step === i;
-              const done = i < step;
+              const done = step < 4 && i < step;
               return (
                 <button
                   key={s.label}
@@ -2568,6 +3316,9 @@ function Shell({
                     <b>{s.label}</b>
                     <small>{s.hint}</small>
                   </span>
+                  {i === 4 && savedCount > 0 && (
+                    <span className="pl-nv-cnt pl-mono">{savedCount}</span>
+                  )}
                   {i === 2 && productCount > 0 && (
                     <span className="pl-nv-cnt pl-mono">{productCount}</span>
                   )}
@@ -2640,6 +3391,28 @@ function Shell({
         </main>
         {footer}
       </div>
+      {toast && (
+        <div
+          className="no-print"
+          role="status"
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 24,
+            transform: "translateX(-50%)",
+            zIndex: 80,
+            padding: "10px 16px",
+            borderRadius: 10,
+            fontSize: 13,
+            background: "var(--ds-card)",
+            color: "var(--ds-text1)",
+            border: "1px solid var(--ds-borderHi)",
+            boxShadow: "0 14px 34px rgba(0,0,0,.38)",
+          }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
