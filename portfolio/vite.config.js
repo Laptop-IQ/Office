@@ -13,7 +13,7 @@ export default defineConfig({
   },
   build: {
     target: "es2020",
-    chunkSizeWarningLimit: 700,
+    chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
         // Stable, long-cacheable vendor chunks – app code changes don't
