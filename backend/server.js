@@ -16,6 +16,7 @@ import overdueRoutes from "./routes/overdueRoutes.js";
 import ecofastRoutes from "./routes/ecofastRoutes.js";
 import priceListRoute from "./routes/priceListRoute.js";
 import { protect } from "./middleware/authMiddleware.js";
+import { startGuestSweeper } from "./utils/guestSandbox.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -77,7 +78,19 @@ const authLimiter = rateLimit({
   message: "Too many attempts, please try again later.",
 });
 
+// Guest demo: each start copies the demo data, so keep it modest per IP
+const guestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: Number(process.env.GUEST_STARTS_PER_HOUR) || 20,
+  message: { success: false, message: "Too many demo starts, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use("/api/user/login", authLimiter);
+app.use("/api/user/guest", (req, res, next) =>
+  req.method === "POST" ? guestLimiter(req, res, next) : next(),
+);
 app.use("/api/user/register", authLimiter);
 app.use("/api/user/forgot-password", authLimiter);
 app.use("/api/user/reset-password", authLimiter);
@@ -127,6 +140,7 @@ app.use((err, req, res, next) => {
 connectDB()
   .then(() => {
     app.listen(port);
+    startGuestSweeper(); // removes demo sandboxes that were never logged out
   })
   .catch(() => {
     process.exit(1);

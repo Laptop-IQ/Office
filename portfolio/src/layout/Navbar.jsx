@@ -156,7 +156,7 @@ function AccountItem({ user, onLogout }) {
 
               <div className="app-user-status">
                 <span className="app-status-dot" />
-                Signed in
+                {user?.isGuest ? "Demo session" : "Signed in"}
               </div>
             </div>
           </div>
@@ -170,7 +170,7 @@ function AccountItem({ user, onLogout }) {
           >
             <ArrowRightOnRectangleIcon aria-hidden="true" />
 
-            <span>Logout</span>
+            <span>{user?.isGuest ? "Exit demo" : "Logout"}</span>
           </button>
         </>
       ) : (

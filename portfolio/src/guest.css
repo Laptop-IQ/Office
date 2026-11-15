@@ -1,0 +1,44 @@
+/* Guest demo notice (floating pill). Uses the shared --ds-* theme tokens, so it follows dark / light. */
+.guest-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--ds-primary);
+  border-radius: 999px;
+  background: var(--ds-surface);
+  color: var(--ds-text1);
+  font: 500 13px/1.35 "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.guest-pill b {
+  color: var(--ds-primary);
+  font-weight: 600;
+}
+.guest-pill button {
+  flex: none;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ds-primary);
+  color: #1a1408;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.guest-pill button:hover:not(:disabled) { filter: brightness(1.08); }
+.guest-pill button:disabled { opacity: 0.6; cursor: not-allowed; }
+.guest-pill button:focus-visible { outline: 2px solid var(--ds-text1); outline-offset: 2px; }
+
+@media (max-width: 560px) {
+  .guest-pill { left: 12px; right: 12px; transform: none; justify-content: space-between; font-size: 12px; }
+}
+@media print { .guest-pill { display: none; } }

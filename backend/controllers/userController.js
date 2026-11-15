@@ -51,6 +51,7 @@ const safeUser = (user) => ({
   name: user.name,
   email: user.email,
   profilePic: user.profilePic || "",
+  isGuest: !!user.isGuest,
 });
 
 // ────────────────────────────────────────────
@@ -184,7 +185,8 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Email and password required" });
 
     const user = await User.findOne({ email }).select("+password");
-    if (!user)
+    // Guest sandboxes and the demo template can only be entered via "Continue as Guest".
+    if (!user || user.isGuest || user.isDemoTemplate)
       return res
         .status(401)
         .json({ success: false, message: "Invalid credentials" });

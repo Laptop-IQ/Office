@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema(
     // Password reset OTP
     resetOtp: String,
     resetOtpExpiry: Date,
+    // ── Guest demo ──────────────────────────────────────────────────────
+    // isGuest: temporary sandbox account created by "Continue as Guest".
+    //   It owns a private COPY of the demo data and is deleted (with all of
+    //   its data) when the guest logs out or guestExpiresAt passes.
+    // isDemoTemplate: the read-only source account that guests are cloned from.
+    isGuest: { type: Boolean, default: false, index: true },
+    guestExpiresAt: { type: Date, index: true },
+    isDemoTemplate: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import PrivateRoute from "@/components/PrivateRoute";
 import AppLoader from "@/components/AppLoader";
+import GuestBanner from "@/components/GuestBanner";
 
 // Layout Components
 import { Navbar } from "@/layout/Navbar";
@@ -113,6 +114,7 @@ function App() {
         <BrowserRouter>
           <ThemeToggle />
         <Prefetcher />
+          <GuestBanner />
           <ToastContainer
             position="top-right"
             autoClose={5000}

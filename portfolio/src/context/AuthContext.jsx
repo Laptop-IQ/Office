@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { enterGuestMode, isGuestMode, leaveGuestMode } from "../lib/guestMode";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -132,7 +133,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  // Guest demo: one click, no signup. The server creates a private copy of the demo data;
+  // the page is reloaded so the whole app starts inside the guest's own storage.
+  const guestLogin = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/user/guest`);
+      if (response.data.success) {
+        enterGuestMode(response.data.token);
+        window.location.replace("/");
+        return { success: true };
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Could not start the demo. Please try again.",
+      );
+      return { success: false };
+    }
+  };
+
+  const logout = async () => {
+    // Guest: delete the sandbox on the server, forget everything saved in this
+    // tab, and start fresh. The next guest gets a new copy of the demo data.
+    if (isGuestMode()) {
+      try {
+        await axios.delete(`${API_URL}/user/guest`, { timeout: 8000 });
+      } catch {
+        /* server also removes expired demo data by itself */
+      }
+      leaveGuestMode();
+      window.location.replace("/login");
+      return;
+    }
     localStorage.removeItem("token");
     sessionStorage.removeItem("token");
     setToken(null);
@@ -265,6 +296,8 @@ export const AuthProvider = ({ children }) => {
         verifyOTP,
         resendOTP,
         login,
+        guestLogin,
+        isGuest: isGuestMode() || !!user?.isGuest,
         logout,
         forgotPassword,
         resetPassword,
