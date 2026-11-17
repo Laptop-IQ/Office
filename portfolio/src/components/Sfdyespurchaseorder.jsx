@@ -941,23 +941,36 @@ const savePkgSettings = (cats, otherKg) => {
   }
 };
 
-// ── Saved price list (localStorage) — survives page refresh ─────────────────
+// ── Saved price list ────────────────────────────────────────────────────────
+// localStorage is only a fast cache on this device. The real copy lives on the
+// server (per user), so the uploaded price list is available on every device.
 
-const PRICELIST_KEY = "sf-po-price-list";
+const PRICELIST_KEY = "sf-po-price-list"; // per-user isolation: lib/userScopedStorage.js
+const priceListKey = () => PRICELIST_KEY;
 const DEFAULT_UPLOAD_LABEL = "Upload price list (.xlsx / .csv)";
 const loadPriceList = () => {
   try {
-    const o = JSON.parse(localStorage.getItem(PRICELIST_KEY) || "null");
+    const key = priceListKey();
+    if (!key) return null;
+    const o = JSON.parse(localStorage.getItem(key) || "null");
     return o && Array.isArray(o.products) && o.products.length > 0 ? o : null;
   } catch {
     return null;
   }
 };
-const savePriceList = (products, label) => {
+// syncedAt = server's updatedAt for this copy (empty until it reached the server)
+const savePriceList = (products, label, syncedAt = "") => {
   try {
+    const key = priceListKey();
+    if (!key) return false;
     localStorage.setItem(
-      PRICELIST_KEY,
-      JSON.stringify({ products, label, savedAt: new Date().toISOString() }),
+      key,
+      JSON.stringify({
+        products,
+        label,
+        savedAt: new Date().toISOString(),
+        syncedAt,
+      }),
     );
     return true;
   } catch {
@@ -966,11 +979,37 @@ const savePriceList = (products, label) => {
 };
 const clearPriceList = () => {
   try {
-    localStorage.removeItem(PRICELIST_KEY);
+    const key = priceListKey();
+    if (key) localStorage.removeItem(key);
   } catch {
     /* ignore */
   }
 };
+
+// ── Server sync of the price list ───────────────────────────────────────────
+const PO_PL_API = `${import.meta.env.VITE_API_URL || ""}/purchase-pricelist`;
+const poPlFetch = async (method, body) => {
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
+  if (!token) throw new Error("Not logged in");
+  const res = await fetch(PO_PL_API, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
+const fromServerProduct = (p, i) => ({
+  code: p.code || "",
+  name: p.name,
+  category: p.category || "General",
+  prices: { DP7: p.dp7 || 0, DP45: p.dp45 || 0, RSP: p.rsp || 0 },
+  _id: `imp_${i}`,
+});
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -1012,8 +1051,56 @@ function SFDyesPurchaseOrderInner() {
   const custWrapRef = useRef(null);
   const statusTimer = useRef(null);
   const copyTimer = useRef(null);
+  const plTouchedRef = useRef(false); // user uploaded/cleared before server answered
+  const orderCountRef = useRef(0);
   const tierMapRef = useRef(null);
   if (tierMapRef.current === null) tierMapRef.current = loadTierMap();
+
+  orderCountRef.current = orderItems.length;
+
+  // Sync the price list with the server so it follows the user across devices
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const server = await poPlFetch("GET");
+        if (cancelled || plTouchedRef.current) return;
+        const serverProducts = (server.products || []).map(fromServerProduct);
+        const local = loadPriceList();
+
+        if (serverProducts.length > 0) {
+          if (local?.syncedAt && local.syncedAt === server.updatedAt) return; // up to date
+          if (orderCountRef.current > 0) return; // don't swap list under an order in progress
+          const label =
+            server.label || `${serverProducts.length} products · saved list`;
+          setProducts(serverProducts);
+          setUploadedFile(true);
+          setUploadLabel(label);
+          savePriceList(serverProducts, label, server.updatedAt);
+        } else if (local) {
+          if (local.syncedAt) {
+            // it was cleared from another device
+            clearPriceList();
+            setProducts([]);
+            setUploadedFile(false);
+            setUploadLabel(DEFAULT_UPLOAD_LABEL);
+          } else {
+            // uploaded here before server sync existed → push it up once
+            const res = await poPlFetch("PUT", {
+              products: local.products,
+              label: local.label,
+            });
+            if (!cancelled) savePriceList(local.products, local.label, res.updatedAt);
+          }
+        }
+      } catch {
+        /* offline / server down — keep working from this device's copy */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Inject styles once; remove on unmount
   useEffect(() => {
@@ -1325,7 +1412,16 @@ function SFDyesPurchaseOrderInner() {
       setUploadedFile(true);
       const label = `${parsed.length} products · ${file.name}`;
       setUploadLabel(label);
+      plTouchedRef.current = true;
       const persisted = savePriceList(parsed, label);
+      let synced = false;
+      try {
+        const res = await poPlFetch("PUT", { products: parsed, label });
+        savePriceList(parsed, label, res.updatedAt);
+        synced = true;
+      } catch {
+        /* handled in the status message below */
+      }
       const note =
         sheetsUsed.length > 1
           ? ` (merged from ${sheetsUsed.length} sheets: ${sheetsUsed.join(", ")})`
@@ -1334,9 +1430,11 @@ function SFDyesPurchaseOrderInner() {
         {
           type: "success",
           msg: `${parsed.length} products loaded from ${file.name}${note}${
-            persisted
-              ? ""
-              : " — could not be saved, you will need to upload again after refresh"
+            synced
+              ? " — saved for all your devices"
+              : persisted
+                ? " — saved on this device only (could not reach the server, try uploading again later)"
+                : " — could not be saved, you will need to upload again after refresh"
           }`,
         },
         5000,
@@ -1354,20 +1452,32 @@ function SFDyesPurchaseOrderInner() {
     setConfirmDialog({ title, msg, yesLabel, onYes });
   const dismissConfirm = () => setConfirmDialog(null);
 
-  // Remove the uploaded price list (state + localStorage)
-  const doClearPriceList = () => {
+  // Remove the uploaded price list (state + this device + server)
+  const doClearPriceList = async () => {
+    plTouchedRef.current = true;
     clearPriceList(); // remove from localStorage
     setProducts([]);
     setUploadedFile(false);
     setUploadLabel(DEFAULT_UPLOAD_LABEL);
     setSearchQuery("");
     setShowSearch(false);
-    flashStatus({ type: "success", msg: "Price list cleared" }, 3000);
+    try {
+      await poPlFetch("DELETE");
+      flashStatus({ type: "success", msg: "Price list cleared" }, 3000);
+    } catch {
+      flashStatus(
+        {
+          type: "error",
+          msg: "Cleared on this device, but could not remove it from the server. It may come back on next load.",
+        },
+        6000,
+      );
+    }
   };
   const handleClearPriceList = () =>
     askConfirm({
       title: "Clear price list?",
-      msg: "The uploaded price list will be removed from this device. Items already in your order will stay, but you won't be able to search for new products until you upload a price list again.",
+      msg: "The uploaded price list will be removed from all your devices. Items already in your order will stay, but you won't be able to search for new products until you upload a price list again.",
       yesLabel: "Yes, clear it",
       onYes: doClearPriceList,
     });
@@ -2847,7 +2957,7 @@ function SFDyesPurchaseOrderInner() {
 
 // ── Error boundary: show the error on screen instead of a blank page ────────
 
-const ALL_STORAGE_KEYS = [PRICELIST_KEY, TIER_STORE_KEY, PO_STORE_KEY];
+const ALL_STORAGE_KEYS = [TIER_STORE_KEY, PO_STORE_KEY]; // price list cache is cleared via clearPriceList()
 
 class PurchaseOrderBoundary extends Component {
   state = { error: null };
@@ -2861,6 +2971,7 @@ class PurchaseOrderBoundary extends Component {
     try {
       // saved orders (SAVED_KEY) are kept on purpose
       ALL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      clearPriceList();
     } catch {
       /* ignore */
     }

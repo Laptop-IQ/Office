@@ -1,6 +1,7 @@
 import XLSX from "xlsx";
 import OverdueEntry from "../models/overdueModel.js";
 import PaymentHistory from "../models/paymentHistoryModel.js";
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // ────────────────────────────────────────────
 // SHARED HELPERS
@@ -213,9 +214,9 @@ export const getOverdues = async (req, res) => {
     const filter = { user: req.user.id, isDeleted: false };
 
     if (req.query.account)
-      filter.account = { $regex: new RegExp(req.query.account, "i") };
+      filter.account = { $regex: new RegExp(escapeRegex(req.query.account), "i") };
     if (req.query.salesman)
-      filter.salesman = { $regex: new RegExp(req.query.salesman, "i") };
+      filter.salesman = { $regex: new RegExp(escapeRegex(req.query.salesman), "i") };
 
     const docs = await OverdueEntry.find(filter).lean();
 

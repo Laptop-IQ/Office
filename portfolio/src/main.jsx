@@ -1,4 +1,5 @@
 import './lib/guestMode' // must stay first: redirects localStorage while a guest demo is active
+import './lib/userScopedStorage' // must stay second: keeps each user's local data separate
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

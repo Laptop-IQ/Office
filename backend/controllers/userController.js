@@ -6,6 +6,7 @@ import path from "path";
 import crypto from "crypto";
 import User from "../models/userModel.js";
 import StockWorkspace from "../models/stockModel.js";
+import { purgeUserData } from "../utils/guestSandbox.js";
 
 // ────────────────────────────────────────────
 // EMAIL TRANSPORTER
@@ -379,9 +380,10 @@ export const deleteAccount = async (req, res) => {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
 
+    // Wipe EVERYTHING this user owns (stock, customers, records, overdues, payments,
+    // price lists, ecofast...) before removing the account, so no orphan data stays.
+    await purgeUserData(user._id);
     await User.findByIdAndDelete(req.user.id);
-    // FIX: user delete hone par uska stock workspace orphan reh jaata tha.
-    await StockWorkspace.findOneAndDelete({ owner: req.user.id });
     res.json({ success: true, message: "Account deleted successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

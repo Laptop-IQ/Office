@@ -1,5 +1,6 @@
 import Record from "../models/Record.js";
 import ExcelJS from "exceljs";
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const DISTRIBUTOR_OPTIONS = ["Supple", "Shree Jee Traders"];
 
@@ -9,8 +10,8 @@ export const getRecords = async (req, res) => {
     const { search, area, distributor, dateFrom, dateTo } = req.query;
     const filter = { user: req.user.id };
 
-    if (area) filter.area = { $regex: area, $options: "i" };
-    if (distributor) filter.distributor = distributor;
+    if (area) filter.area = { $regex: escapeRegex(area), $options: "i" };
+    if (distributor) filter.distributor = String(distributor);
 
     if (dateFrom || dateTo) {
       filter.date = {};
@@ -20,10 +21,10 @@ export const getRecords = async (req, res) => {
 
     if (search) {
       filter.$or = [
-        { customer: { $regex: search, $options: "i" } },
-        { area: { $regex: search, $options: "i" } },
-        { distributor: { $regex: search, $options: "i" } },
-        { objective: { $regex: search, $options: "i" } },
+        { customer: { $regex: escapeRegex(search), $options: "i" } },
+        { area: { $regex: escapeRegex(search), $options: "i" } },
+        { distributor: { $regex: escapeRegex(search), $options: "i" } },
+        { objective: { $regex: escapeRegex(search), $options: "i" } },
       ];
     }
 

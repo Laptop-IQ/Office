@@ -22,6 +22,7 @@ import OverdueEntry from "../models/overdueModel.js";
 import PaymentHistory from "../models/paymentHistoryModel.js";
 import PriceListWorkspace from "../models/priceListModel.js";
 import PriceListCustomer from "../models/priceListCustomerModel.js";
+import PurchasePriceList from "../models/purchasePriceListModel.js";
 import EcofastEntry from "../models/EcofastEntry.js";
 import { seedDemoData } from "./demoSeed.js";
 
@@ -36,6 +37,7 @@ const DATA_MODELS = [
   { name: "payments", Model: PaymentHistory, field: "user" },
   { name: "priceList", Model: PriceListWorkspace, field: "owner" },
   { name: "priceListCustomers", Model: PriceListCustomer, field: "owner" },
+  { name: "purchasePriceList", Model: PurchasePriceList, field: "owner" },
   { name: "ecofast", Model: EcofastEntry, field: "user" },
 ];
 
