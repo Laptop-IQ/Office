@@ -749,6 +749,32 @@ const injectGlobalStyles = () => {
       .dsr-stat-grid.cols4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
       .dsr-sticky-actions { margin:20px 0 0; padding:0; position:static; background:none; backdrop-filter:none; }
     }
+    /* ── Records loading experience ── */
+    @keyframes dsr-rise { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
+    @keyframes dsr-pop { from{opacity:0;transform:scale(.85);} to{opacity:1;transform:none;} }
+    @keyframes dsr-wave { 0%,70%,100%{transform:translateY(0) scale(.7);opacity:.4;} 35%{transform:translateY(-5px) scale(1);opacity:1;} }
+    @keyframes dsr-prog { 0%{transform:translateX(-120%);} 100%{transform:translateX(420%);} }
+    @keyframes dsr-msg { 0%{opacity:0;transform:translateY(6px);} 14%,86%{opacity:1;transform:none;} 100%{opacity:0;transform:translateY(-6px);} }
+    @keyframes dsr-breathe { 0%,100%{transform:scaleY(.5);opacity:.6;} 50%{transform:scaleY(1);opacity:1;} }
+    .dsr-rise { animation:dsr-rise .42s cubic-bezier(0.22,1,0.36,1) both; }
+    .dsr-pop { display:inline-block; animation:dsr-pop .35s cubic-bezier(0.22,1,0.36,1) both; }
+    .dsr-reveal { animation:dsr-rise .4s cubic-bezier(0.22,1,0.36,1) both; }
+    .dsr-load-head { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:14px 16px 16px; margin-bottom:12px; border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); }
+    .dsr-wave { display:inline-flex; align-items:center; gap:5px; height:20px; flex:none; }
+    .dsr-wave i { width:8px; height:8px; border-radius:50%; background:var(--ds-primary); animation:dsr-wave 1.2s ease-in-out infinite; }
+    .dsr-wave i:nth-child(2) { animation-delay:.15s; }
+    .dsr-wave i:nth-child(3) { animation-delay:.3s; }
+    .dsr-load-txt { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .dsr-load-msg { font-size:13.5px; font-weight:600; color:var(--ds-text1); animation:dsr-msg 2.4s ease both; }
+    .dsr-load-slow { font-size:12px; color:var(--ds-text3); animation:dsr-rise .4s ease both; }
+    .dsr-load-prog { position:absolute; left:0; right:0; bottom:0; height:3px; overflow:hidden; background:color-mix(in srgb, var(--ds-primary) 14%, transparent); }
+    .dsr-load-prog i { display:block; width:28%; height:100%; border-radius:3px; background:linear-gradient(90deg,transparent,var(--ds-primary),transparent); animation:dsr-prog 1.4s cubic-bezier(0.4,0,0.2,1) infinite; }
+    .dsr-fun-b .bar i.sk { background:linear-gradient(180deg,var(--ds-sk2),var(--ds-sk1)); transform-origin:bottom; animation:dsr-breathe 1.3s ease-in-out infinite; }
+    .dsr-fun-b:disabled { cursor:default; }
+    @media (prefers-reduced-motion:reduce) {
+      .dsr-skeleton, .dsr-wave i, .dsr-load-prog i, .dsr-fun-b .bar i.sk, .dsr-load-msg { animation:none !important; }
+      .dsr-rise, .dsr-pop, .dsr-reveal, .dsr-load-slow { animation:none !important; }
+    }
     @keyframes dsr-modal-in { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
     .dsr-modal-box { animation:dsr-modal-in 0.22s cubic-bezier(0.22,1,0.36,1) both; }
     .dsr-ladder-seg { transition:background-color 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s ease; }
@@ -2914,6 +2940,169 @@ const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
   </div>
 );
 
+// ── Browser cache for the DSR page ─────────────────────────────────────────
+// Records + customers are kept in localStorage (separate per logged-in user, see
+// lib/userScopedStorage.js). The page paints from this copy instantly and refreshes
+// from the server silently in the background, so there is no loading screen after
+// the first visit.
+const DSR_CACHE_KEY = "dsr_cache_v1";
+const readDsrCache = () => {
+  try {
+    const o = JSON.parse(localStorage.getItem(DSR_CACHE_KEY) || "null");
+    return o && typeof o === "object" ? o : null;
+  } catch {
+    return null;
+  }
+};
+const writeDsrCache = (patch) => {
+  try {
+    const cur = readDsrCache() || {};
+    localStorage.setItem(
+      DSR_CACHE_KEY,
+      JSON.stringify({ ...cur, ...patch, savedAt: Date.now() }),
+    );
+  } catch {
+    /* storage full / unavailable — page still works, just without the cache */
+  }
+};
+
+// ── Records loading experience ─────────────────────────────────────────────
+// Skeleton that mirrors the real table / card layout, an animated status header
+// with rotating messages, and an honest "server is waking up" hint if it drags on.
+const LOAD_MESSAGES = [
+  "Loading records…",
+  "Fetching visit history…",
+  "Syncing customers…",
+  "Almost there…",
+];
+
+const Sk = ({ w = "100%", h = 12, r = 6, style }) => (
+  <span
+    className="dsr-skeleton"
+    style={{
+      display: "block",
+      width: w,
+      height: h,
+      borderRadius: r,
+      flex: "none",
+      ...style,
+    }}
+  />
+);
+
+const RecordsLoading = ({ view }) => {
+  const [msg, setMsg] = useState(0);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setInterval(
+      () => setMsg((n) => (n + 1) % LOAD_MESSAGES.length),
+      2400,
+    );
+    const s = setTimeout(() => setSlow(true), 8000);
+    return () => {
+      clearInterval(t);
+      clearTimeout(s);
+    };
+  }, []);
+  const rows = Array.from({ length: 6 });
+  return (
+    <div role="status" aria-live="polite" aria-busy="true">
+      <div className="dsr-load-head">
+        <span className="dsr-wave" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <div className="dsr-load-txt">
+          <span key={msg} className="dsr-load-msg">
+            {LOAD_MESSAGES[msg]}
+          </span>
+          {slow && (
+            <small className="dsr-load-slow">
+              Taking a little longer than usual — the server may be waking up.
+            </small>
+          )}
+        </div>
+        <span className="dsr-load-prog" aria-hidden="true">
+          <i />
+        </span>
+      </div>
+
+      {view === "table" ? (
+        <div className="dsr-rt-wrap" aria-hidden="true">
+          <div className="dsr-rt">
+            <div className="dsr-rt-r head">
+              <span>Customer</span>
+              <span>Date</span>
+              <span>Area</span>
+              <span>Distributor</span>
+              <span>Stage</span>
+              <span>YTD/ABP</span>
+              <span />
+            </div>
+            {rows.map((_, n) => (
+              <div
+                key={n}
+                className="dsr-rt-r dsr-rise"
+                style={{ animationDelay: `${n * 70}ms` }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Sk w={30} h={30} r={15} />
+                  <Sk w={`${52 + ((n * 17) % 36)}%`} h={13} />
+                </span>
+                <Sk w="72%" />
+                <Sk w={`${55 + ((n * 11) % 30)}%`} />
+                <Sk w={`${45 + ((n * 19) % 40)}%`} />
+                <Sk w={28} h={22} r={11} />
+                <Sk w={38} />
+                <span />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="dsr-rc-grid" aria-hidden="true">
+          {rows.map((_, n) => (
+            <article
+              key={n}
+              className="dsr-rc dsr-rise"
+              style={{ animationDelay: `${n * 80}ms` }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Sk w={42} h={42} r={21} />
+                <div style={{ flex: 1, display: "grid", gap: 8 }}>
+                  <Sk w={`${48 + ((n * 13) % 30)}%`} h={14} />
+                  <Sk w="34%" h={11} />
+                </div>
+                <Sk w={46} h={22} r={11} />
+              </div>
+              <div style={{ display: "flex", gap: 8, margin: "14px 0 12px" }}>
+                <Sk w={70} h={22} r={11} />
+                <Sk w={90} h={22} r={11} />
+              </div>
+              <Sk h={8} r={4} style={{ marginBottom: 14 }} />
+              <div style={{ display: "grid", gap: 8 }}>
+                <Sk w="92%" />
+                <Sk w="64%" />
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginTop: 16,
+                }}
+              >
+                <Sk w={84} h={26} r={8} />
+                <Sk w={140} h={26} r={8} />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RecordsInsights = ({
   latest,
   todayCount,
@@ -2923,6 +3112,7 @@ const RecordsInsights = ({
   stage,
   onStage,
   topArea,
+  loading = false,
 }) => {
   const counts = {};
   latest.forEach((r) => {
@@ -2931,11 +3121,11 @@ const RecordsInsights = ({
   });
   const max = Math.max(1, ...Object.values(counts));
   return (
-    <div className="dsr-ins">
+    <div className="dsr-ins" aria-busy={loading}>
       <div className="dsr-ins-card funnel">
         <div className="dsr-ins-t">Pipeline · customers by stage</div>
         <div className="dsr-fun" role="group" aria-label="Filter by stage">
-          {PROJECT_STAGE_OPTIONS.map((st) => {
+          {PROJECT_STAGE_OPTIONS.map((st, idx) => {
             const l = st[0];
             const n = counts[l] || 0;
             const col = stageColor(st).border;
@@ -2947,10 +3137,27 @@ const RecordsInsights = ({
                 onClick={() => onStage(stage === l ? "" : l)}
                 title={st}
                 aria-pressed={stage === l}
+                disabled={loading}
               >
-                <span className="n">{n}</span>
+                <span className="n">
+                  {loading ? (
+                    <Sk w={14} h={11} r={4} style={{ margin: "0 auto" }} />
+                  ) : (
+                    <span className="dsr-pop">{n}</span>
+                  )}
+                </span>
                 <span className="bar">
-                  <i style={{ height: `${Math.max(6, (n / max) * 100)}%` }} />
+                  {loading ? (
+                    <i
+                      className="sk"
+                      style={{
+                        height: `${[45, 75, 55, 90, 50, 70, 40, 60][idx % 8]}%`,
+                        animationDelay: `${idx * 90}ms`,
+                      }}
+                    />
+                  ) : (
+                    <i style={{ height: `${Math.max(6, (n / max) * 100)}%` }} />
+                  )}
                 </span>
                 <span className="l">{l}</span>
               </button>
@@ -2962,13 +3169,18 @@ const RecordsInsights = ({
         className={`dsr-ins-card stat${followOnly ? " on" : ""}`}
         onClick={onFollow}
         aria-pressed={followOnly}
+        disabled={loading}
       >
         <div className="dsr-ins-t">Follow-ups due</div>
         <div
           className="dsr-ins-v dsr-mono"
           style={{ color: followCount ? DS.warning : DS.success }}
         >
-          {followCount}
+          {loading ? (
+            <Sk w={56} h={30} r={8} />
+          ) : (
+            <span className="dsr-pop">{followCount}</span>
+          )}
         </div>
         <div className="dsr-ins-s">
           no visit in 14+ days · {followOnly ? "showing" : "tap to filter"}
@@ -2977,10 +3189,20 @@ const RecordsInsights = ({
       <div className="dsr-ins-card stat">
         <div className="dsr-ins-t">Visits today</div>
         <div className="dsr-ins-v dsr-mono" style={{ color: DS.text1 }}>
-          {todayCount}
+          {loading ? (
+            <Sk w={56} h={30} r={8} />
+          ) : (
+            <span className="dsr-pop">{todayCount}</span>
+          )}
         </div>
         <div className="dsr-ins-s">
-          {topArea ? `Top area: ${topArea}` : "no data yet"}
+          {loading ? (
+            <Sk w="62%" h={12} style={{ marginTop: 2 }} />
+          ) : topArea ? (
+            `Top area: ${topArea}`
+          ) : (
+            "no data yet"
+          )}
         </div>
       </div>
     </div>
@@ -3039,7 +3261,21 @@ const RecordsToolbar = (p) => {
             className={`dsr-filter-chip${p.preset === id ? " active" : ""}`}
             onClick={() => p.setPreset(id)}
           >
-            {label} <span className="cnt">{p.counts[id]}</span>
+            {label}{" "}
+            {p.loading ? (
+              <span
+                className="cnt dsr-skeleton"
+                style={{
+                  display: "inline-block",
+                  width: 16,
+                  height: 10,
+                  borderRadius: 5,
+                  verticalAlign: "middle",
+                }}
+              />
+            ) : (
+              <span className="cnt">{p.counts[id]}</span>
+            )}
           </button>
         ))}
         <button
@@ -7566,8 +7802,20 @@ const DailySalesReport = () => {
     injectGlobalStyles();
   }, []);
   const [activeTab, setActiveTab] = useState("records");
-  const [records, setRecords] = useState([]);
-  const [customers, setCustomers] = useState({});
+  const [cached] = useState(readDsrCache); // read once, before first paint
+  const [records, setRecords] = useState(() =>
+    Array.isArray(cached?.records) ? cached.records : [],
+  );
+  const [customers, setCustomers] = useState(() =>
+    cached?.customers && typeof cached.customers === "object"
+      ? cached.customers
+      : {},
+  );
+  // only write to the cache once we hold real data (cached or freshly fetched)
+  const recordsCacheOk = useRef(Array.isArray(cached?.records));
+  const customersCacheOk = useRef(
+    !!cached?.customers && typeof cached.customers === "object",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [newRecord, setNewRecord] = useState({ ...EMPTY_RECORD });
   const [loading, setLoading] = useState(false);
@@ -7609,8 +7857,12 @@ const DailySalesReport = () => {
   const [visibleCount, setVisibleCount] = useState(30);
   const searchRef = useRef(null);
   const [customerQuery, setCustomerQuery] = useState("");
-  const [recordsLoaded, setRecordsLoaded] = useState(false);
-  const [customersLoaded, setCustomersLoaded] = useState(false);
+  const [recordsLoaded, setRecordsLoaded] = useState(recordsCacheOk.current);
+  const [customersLoaded, setCustomersLoaded] = useState(
+    customersCacheOk.current,
+  );
+  // true from first paint until the first fetch finishes (no "No records" flash)
+  const recordsPending = loading || !recordsLoaded;
 
   // ── Routing: popups ab pages hain ──────────────────────────────────────
   const navigate = useNavigate();
@@ -7653,27 +7905,43 @@ const DailySalesReport = () => {
   );
 
   const loadRecords = useCallback(async () => {
+    const hadCache = recordsCacheOk.current;
     try {
-      setLoading(true);
+      if (!hadCache) setLoading(true); // saved copy on screen → refresh silently
       const res = await apiFetch("/api/dsr/records");
+      recordsCacheOk.current = true;
       setRecords(res.data || []);
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(
+        hadCache
+          ? "Couldn't refresh — showing your saved data"
+          : err.message,
+        "error",
+      );
     } finally {
       setLoading(false);
       setRecordsLoaded(true);
     }
   }, [showToast]);
   const loadCustomers = useCallback(async () => {
+    const hadCache = customersCacheOk.current;
     try {
       const res = await apiFetch("/api/dsr/customers");
+      customersCacheOk.current = true;
       setCustomers(res.data || {});
     } catch (err) {
-      showToast(err.message, "error");
+      if (!hadCache) showToast(err.message, "error");
     } finally {
       setCustomersLoaded(true);
     }
   }, [showToast]);
+  // keep the browser copy in step with every refresh / add / edit / delete
+  useEffect(() => {
+    if (recordsCacheOk.current) writeDsrCache({ records });
+  }, [records]);
+  useEffect(() => {
+    if (customersCacheOk.current) writeDsrCache({ customers });
+  }, [customers]);
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
@@ -8700,8 +8968,10 @@ const DailySalesReport = () => {
               stage={stageFilter}
               onStage={setStageFilter}
               topArea={topArea}
+              loading={recordsPending}
             />
             <RecordsToolbar
+              loading={recordsPending}
               searchRef={searchRef}
               q={searchQuery}
               setQ={setSearchQuery}
@@ -8733,19 +9003,8 @@ const DailySalesReport = () => {
                 <ExportDropdown records={filteredRecords} onExport={doExport} />
               }
             />
-            {loading ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "56px 16px",
-                  color: DS.text2,
-                }}
-              >
-                <div className="dsr-spinner" />
-                <div style={{ fontSize: 13, fontWeight: 500 }}>
-                  Loading records…
-                </div>
-              </div>
+            {recordsPending ? (
+              <RecordsLoading view={viewMode} />
             ) : filteredRecords.length === 0 ? (
               <div
                 style={{
@@ -8786,7 +9045,7 @@ const DailySalesReport = () => {
                 )}
               </div>
             ) : (
-              <>
+              <div className="dsr-reveal">
                 {viewMode === "table" ? (
                   <RecordRows
                     rows={filteredRecords.slice(0, visibleCount)}
@@ -8817,7 +9076,7 @@ const DailySalesReport = () => {
                     Show 30 more · {filteredRecords.length - visibleCount} left
                   </button>
                 )}
-              </>
+              </div>
             )}
           </>
         )}
