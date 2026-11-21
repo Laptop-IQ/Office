@@ -519,7 +519,7 @@ html[data-theme="light"] .pl-check.on { background: #171717; border-color: #1717
 .pl-dd-btn { width: 100%; height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; border: 1px solid var(--ds-border); border-radius: 8px; background: color-mix(in srgb, var(--wash) 4%, transparent); color: var(--ds-text1); font-size: 13px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .pl-dd-btn:hover { border-color: var(--ds-borderHi); }
 .pl-dd.open .pl-dd-btn { border-color: var(--ds-primary); box-shadow: 0 0 0 1px var(--ds-primary); }
-.pl-dd-menu { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 60; background: var(--ds-card); border: 1px solid var(--ds-borderHi); border-radius: 10px; padding: 5px; box-shadow: 0 14px 34px rgba(0,0,0,.38); animation: pl-pop .12s ease-out; }
+.pl-dd-menu { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 60; max-height: min(280px, 50vh); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; background: var(--ds-card); border: 1px solid var(--ds-borderHi); border-radius: 10px; padding: 5px; box-shadow: 0 14px 34px rgba(0,0,0,.38); animation: pl-pop .12s ease-out; }
 .pl-dd-opt { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--ds-text2); font-size: 13px; text-align: left; cursor: pointer; }
 .pl-dd-opt.act { background: var(--ds-surface); color: var(--ds-text1); }
 .pl-dd-opt.sel { color: var(--ds-primary); font-weight: 500; }
@@ -3789,7 +3789,7 @@ function CustomerField({
         <div
           className="pl-dd-menu"
           role="listbox"
-          style={{ top: "calc(100% + 4px)", maxHeight: 240, overflowY: "auto" }}
+          style={{ top: "calc(100% + 4px)", maxHeight: "min(240px, 50vh)", overflowY: "auto" }}
         >
           {list.map((c) => (
             <div

@@ -2304,11 +2304,18 @@ const CustomSelect = ({
   useLayoutEffect(() => {
     if (!open) return undefined;
     place();
+    // Re-position when the page / a parent scrolls — but NOT when the menu's own
+    // list is scrolled (capture-phase "scroll" also fires for the menu itself; reacting
+    // to it re-rendered the menu on every touch-scroll frame and fought the scrolling).
+    const onScroll = (e) => {
+      if (menuRef.current && menuRef.current.contains(e.target)) return;
+      place();
+    };
     window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open, place]);
 
@@ -2319,20 +2326,31 @@ const CustomSelect = ({
       if (menuRef.current?.contains(e.target)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    document.addEventListener("pointerdown", h);
+    return () => document.removeEventListener("pointerdown", h);
   }, [open]);
 
-  // keep the highlighted option visible
+  // Keep the highlighted option visible — only when the menu opens or the user moves
+  // with the keyboard. Never on hover / touch-scroll / re-position, otherwise the list
+  // snaps back to the highlighted option and cannot be scrolled on phones.
+  const revealRef = useRef(false);
+  const hasPos = !!pos;
   useEffect(() => {
-    if (!open || hi < 0) return;
-    menuRef.current
-      ?.querySelector(`[data-i="${hi}"]`)
-      ?.scrollIntoView({ block: "nearest" });
-  }, [open, hi, pos]);
+    if (!open || hi < 0 || !hasPos || !revealRef.current) return;
+    revealRef.current = false;
+    const m = menuRef.current;
+    const el = m?.querySelector(`[data-i="${hi}"]`);
+    if (!m || !el) return;
+    const top = el.offsetTop;
+    const bottom = top + el.offsetHeight;
+    if (top < m.scrollTop) m.scrollTop = Math.max(0, top - 5);
+    else if (bottom > m.scrollTop + m.clientHeight)
+      m.scrollTop = bottom - m.clientHeight + 5;
+  }, [open, hi, hasPos]);
 
   const openMenu = () => {
     if (disabled) return;
+    revealRef.current = true;
     setHi(selIdx >= 0 ? selIdx : options.findIndex(canPick));
     setOpen(true);
   };
@@ -2350,6 +2368,7 @@ const CustomSelect = ({
       i = (i + dir + options.length) % options.length;
       if (canPick(options[i])) break;
     }
+    revealRef.current = true;
     setHi(i);
   };
 
@@ -2374,11 +2393,13 @@ const CustomSelect = ({
       move(-1);
     } else if (e.key === "Home") {
       e.preventDefault();
+      revealRef.current = true;
       setHi(options.findIndex(canPick));
     } else if (e.key === "End") {
       e.preventDefault();
       for (let i = options.length - 1; i >= 0; i--)
         if (canPick(options[i])) {
+          revealRef.current = true;
           setHi(i);
           break;
         }
@@ -2464,6 +2485,9 @@ const CustomSelect = ({
               padding: 5,
               maxHeight: pos.maxH,
               overflowY: "auto",
+              overscrollBehavior: "contain", // don't scroll the page behind at list end
+              WebkitOverflowScrolling: "touch",
+              touchAction: "pan-y",
               boxShadow: "var(--ds-shadow-pop)",
               scrollbarWidth: "thin",
               scrollbarColor: `${DS.border} transparent`,

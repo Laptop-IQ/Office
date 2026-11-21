@@ -324,7 +324,7 @@ const SCREEN_CSS = `
 .po-dropdown {
   position: absolute; z-index: 100; top: calc(100% + 4px); left: 0; right: 0;
   background: var(--po-surface); border: 1px solid var(--po-line2); border-radius: 12px;
-  overflow: hidden auto; max-height: 320px; box-shadow: 0 24px 64px rgba(0,0,0,.45);
+  overflow: hidden auto; max-height: min(320px, 55vh); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; box-shadow: 0 24px 64px rgba(0,0,0,.45);
 }
 .po-dd-head { padding: 7px 12px; border-bottom: 1px solid var(--po-line); display: flex; justify-content: space-between; position: sticky; top: 0; background: var(--po-surface); font-size: 10px; color: var(--po-dim); }
 .po-dd-empty { padding: 18px 16px; text-align: center; color: var(--po-dim); font-size: 13px; }
