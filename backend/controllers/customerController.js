@@ -1,4 +1,5 @@
 import Customer from "../models/Customer.js";
+import { KEY_CUSTOMER } from "../constants/keyCustomer.js";
 
 const CONTACT_FIELDS = [
   "contactPerson",
@@ -51,6 +52,8 @@ const toClient = (c) => ({
   address: c.address || "",
   gstin: c.gstin || "",
   notes: c.notes || "",
+  isKey: !!c.isKey,
+  keyVisitDays: c.keyVisitDays || KEY_CUSTOMER.DEFAULT_VISIT_DAYS,
 });
 
 const validationMessage = (err) =>

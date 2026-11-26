@@ -1,0 +1,35 @@
+/* features/dsr/dsr-theme.css
+   Maps the DSR design tokens (CSS variables from theme.css, switched per light/dark theme)
+   to Tailwind colour utilities:  bg-ds-card · text-ds-text1 · border-ds-border · …
+   `inline` = utilities reference the variable directly, so theme switching keeps working.
+   Imported from index.css (must live in the same Tailwind entry to generate utilities). */
+@theme inline {
+  --color-ds-bg: var(--ds-bg);
+  --color-ds-sidebar: var(--ds-sidebar);
+  --color-ds-card: var(--ds-card);
+  --color-ds-surface: var(--ds-surface);
+  --color-ds-border: var(--ds-border);
+  --color-ds-border-hi: var(--ds-borderHi);
+  --color-ds-primary: var(--ds-primary);
+  --color-ds-primary-glow: var(--ds-primaryGlow);
+  --color-ds-primary-dim: var(--ds-primaryDim);
+  --color-ds-gold: var(--ds-gold);
+  --color-ds-gold-glow: var(--ds-goldGlow);
+  --color-ds-gold-dim: var(--ds-goldDim);
+  --color-ds-text1: var(--ds-text1);
+  --color-ds-text2: var(--ds-text2);
+  --color-ds-text3: var(--ds-text3);
+  --color-ds-success: var(--ds-success);
+  --color-ds-danger: var(--ds-danger);
+  --color-ds-warning: var(--ds-warning);
+  --color-ds-amber: var(--ds-amber);
+  --color-ds-info: var(--ds-info);
+  --color-ds-purple: var(--ds-purple);
+  --color-ds-glass-bg: var(--ds-glass-bg);
+  --color-ds-glass-border: var(--ds-glass-border);
+  --color-ds-pagebar: var(--ds-pagebar);
+  --color-ds-banner: var(--ds-banner);
+  --color-ds-sidebar-end: var(--ds-sidebarEnd);
+  --color-ds-sk1: var(--ds-sk1);
+  --color-ds-sk2: var(--ds-sk2);
+}

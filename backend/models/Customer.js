@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { KEY_CUSTOMER } from "../constants/keyCustomer.js";
 
 const customerSchema = new mongoose.Schema(
   {
@@ -67,6 +68,16 @@ const customerSchema = new mongoose.Schema(
       ],
     },
     notes: { type: String, trim: true, default: "" },
+
+    // ── Key customer (priority account) ─────────────────────────────────────
+    isKey: { type: Boolean, default: false },
+    // how often a key customer should be visited (days)
+    keyVisitDays: {
+      type: Number,
+      default: KEY_CUSTOMER.DEFAULT_VISIT_DAYS,
+      min: KEY_CUSTOMER.MIN_VISIT_DAYS,
+      max: KEY_CUSTOMER.MAX_VISIT_DAYS,
+    },
   },
   { timestamps: true },
 );

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./features/dsr/dsr-theme.css";
 
 @theme {
   --color-background: #000621;

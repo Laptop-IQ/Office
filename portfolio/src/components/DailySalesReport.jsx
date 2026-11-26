@@ -9,409 +9,48 @@ import React, {
 import { createPortal } from "react-dom";
 import { XLSX } from "@/lib/xlsx";
 import { useNavigate, useLocation } from "react-router-dom";
-
-const API = import.meta.env.VITE_API_BASE_URL;
-
-const DS = {
-  bg: "var(--ds-bg)",
-  sidebar: "var(--ds-sidebar)",
-  card: "var(--ds-card)",
-  surface: "var(--ds-surface)",
-  border: "var(--ds-border)",
-  borderHi: "var(--ds-borderHi)",
-  primary: "var(--ds-primary)",
-  primaryGlow: "var(--ds-primaryGlow)",
-  primaryDim: "var(--ds-primaryDim)",
-  gold: "var(--ds-gold)",
-  goldGlow: "var(--ds-goldGlow)",
-  goldDim: "var(--ds-goldDim)",
-  text1: "var(--ds-text1)",
-  text2: "var(--ds-text2)",
-  text3: "var(--ds-text3)",
-  success: "var(--ds-success)",
-  danger: "var(--ds-danger)",
-  warning: "var(--ds-warning)",
-  amber: "var(--ds-amber)",
-  info: "var(--ds-info)",
-  purple: "var(--ds-purple)",
-};
+import "@/features/dsr/dsr.css";
+import {
+  API,
+  BASE,
+  CUSTOMER_XLSX_COLS,
+  DS,
+  INSIGHT_KINDS,
+  IS,
+  Icon,
+  PROJECT_STAGE_OPTIONS,
+  PageShell,
+  ROUTES,
+  SectionCard,
+  StageLadder,
+  XL_HEAD_STYLE,
+  apiFetch,
+  cleanMobile,
+  daysSince,
+  downloadBlob,
+  exportCustomersXlsx,
+  fmtDate,
+  fmtL,
+  fmtMobile,
+  getInitials,
+  getToken,
+  isValidMobile,
+  parseRoute,
+  stageColor,
+  styleSheet,
+  toNum,
+} from "@/features/dsr/shared";
+import {
+  KeyCustomersPanel,
+  KeyViewSwitch,
+  KeyStarButton,
+  useKeyCustomers,
+  countKeyCustomers,
+  pickKeyFields,
+  mergeKeyFields,
+} from "@/features/keyCustomers";
 
 const DISTRIBUTOR_OPTIONS = ["Supple", "Shree Jee Traders"];
-
-const PROJECT_STAGE_OPTIONS = [
-  "A. Promotion Complete",
-  "B. Lab Trials Complete",
-  "C. P R Enhanced",
-  "D. Bulk Trials Complete",
-  "E. Trial Report to Customer with Highlights in body of mail",
-  "F. Commercials Conveyed to Technical DMU",
-  "G. Proposal & Final Meet",
-  "H. Products Regularized",
-];
-
-const STAGE_COLOR = {
-  A: {
-    bg: "var(--st-A-bg)",
-    text: "var(--st-A-text)",
-    border: "var(--ds-primary)",
-  },
-  B: {
-    bg: "var(--st-B-bg)",
-    text: "var(--st-B-text)",
-    border: "var(--ds-primary)",
-  },
-  C: {
-    bg: "var(--st-C-bg)",
-    text: "var(--st-C-text)",
-    border: "var(--ds-primary)",
-  },
-  D: {
-    bg: "var(--st-D-bg)",
-    text: "var(--st-D-text)",
-    border: "var(--ds-primary)",
-  },
-  E: {
-    bg: "var(--st-E-bg)",
-    text: "var(--st-E-text)",
-    border: "var(--ds-primary)",
-  },
-  F: {
-    bg: "var(--st-F-bg)",
-    text: "var(--st-F-text)",
-    border: "var(--ds-primary)",
-  },
-  G: {
-    bg: "var(--st-G-bg)",
-    text: "var(--st-G-text)",
-    border: "var(--ds-primary)",
-  },
-  H: {
-    bg: "var(--st-H-bg)",
-    text: "var(--st-H-text)",
-    border: "var(--ds-success)",
-  },
-};
-
-const stageColor = (stage) => {
-  if (!stage) return { bg: DS.surface, text: DS.text3, border: DS.border };
-  const letter = stage.trim()[0]?.toUpperCase();
-  return (
-    STAGE_COLOR[letter] || { bg: DS.surface, text: DS.text3, border: DS.border }
-  );
-};
-
-const STAGE_LETTERS = PROJECT_STAGE_OPTIONS.map((s) => s[0]);
-
-// SIGNATURE: Stage Ladder with urgency glow on filled segments
-const StageLadder = ({ stage, size = "md" }) => {
-  const letter = stage ? stage.trim()[0]?.toUpperCase() : null;
-  const idx = letter ? STAGE_LETTERS.indexOf(letter) : -1;
-  const sc = stageColor(stage);
-  const segW = size === "sm" ? 6 : 9;
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        minWidth: 0,
-      }}
-      title={stage || "No stage set"}
-    >
-      <div
-        style={{ display: "flex", gap: size === "sm" ? 2 : 3, flexShrink: 0 }}
-      >
-        {STAGE_LETTERS.map((l, i) => (
-          <div
-            key={l}
-            className="dsr-ladder-seg"
-            style={{
-              width: segW,
-              height: segW,
-              borderRadius: 2,
-              background: i <= idx ? sc.border : DS.border,
-              boxShadow:
-                i <= idx
-                  ? `0 0 7px color-mix(in srgb, ${sc.border} 73.3%, transparent), 0 0 2px ${sc.border}`
-                  : "none",
-            }}
-          />
-        ))}
-      </div>
-      <span
-        style={{
-          fontSize: size === "sm" ? 9 : 10,
-          fontWeight: 600,
-          color: sc.text,
-          flexShrink: 0,
-        }}
-        className="dsr-mono"
-      >
-        {letter ? `${letter}/${STAGE_LETTERS.length}` : "—"}
-      </span>
-    </div>
-  );
-};
-
-const Icon = ({ name, size = 16, strokeWidth = 1.8, style, className }) => {
-  const c = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    style: { display: "block", flexShrink: 0, ...style },
-    className,
-  };
-  switch (name) {
-    case "records":
-      return (
-        <svg {...c}>
-          <rect x="5" y="4" width="14" height="17" rx="2" />
-          <rect x="9" y="2.2" width="6" height="3.4" rx="1" />
-          <line x1="8" y1="11.5" x2="16" y2="11.5" />
-          <line x1="8" y1="15.5" x2="13.5" y2="15.5" />
-        </svg>
-      );
-    case "addRecord":
-      return (
-        <svg {...c}>
-          <circle cx="12" cy="12" r="9" />
-          <line x1="12" y1="8" x2="12" y2="16" />
-          <line x1="8" y1="12" x2="16" y2="12" />
-        </svg>
-      );
-    case "store":
-      return (
-        <svg {...c}>
-          <path d="M4 10.5 12 4l8 6.5" />
-          <path d="M5.5 10.5v9h13v-9" />
-          <path d="M9.5 19.5v-5.5h5v5.5" />
-        </svg>
-      );
-    case "trending":
-      return (
-        <svg {...c}>
-          <polyline points="4,16 9.5,10.5 13.5,14.5 20,8" />
-          <polyline points="14.5,8 20,8 20,13.5" />
-        </svg>
-      );
-    case "home":
-      return (
-        <svg {...c}>
-          <path d="M4 11.5 12 4.5l8 7" />
-          <path d="M6 10v9.5h12V10" />
-        </svg>
-      );
-    case "search":
-      return (
-        <svg {...c}>
-          <circle cx="11" cy="11" r="6.5" />
-          <line x1="15.8" y1="15.8" x2="20.5" y2="20.5" />
-        </svg>
-      );
-    case "trash":
-      return (
-        <svg {...c}>
-          <line x1="5" y1="7" x2="19" y2="7" />
-          <path d="M9.5 7V4.8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V7" />
-          <path d="M7.5 7l1 12.3a1 1 0 0 0 1 .9h5a1 1 0 0 0 1-.9L16.5 7" />
-        </svg>
-      );
-    case "edit":
-      return (
-        <svg {...c}>
-          <path d="M14 5.5 18.5 10 8 20.5 3.5 21.5 4.5 17Z" />
-          <line x1="12.3" y1="7.2" x2="16.8" y2="11.7" />
-        </svg>
-      );
-    case "check":
-      return (
-        <svg {...c}>
-          <polyline points="4,12.5 9,17.5 20,6" />
-        </svg>
-      );
-    case "close":
-      return (
-        <svg {...c}>
-          <line x1="6" y1="6" x2="18" y2="18" />
-          <line x1="18" y1="6" x2="6" y2="18" />
-        </svg>
-      );
-    case "wallet":
-      return (
-        <svg {...c}>
-          <rect x="3" y="6.5" width="18" height="12.5" rx="2" />
-          <path d="M3 10.5h18" />
-          <circle
-            cx="16.5"
-            cy="14.5"
-            r="1.1"
-            fill="currentColor"
-            stroke="none"
-          />
-        </svg>
-      );
-    case "calendar":
-      return (
-        <svg {...c}>
-          <rect x="4" y="5" width="16" height="15.5" rx="2" />
-          <line x1="4" y1="9.5" x2="20" y2="9.5" />
-          <line x1="8" y1="3" x2="8" y2="6.5" />
-          <line x1="16" y1="3" x2="16" y2="6.5" />
-        </svg>
-      );
-    case "clock":
-      return (
-        <svg {...c}>
-          <circle cx="12" cy="12" r="8.5" />
-          <polyline points="12,7.5 12,12.3 15.3,14.3" />
-        </svg>
-      );
-    case "download":
-      return (
-        <svg {...c}>
-          <path d="M12 4v11.5" />
-          <polyline points="7,11.5 12,16.5 17,11.5" />
-          <line x1="5" y1="20" x2="19" y2="20" />
-        </svg>
-      );
-    case "chevronDown":
-      return (
-        <svg {...c}>
-          <polyline points="6,9 12,15.5 18,9" />
-        </svg>
-      );
-    case "chevronUp":
-      return (
-        <svg {...c}>
-          <polyline points="6,15.5 12,9 18,15.5" />
-        </svg>
-      );
-    case "alert":
-      return (
-        <svg {...c}>
-          <path d="M12 3 22 20H2Z" />
-          <line x1="12" y1="10" x2="12" y2="15" />
-          <circle cx="12" cy="17.7" r="0.6" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "sparkle":
-      return (
-        <svg {...c} stroke="none" fill="currentColor">
-          <path d="M12 2 13.8 9.2 21 11 13.8 12.8 12 20 10.2 12.8 3 11 10.2 9.2Z" />
-        </svg>
-      );
-    case "pin":
-      return (
-        <svg {...c}>
-          <circle cx="12" cy="10" r="4.2" />
-          <path d="M8.3 13 12 21l3.7-8" />
-        </svg>
-      );
-    case "inbox":
-      return (
-        <svg {...c}>
-          <path d="M4 12.5h4.2l1.8 2.7h4l1.8-2.7H20" />
-          <path d="M5 6.5h14L20.3 12.5v5.5a1 1 0 0 1-1 1H4.7a1 1 0 0 1-1-1v-5.5Z" />
-        </svg>
-      );
-    case "sheet":
-      return (
-        <svg {...c}>
-          <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-          <line x1="9" y1="13.5" x2="15" y2="19" />
-          <line x1="15" y1="13.5" x2="9" y2="19" />
-        </svg>
-      );
-    case "back":
-      return (
-        <svg {...c}>
-          <line x1="19" y1="12" x2="5.5" y2="12" />
-          <polyline points="11,6.5 5.5,12 11,17.5" />
-        </svg>
-      );
-    case "upload":
-      return (
-        <svg {...c}>
-          <path d="M12 16.5V5" />
-          <polyline points="7.5,9.5 12,5 16.5,9.5" />
-          <path d="M5 16.5v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" />
-        </svg>
-      );
-    case "arrowUp":
-      return (
-        <svg {...c}>
-          <line x1="12" y1="19" x2="12" y2="6" />
-          <polyline points="6.5,11.5 12,6 17.5,11.5" />
-        </svg>
-      );
-    case "refresh":
-      return (
-        <svg {...c}>
-          <path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3" />
-          <polyline points="18,3.5 18,7 14.5,7" />
-          <polyline points="6,20.5 6,17 9.5,17" />
-        </svg>
-      );
-    case "users":
-      return (
-        <svg {...c}>
-          <circle cx="9.5" cy="8.5" r="3" />
-          <path d="M3.5 19v-1.5a4 4 0 014-4h4a4 4 0 014 4V19" />
-          <circle cx="17" cy="7.5" r="2.4" />
-          <path d="M20.5 19v-1.5a3.6 3.6 0 00-2.4-3.4" />
-        </svg>
-      );
-    case "lightbulb":
-      return (
-        <svg {...c}>
-          <path d="M9 18h6" />
-          <path d="M10 21h4" />
-          <path d="M12 3a6 6 0 00-3.5 10.9c.6.4 1 1.2 1 2.1h5c0-.9.4-1.7 1-2.1A6 6 0 0012 3z" />
-        </svg>
-      );
-    case "phone":
-      return (
-        <svg {...c}>
-          <path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" />
-        </svg>
-      );
-    case "whatsapp":
-      return (
-        <svg {...c}>
-          <path d="M20 11.5a8 8 0 01-11.8 7L4 20l1.6-4.1A8 8 0 1120 11.5z" />
-          <path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-.8.8a3.5 3.5 0 01-1.5-1.5l.8-.8-1-2L9 9.5z" />
-        </svg>
-      );
-    case "mail":
-      return (
-        <svg {...c}>
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="M3.5 6.5l8.5 6.5 8.5-6.5" />
-        </svg>
-      );
-    case "user":
-      return (
-        <svg {...c}>
-          <circle cx="12" cy="8" r="3.6" />
-          <path d="M5 20v-1a5 5 0 015-5h4a5 5 0 015 5v1" />
-        </svg>
-      );
-    case "copy":
-      return (
-        <svg {...c}>
-          <rect x="9" y="9" width="11" height="11" rx="2" />
-          <path d="M5 15V6a2 2 0 012-2h9" />
-        </svg>
-      );
-    default:
-      return null;
-  }
-};
 
 const EMPTY_RECORD = {
   date: "",
@@ -458,17 +97,9 @@ const CONTACT_FIELDS = [
 ];
 const pickContact = (o) =>
   Object.fromEntries(CONTACT_FIELDS.map((k) => [k, o?.[k] ?? ""]));
-// "+91 98765 43210" -> "9876543210"
-const cleanMobile = (v) =>
-  String(v ?? "")
-    .replace(/\D/g, "")
-    .replace(/^(91|0)(?=\d{10}$)/, "")
-    .slice(0, 10);
-const isValidMobile = (v) => /^[6-9]\d{9}$/.test(v || "");
 const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
 const isValidGSTIN = (v) =>
   /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(v || "");
-const fmtMobile = (v) => (v ? `+91 ${v.slice(0, 5)} ${v.slice(5)}` : "");
 const DESIGNATION_SUGGESTIONS = [
   "Owner",
   "Partner",
@@ -479,44 +110,10 @@ const DESIGNATION_SUGGESTIONS = [
   "Production Head",
   "Accountant",
 ];
-const getToken = () => localStorage.getItem("token") || "";
-const apiFetch = async (path, options = {}) => {
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
-      ...(options.headers || {}),
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Request failed");
-  return data;
-};
-const toNum = (v) => {
-  if (v === "" || v === undefined || v === null) return 0;
-  const n = parseFloat(v);
-  return isNaN(n) ? 0 : n;
-};
-const getInitials = (name) =>
-  name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 const pctColor = (pct) => {
   if (pct >= 80) return DS.success;
   if (pct >= 60) return DS.amber;
   return DS.info;
-};
-const fmtDate = (d) => {
-  if (!d) return "";
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 };
 const inRange = (dateStr, start, end) => {
   if (!dateStr) return false;
@@ -524,362 +121,15 @@ const inRange = (dateStr, start, end) => {
   return d >= start && d <= end;
 };
 
-const injectGlobalStyles = () => {
-  if (document.getElementById("dsr-global-styles")) return;
-  const style = document.createElement("style");
-  style.id = "dsr-global-styles";
-  if (!document.getElementById("dsr-fonts")) {
-    // non-render-blocking font stylesheet (was a CSS @import)
-    const fl = document.createElement("link");
-    fl.id = "dsr-fonts";
-    fl.rel = "stylesheet";
-    fl.href =
-      "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap";
-    document.head.appendChild(fl);
-  }
-  style.textContent = `
-    *, *::before, *::after { box-sizing: border-box; }
-    .dsr-layout, .dsr-layout input, .dsr-layout select, .dsr-layout button, .dsr-layout textarea,
-    .dsr-pages, .dsr-pages input, .dsr-pages select, .dsr-pages button, .dsr-pages textarea {
-      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    .dsr-mono { font-family: 'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace; font-feature-settings:"tnum" 1,"zero" 1; letter-spacing:-0.01em; }
-    .dsr-layout ::selection { background:rgba(212,175,106,0.28); color:var(--ds-text1); }
-    .dsr-layout button:focus-visible,.dsr-layout input:focus-visible,.dsr-layout select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
-    @media(prefers-reduced-motion:reduce){.dsr-layout *,.dsr-layout *::before,.dsr-layout *::after{animation-duration:0.001ms!important;transition-duration:0.001ms!important;}}
-
-    .dsr-display { font-family:'Geist',-apple-system,sans-serif!important; letter-spacing:-0.01em; font-weight:500; }
-    .dsr-pages ::selection { background:rgba(212,175,106,0.30); color:var(--ds-text1); }
-    .dsr-pages button:focus-visible,.dsr-pages input:focus-visible,.dsr-pages select:focus-visible { outline:2px solid var(--ds-primary); outline-offset:2px; border-radius:6px; }
-        .dsr-half-card { transition:border-color .2s,box-shadow .2s,transform .2s; }
-    .dsr-half-card:hover { border-color:var(--ds-borderHi)!important; }
-    .dsr-half-open { font-size:12px; font-weight:700; color:var(--ds-primary); opacity:0; transform:translateX(-4px); transition:opacity .2s,transform .2s; white-space:nowrap; }
-    .dsr-half-card:hover .dsr-half-open, .dsr-half-card:focus-within .dsr-half-open { opacity:1; transform:none; }
-    @media(max-width:767px){ .dsr-half-open{opacity:1;transform:none;} }
-    @media(max-width:640px){ .dsr-home-text{display:none;} }
-    .dsr-home-link:hover { background:var(--ds-surface)!important; }
-    .dsr-gold-rule { height:1px; border:0; background:var(--ds-border); margin:0; }
-    .dsr-glass { background:var(--ds-glass-bg)!important; border:1px solid var(--ds-glass-border)!important; box-shadow:var(--ds-shadow-glass)!important; }
-    .dsr-pagebar { position:sticky; top:0; z-index:60; background:var(--ds-pagebar); border-bottom:1px solid var(--ds-glass-border); }
-    .dsr-back-btn { display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 14px 0 10px; border-radius:8px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-size:13px; font-weight:500; cursor:pointer; transition:background .15s,color .15s; }
-    .dsr-back-btn:hover { background:var(--ds-surface); color:var(--ds-text1); }
-    .dsr-page-enter { animation:dsr-page-in .3s cubic-bezier(0.16,1,0.3,1) both; }
-    @keyframes dsr-page-in { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-    .dsr-page-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; align-items:start; }
-    .dsr-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .dsr-bar-row { cursor:pointer; border-radius:10px; padding:7px 9px 8px; margin:0 -9px 4px; transition:background .15s; }
-    .dsr-bar-row:hover { background:var(--ds-surface); }
-    .dsr-bar-row:focus-visible { outline:2px solid var(--ds-primary); outline-offset:1px; }
-    .dsr-viewall { display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 9px; border-radius:999px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-size:12px; font-weight:500; cursor:pointer; transition:background .15s,border-color .15s; }
-    .dsr-viewall:hover { background:var(--ds-surface); color:var(--ds-text1); }
-    .dsr-seg { display:flex; gap:4px; padding:4px; border-radius:12px; background:var(--ds-surface); border:1px solid var(--ds-border); margin-bottom:14px; }
-    .dsr-seg button { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:30px; border:0; border-radius:9px; background:transparent; color:var(--ds-text2); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; transition:background .15s,color .15s; }
-    .dsr-seg button:hover { color:var(--ds-text1); }
-    .dsr-seg button.active { background:var(--ds-card); color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
-    .dsr-rank-row { text-align:left; width:100%; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1px solid transparent; background:transparent; color:var(--ds-text1); font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s; }
-    .dsr-rank-row:hover { background:var(--ds-surface); }
-    .dsr-rank-row.on { background:var(--ds-card); border-color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
-    .dsr-rank-top { display:flex; justify-content:space-between; gap:8px; font-size:12px; font-weight:600; margin-bottom:6px; }
-    .dsr-rank-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .dsr-rank-bar { height:5px; border-radius:4px; background:var(--ds-border); overflow:hidden; }
-    .dsr-rank-bar > div { height:100%; border-radius:4px; transition:width .5s cubic-bezier(0.16,1,0.3,1); }
-    .dsr-rank-sub { font-size:12px; color:var(--ds-text3); margin-top:6px; }
-    .dsr-trend { display:flex; align-items:flex-end; gap:3px; height:120px; }
-    .dsr-trend-col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; font-size:12px; color:var(--ds-text3); }
-    .dsr-trend-col > div { width:100%; border-radius:4px 4px 2px 2px; }
-    .dsr-trend-bar { background:var(--ds-borderHi); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
-    .dsr-trend-col.peak .dsr-trend-bar { background:var(--ds-primary); }
-    .dsr-trend-col span { height:11px; line-height:11px; }
-    .dsr-mini-row { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; padding:8px 10px; margin-bottom:4px; border:1px solid var(--ds-border); border-radius:10px; background:var(--ds-surface); color:var(--ds-text1); font-weight:600; font-size:12px; font-family:inherit; cursor:pointer; text-align:left; transition:border-color .15s; }
-    .dsr-mini-row:hover { border-color:var(--ds-borderHi); }
-    .dsr-itable-wrap { overflow-x:auto; border:1px solid var(--ds-border); border-radius:12px; }
-    .dsr-itable { min-width:680px; }
-    .dsr-irow { display:grid; grid-template-columns:minmax(170px,2.2fr) 60px 70px 90px 120px 100px; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--ds-border); font-size:12.5px; }
-    .dsr-irow:last-child { border-bottom:0; }
-    .dsr-irow:not(.head):hover { background:var(--ds-surface); }
-    .dsr-irow.head { position:sticky; top:0; font-size:12px; font-weight:500; color:var(--ds-text3); background:var(--ds-surface); }
-    .dsr-link { display:flex; flex-direction:column; gap:2px; align-items:flex-start; background:none; border:0; padding:0; font-weight:600; font-size:13px; font-family:inherit; color:var(--ds-text1); cursor:pointer; text-align:left; }
-    .dsr-link:hover { color:var(--ds-primary); }
-    .dsr-link small { font-size:12px; font-weight:500; color:var(--ds-text3); }
-    .dsr-link.mono { font-family:'Geist Mono',ui-monospace,monospace; font-weight:700; color:var(--ds-info); }
-    .dsr-stage-chip { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px; border:1px solid; font-style:normal; font-size:12px; font-weight:600; }
-    .dsr-nv { position:relative; padding:16px 12px 14px; flex:1; overflow-y:auto; }
-    .dsr-nv-lab { font-size:12px; font-weight:400; color:var(--ds-text3); padding:0 12px 8px; }
-    .dsr-nv-list { position:relative; display:grid; gap:6px; }
-    .dsr-nv-ind { position:absolute; left:0; right:0; top:0; height:56px; border-radius:10px; pointer-events:none; background:var(--ds-surface); border:1px solid var(--ds-border); transform:translateY(calc(var(--i, 0) * 62px)); transition:transform .28s cubic-bezier(0.22,1,0.36,1), opacity .2s; }
-    .dsr-nv-item { position:relative; z-index:1; display:flex; align-items:center; gap:12px; width:100%; height:56px; padding:0 12px; border:0; border-radius:10px; background:transparent; cursor:pointer; text-align:left; font-family:inherit; color:var(--ds-text2); transition:color .2s; }
-    .dsr-nv-item:hover { color:var(--ds-text1); }
-        .dsr-nv-item:focus-visible { outline:2px solid var(--ds-primary); outline-offset:-2px; }
-    .dsr-nv-ic { width:34px; height:34px; border-radius:8px; flex:none; display:grid; place-items:center; background:var(--ds-surface); border:1px solid var(--ds-border); transition:background .2s, color .2s; }
-    .dsr-nv-item.active { color:var(--ds-text1); }
-        .dsr-nv-item.active .dsr-nv-ic { background:var(--ds-primary); border-color:transparent; color:#1a1408; }
-    html[data-theme="light"] .dsr-nv-item.active .dsr-nv-ic { color:#ffffff; }
-    .dsr-nv-t { display:flex; flex-direction:column; min-width:0; line-height:1.2; }
-    .dsr-nv-t b { font-size:14px; font-weight:500; }
-    .dsr-nv-t small { font-size:12px; font-weight:400; color:var(--ds-text3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .dsr-nv-item.active .dsr-nv-t b { color:var(--ds-primary); }
-    .dsr-nv-cnt { margin-left:auto; min-width:26px; padding:2px 8px; border-radius:999px; text-align:center; font-size:12px; font-weight:500; font-family:'Geist Mono',ui-monospace,monospace; color:var(--ds-text2); background:var(--ds-card); border:1px solid var(--ds-border); }
-    .dsr-nv-kbd { margin-left:auto; font-family:'Geist Mono',ui-monospace,monospace; font-size:12px; font-weight:500; color:var(--ds-text3); border:1px solid var(--ds-border); border-radius:6px; padding:0 6px; line-height:18px; background:var(--ds-surface); }
-    .dsr-nv-foot { display:flex; align-items:center; gap:8px; padding:14px 20px; border-top:1px solid var(--ds-border); font-size:12px; font-weight:600; color:var(--ds-text3); }
-    .dsr-mtb { display:none; align-items:stretch; padding:8px 6px calc(8px + env(safe-area-inset-bottom)); background:var(--ds-card); border-top:1px solid var(--ds-border); box-shadow:var(--ds-shadow-bar); }
-    .dsr-mtb button { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; border:0; background:none; padding:2px 0; font-family:inherit; font-size:12px; font-weight:500; color:var(--ds-text3); cursor:pointer; transition:color .2s; }
-    .dsr-mtb .ic { width:42px; height:30px; border-radius:15px; display:grid; place-items:center; transition:background .2s; }
-    .dsr-mtb button.active { color:var(--ds-primary); font-weight:600; }
-    .dsr-mtb button.active .ic { background:var(--ds-surface); }
-    .dsr-mtb .badge { position:absolute; top:-3px; right:calc(50% - 26px); min-width:16px; height:16px; padding:0 4px; border-radius:8px; display:grid; place-items:center; font-style:normal; font-size:12px; font-weight:500; color:#fff; background:var(--ds-danger); }
-    @media (prefers-reduced-motion:reduce) { .dsr-nv-ind, .dsr-nv-item, .dsr-nv-ic, .dsr-mtb .ic { transition:none; } }
-    .dsr-rc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr)); gap:14px; }
-    .dsr-rc { position:relative; background:var(--ds-card); border:1px solid var(--ds-border); border-radius:12px; padding:16px; overflow:hidden; transition:border-color .15s; }
-    .dsr-rc:hover { border-color:var(--ds-borderHi); }
-    .dsr-rc-h { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
-    .dsr-rc-av { width:42px; height:42px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:13px; font-weight:500; color:var(--ds-text2); background:var(--ds-surface); border:1px solid var(--ds-border); }
-    .dsr-rc-av.sm { width:30px; height:30px; border-radius:50%; font-size:12px; }
-    .dsr-rc-id { flex:1; min-width:0; }
-    .dsr-rc-name { display:block; max-width:100%; background:none; border:0; padding:0; font-family:inherit; font-size:16px; font-weight:500; color:var(--ds-text1); cursor:pointer; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .dsr-rc-name:hover { color:var(--ds-primary); }
-    .dsr-rc-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; color:var(--ds-text2); margin-top:3px; }
-    .dsr-rc-meta i { opacity:.5; font-style:normal; }
-    .dsr-rc-ago { margin-left:2px; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:500; background:var(--ds-surface); color:var(--ds-text2); }
-    .dsr-rc-ring { --p:0; --c:var(--ds-primary); position:relative; width:48px; height:48px; flex:none; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--c) calc(var(--p) * 1%), var(--ds-border) 0); }
-    .dsr-rc-ring::before { content:""; position:absolute; inset:4.5px; border-radius:50%; background:var(--ds-card); }
-    .dsr-rc-ring b { position:relative; font-size:12px; font-weight:500; color:var(--c); font-family:'Geist Mono',ui-monospace,monospace; }
-    .dsr-rc-ring b i { font-style:normal; font-size:8px; margin-left:1px; opacity:.8; }
-    .dsr-rc-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-    .dsr-rc-stage { max-width:100%; padding:4px 10px; border-radius:8px; border:1px solid; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .dsr-rc-dist { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:500; color:var(--ds-text2); background:transparent; border:1px solid var(--ds-border); }
-    .dsr-rc-note { border-radius:10px; padding:9px 12px; margin-bottom:8px; background:var(--ds-surface); border:1px solid var(--ds-border); }
-    .dsr-rc-note span { display:block; font-size:12px; font-weight:400; color:var(--ds-text3); margin-bottom:2px; }
-    .dsr-rc-note p { margin:0; font-size:12.5px; line-height:1.45; color:var(--ds-text1); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .dsr-rc.open .dsr-rc-note p { -webkit-line-clamp:unset; display:block; }
-        .dsr-rc-f { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--ds-border); }
-    .dsr-rc-acts { display:flex; gap:6px; }
-    .dsr-rc-more { display:inline-flex; align-items:center; gap:5px; background:none; border:0; padding:6px 4px; font-family:inherit; font-size:13px; font-weight:500; color:var(--ds-text2); cursor:pointer; }
-    .dsr-rc-more:hover { color:var(--ds-text1); }
-    .dsr-rc-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px; height:32px; padding:0 12px; border-radius:8px; border:1px solid var(--ds-border); background:transparent; color:var(--ds-text2); font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .15s,color .15s,border-color .15s; }
-    .dsr-rc-btn:hover { color:var(--ds-text1); border-color:var(--ds-borderHi); background:var(--ds-surface); }
-    .dsr-rc-btn.info { color:var(--ds-text2); }
-    .dsr-rc-btn.info:hover { border-color:var(--ds-borderHi); background:var(--ds-surface); color:var(--ds-text1); }
-    .dsr-rc-btn.danger { color:var(--ds-danger); padding:0 9px; }
-    .dsr-rc-btn.danger:hover { border-color:color-mix(in srgb, var(--ds-danger) 55%, var(--ds-border)); background:color-mix(in srgb, var(--ds-danger) 10%, transparent); color:var(--ds-danger); }
-    .dsr-rc-btn.danger.armed { background:var(--ds-danger); border-color:var(--ds-danger); color:#fff; }
-    .dsr-rc-btn.icon { width:30px; padding:0; }
-    .dsr-rc-fin { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
-    .dsr-rc-fin div { padding:9px 10px; border-radius:10px; background:var(--ds-surface); border:1px solid var(--ds-border); text-align:center; }
-    .dsr-rc-fin div.wide { grid-column:span 3; display:flex; justify-content:space-between; align-items:center; text-align:left; }
-    .dsr-rc-fin span { display:block; font-size:12px; font-weight:400; color:var(--ds-text3); margin-bottom:2px; }
-    .dsr-rc-fin div.wide span { margin:0; }
-    .dsr-rc-fin b { font-size:15px; font-weight:500; color:var(--ds-text1); }
-    .dsr-rc-letter { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:8px; border:1px solid; font-style:normal; font-size:12px; font-weight:500; }
-    .dsr-ins { display:grid; grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:16px; }
-    .dsr-ins-card { text-align:left; font-family:inherit; color:inherit; padding:16px; border-radius:12px; background:var(--ds-card); border:1px solid var(--ds-border); }
-    button.dsr-ins-card { cursor:pointer; transition:border-color .15s; }
-    button.dsr-ins-card:hover { border-color:var(--ds-borderHi); }
-    .dsr-ins-card.on { border-color:var(--ds-primary); }
-    .dsr-ins-t { font-size:13px; font-weight:400; color:var(--ds-text3); }
-    .dsr-ins-v { font-size:32px; font-weight:500; letter-spacing:-.02em; margin-top:8px; line-height:1; }
-    .dsr-ins-s { font-size:13px; color:var(--ds-text2); margin-top:8px; }
-    .dsr-fun { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:10px; }
-    .dsr-fun-b { display:flex; flex-direction:column; align-items:center; gap:5px; padding:6px 2px 5px; border-radius:10px; border:1px solid transparent; background:transparent; font-family:inherit; cursor:pointer; transition:background .15s, border-color .15s; }
-    .dsr-fun-b:hover { background:var(--ds-surface); }
-    .dsr-fun-b.on { background:var(--ds-surface); border-color:var(--ds-borderHi); }
-    .dsr-fun-b .n { font-size:12px; font-weight:600; color:var(--c); font-family:'Geist Mono',ui-monospace,monospace; }
-    .dsr-fun-b .bar { width:100%; height:38px; display:flex; align-items:flex-end; justify-content:center; }
-    .dsr-fun-b .bar i { display:block; width:60%; min-width:10px; border-radius:4px 4px 2px 2px; background:var(--c); transition:height .4s cubic-bezier(0.16,1,0.3,1); }
-    .dsr-fun-b .l { font-size:12px; font-weight:500; color:var(--ds-text2); }
-    @media (max-width:860px) { .dsr-ins { grid-template-columns:repeat(2,minmax(0,1fr)); } .dsr-ins-card.funnel { grid-column:1 / -1; } }
-    .dsr-tb { display:grid; gap:10px; margin-bottom:14px; }
-    .dsr-tb-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .dsr-tb-row.chips { flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
-    .dsr-tb-row.chips::-webkit-scrollbar { display:none; }
-    .dsr-tb-row.sel .grow { flex:1; }
-    .dsr-tb-search { position:relative; flex:1; min-width:220px; }
-    .dsr-tb-search .ic { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ds-text3); display:flex; }
-    .dsr-tb-search kbd { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-family:'Geist Mono',ui-monospace,monospace; font-size:12px; font-weight:500; color:var(--ds-text3); border:1px solid var(--ds-border); border-radius:6px; padding:1px 7px; background:var(--ds-surface); }
-    .dsr-tb-search .clr { position:absolute; right:10px; top:50%; transform:translateY(-50%); width:24px; height:24px; border-radius:50%; border:0; background:var(--ds-surface); color:var(--ds-text2); cursor:pointer; display:grid; place-items:center; }
-    .dsr-tb-custom { display:flex; gap:8px; align-items:center; background:var(--ds-primaryDim); padding:10px 12px; border-radius:12px; border:1px solid var(--ds-border); }
-    .dsr-tb-custom span { font-size:12px; font-weight:500; color:var(--ds-text2); }
-    .dsr-filter-chip .cnt { font-size:12px; font-weight:500; opacity:.7; margin-left:2px; }
-    .dsr-seg2 { display:inline-flex; padding:3px; gap:2px; border-radius:10px; background:var(--ds-surface); border:1px solid var(--ds-border); }
-    .dsr-seg2 button { width:32px; height:30px; border:0; border-radius:8px; background:transparent; color:var(--ds-text2); font-size:15px; cursor:pointer; }
-    .dsr-seg2 button.on { background:var(--ds-card); color:var(--ds-primary); box-shadow:var(--ds-shadow-card-sm); }
-    html:has(.dsr-layout), body:has(.dsr-layout) { background:var(--ds-bg); }
-    .dsr-mlist { border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); overflow:hidden; }
-    .dsr-mrow { display:grid; grid-template-columns:minmax(150px,1.6fr) repeat(4,minmax(80px,1fr)) minmax(120px,1.1fr) 112px; align-items:center; gap:12px; padding:0 18px; min-height:56px; width:100%; border:0; border-top:1px solid var(--ds-border); background:transparent; color:var(--ds-text1); font-family:inherit; font-size:14px; text-align:left; cursor:pointer; transition:background-color .15s; }
-    .dsr-mrow:first-child { border-top:0; }
-    .dsr-mrow.head { min-height:44px; background:var(--ds-surface); color:var(--ds-text3); font-size:13px; cursor:default; }
-    .dsr-mrow:not(.head):hover { background:var(--ds-surface); }
-    .dsr-mrow:not(.head):focus-visible { outline:2px solid var(--ds-primary); outline-offset:-2px; }
-    .dsr-mrow .num { text-align:right; font-variant-numeric:tabular-nums; }
-    .dsr-mrow .mon { font-weight:500; }
-    .dsr-mrow .chg { font-size:13px; }
-    .dsr-mrow > .hide-sm:not(.num) { padding-left:16px; }
-    .dsr-mrow .go { justify-self:end; display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; border:1px solid var(--ds-border); border-radius:8px; font-size:13px; font-weight:500; color:var(--ds-text2); }
-    .dsr-mrow:not(.head):hover .go { color:var(--ds-text1); border-color:var(--ds-borderHi); }
-    @media (max-width: 860px) {
-      .dsr-mrow { grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(56px,.7fr)) auto; padding:0 14px; gap:8px; }
-      .dsr-mrow .hide-sm { display:none; }
-    }
-    .dsr-tb-row.act { font-size:12px; color:var(--ds-text2); }
-    .dsr-tb-row.act .res b { color:var(--ds-primary); }
-    .dsr-x { display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:999px; border:1px solid var(--ds-border); background:var(--ds-surface); color:var(--ds-text1); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
-    .dsr-x:hover { border-color:var(--ds-borderHi); }
-    .dsr-x.clear { background:transparent; color:var(--ds-text2); border-color:var(--ds-border); }
-    .dsr-rt-wrap { overflow-x:auto; border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); }
-    .dsr-rt { min-width:820px; }
-    .dsr-rt-r { display:grid; grid-template-columns:minmax(180px,2fr) 110px minmax(90px,1fr) minmax(100px,1fr) 56px 70px 76px; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--ds-border); font-size:12.5px; color:var(--ds-text1); }
-    .dsr-rt-r:last-child { border-bottom:0; }
-    .dsr-rt-r:not(.head):hover { background:var(--ds-surface); }
-    .dsr-rt-r.head { position:sticky; top:0; font-size:12px; font-weight:500; color:var(--ds-text3); background:var(--ds-surface); }
-    .dsr-rt-r small { display:block; font-size:12px; color:var(--ds-text3); margin-top:1px; }
-    .dsr-rt-name { display:flex; align-items:center; gap:10px; min-width:0; background:none; border:0; padding:0; font-family:inherit; font-size:14px; font-weight:500; color:var(--ds-text1); cursor:pointer; text-align:left; }
-    .dsr-rt-name:hover { color:var(--ds-primary); }
-    .dsr-rt .acts { display:flex; gap:5px; justify-content:flex-end; }
-    .dsr-more-btn { display:block; margin:16px auto 0; }
-    @media (prefers-reduced-motion:reduce) { .dsr-rc, .dsr-rc:hover { transition:none; transform:none; } }
-    .dsr-ghost-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; height:38px; padding:0 14px; border-radius:10px; border:1px solid var(--ds-border); background:color-mix(in srgb, var(--wash) 3.0%, transparent); color:var(--ds-text1); font-size:12.5px; font-weight:600; cursor:pointer; transition:border-color .15s,color .15s,background .15s; }
-    .dsr-ghost-btn:hover:not(:disabled) { border-color:var(--ds-borderHi); color:var(--ds-text1); background:var(--ds-surface); }
-    .dsr-ghost-btn:disabled { opacity:.45; cursor:not-allowed; }
-    .dsr-sticky-actions { position:sticky; bottom:0; z-index:40; margin:20px -16px -16px; padding:14px 16px; background:var(--ds-bg); border-top:1px solid var(--ds-border); }
-    @keyframes dsr-shimmer { 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
-    .dsr-skeleton { border-radius:12px; background:linear-gradient(90deg,var(--ds-sk1) 25%,var(--ds-sk2) 37%,var(--ds-sk1) 63%); background-size:800px 100%; animation:dsr-shimmer 1.4s infinite linear; }
-    @media(min-width:960px){
-      .dsr-page-grid.has-aside { grid-template-columns:minmax(0,1fr) 340px; }
-      .dsr-aside-sticky { position:sticky; top:84px; }
-      .dsr-stat-grid.cols4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
-      .dsr-sticky-actions { margin:20px 0 0; padding:0; position:static; background:none; backdrop-filter:none; }
-    }
-    /* ── Records loading experience ── */
-    @keyframes dsr-rise { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
-    @keyframes dsr-pop { from{opacity:0;transform:scale(.85);} to{opacity:1;transform:none;} }
-    @keyframes dsr-wave { 0%,70%,100%{transform:translateY(0) scale(.7);opacity:.4;} 35%{transform:translateY(-5px) scale(1);opacity:1;} }
-    @keyframes dsr-prog { 0%{transform:translateX(-120%);} 100%{transform:translateX(420%);} }
-    @keyframes dsr-msg { 0%{opacity:0;transform:translateY(6px);} 14%,86%{opacity:1;transform:none;} 100%{opacity:0;transform:translateY(-6px);} }
-    @keyframes dsr-breathe { 0%,100%{transform:scaleY(.5);opacity:.6;} 50%{transform:scaleY(1);opacity:1;} }
-    .dsr-rise { animation:dsr-rise .42s cubic-bezier(0.22,1,0.36,1) both; }
-    .dsr-pop { display:inline-block; animation:dsr-pop .35s cubic-bezier(0.22,1,0.36,1) both; }
-    .dsr-reveal { animation:dsr-rise .4s cubic-bezier(0.22,1,0.36,1) both; }
-    .dsr-load-head { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:14px 16px 16px; margin-bottom:12px; border:1px solid var(--ds-border); border-radius:12px; background:var(--ds-card); }
-    .dsr-wave { display:inline-flex; align-items:center; gap:5px; height:20px; flex:none; }
-    .dsr-wave i { width:8px; height:8px; border-radius:50%; background:var(--ds-primary); animation:dsr-wave 1.2s ease-in-out infinite; }
-    .dsr-wave i:nth-child(2) { animation-delay:.15s; }
-    .dsr-wave i:nth-child(3) { animation-delay:.3s; }
-    .dsr-load-txt { display:flex; flex-direction:column; gap:2px; min-width:0; }
-    .dsr-load-msg { font-size:13.5px; font-weight:600; color:var(--ds-text1); animation:dsr-msg 2.4s ease both; }
-    .dsr-load-slow { font-size:12px; color:var(--ds-text3); animation:dsr-rise .4s ease both; }
-    .dsr-load-prog { position:absolute; left:0; right:0; bottom:0; height:3px; overflow:hidden; background:color-mix(in srgb, var(--ds-primary) 14%, transparent); }
-    .dsr-load-prog i { display:block; width:28%; height:100%; border-radius:3px; background:linear-gradient(90deg,transparent,var(--ds-primary),transparent); animation:dsr-prog 1.4s cubic-bezier(0.4,0,0.2,1) infinite; }
-    .dsr-fun-b .bar i.sk { background:linear-gradient(180deg,var(--ds-sk2),var(--ds-sk1)); transform-origin:bottom; animation:dsr-breathe 1.3s ease-in-out infinite; }
-    .dsr-fun-b:disabled { cursor:default; }
-    @media (prefers-reduced-motion:reduce) {
-      .dsr-skeleton, .dsr-wave i, .dsr-load-prog i, .dsr-fun-b .bar i.sk, .dsr-load-msg { animation:none !important; }
-      .dsr-rise, .dsr-pop, .dsr-reveal, .dsr-load-slow { animation:none !important; }
-    }
-    @keyframes dsr-modal-in { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:none;} }
-    .dsr-modal-box { animation:dsr-modal-in 0.22s cubic-bezier(0.22,1,0.36,1) both; }
-    .dsr-ladder-seg { transition:background-color 0.35s cubic-bezier(0.16,1,0.3,1),box-shadow 0.35s ease; }
-    @keyframes dsr-spin { to{transform:rotate(360deg);} }
-    .dsr-spinner { width:28px;height:28px;border-radius:50%;border:3px solid color-mix(in srgb, var(--wash) 8.0%, transparent);border-top-color:var(--ds-primary);animation:dsr-spin 0.7s linear infinite;margin:0 auto 14px; }
-    .dsr-empty-icon { width:64px;height:64px;border-radius:50%;background:var(--ds-surface);border:1px solid var(--ds-border);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px; }
-    .dsr-input:focus { outline:none;border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
-    .dsr-input-highlight { border-color:var(--ds-borderHi)!important; }
-    .dsr-input-highlight:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
-    .dsr-btn-primary { background:var(--ds-primary)!important;color:#1a1408!important;border:none!important;box-shadow:var(--ds-shadow-btn);transition:background-color 0.16s ease,transform 0.16s ease; }
-    html[data-theme="light"] .dsr-btn-primary { background:#171717!important;color:#fff!important; }
-    .dsr-btn-primary:hover:not(:disabled) { filter:brightness(1.07); }
-    .dsr-btn-primary:active:not(:disabled) { transform:scale(0.98); }
-    .dsr-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
-    .dsr-btn-danger:hover { background:rgba(244,63,94,0.15)!important;color:#FB7185!important;border-color:rgba(244,63,94,0.4)!important; }
-    .dsr-btn-edit:hover { background:rgba(59,130,246,0.12)!important;color:#60A5FA!important;border-color:rgba(59,130,246,0.35)!important; }
-    .dsr-btn-export { background:var(--ds-surface)!important;color:var(--ds-text1)!important;border:1px solid var(--ds-border)!important;box-shadow:none!important;transition:background-color 0.16s ease,border-color 0.16s ease; }
-    .dsr-btn-export:hover { border-color:var(--ds-borderHi)!important; }
-    .dsr-record-card { transition:border-color 0.15s ease; }
-    .dsr-record-card:hover { border-color:var(--ds-borderHi)!important; }
-    .dsr-customer-row { transition:background 0.12s;cursor:pointer; }
-    .dsr-customer-row:focus-visible { outline:2px solid var(--ds-primary);outline-offset:-2px; }
-    .dsr-customer-row:hover { background:var(--ds-surface)!important; }
-    .dsr-customer-row:hover .dsr-row-actions { opacity:1!important; }
-        .dsr-cust-ladder { flex:0 0 140px; width:140px; display:block; text-align:left; }
-    .dsr-cust-ladder > div { display:inline-flex; }
-    .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0;width:102px;justify-content:flex-end; }
-    @media(max-width:520px){ .dsr-cust-ladder { flex-basis:104px; width:104px; } }
-    .dsr-row-actions { opacity:0;transition:opacity 0.15s;display:flex;gap:6px;flex-shrink:0; }
-    @media(max-width:767px){.dsr-row-actions{opacity:1!important;}}
-    .dsr-topbar-btn:hover { background:color-mix(in srgb, var(--wash) 12.0%, transparent)!important; }
-    .dsr-topbar-btn:active { background:color-mix(in srgb, var(--wash) 20.0%, transparent)!important; }
-    .dsr-visits-btn { transition:background 0.15s,border-color 0.15s; }
-    .dsr-visits-btn:hover { background:var(--ds-surface)!important;border-color:var(--ds-borderHi)!important; }
-    .dsr-export-dropdown { position:relative;display:inline-flex;flex-shrink:0; }
-    .dsr-export-menu { position:absolute;top:calc(100% + 6px);right:0;background:var(--ds-card);border:1px solid var(--ds-border);border-radius:12px;padding:8px;min-width:240px;z-index:200;box-shadow:var(--ds-shadow-menu); }
-    .dsr-export-menu-item { display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background 0.12s;font-size:13px;font-weight:500;color:var(--ds-text1);border:none;background:transparent;width:100%;text-align:left; }
-    .dsr-export-menu-item:hover { background:var(--ds-surface);color:var(--ds-text1); }
-    .dsr-export-menu-item.active { background:var(--ds-surface);color:var(--ds-primary);font-weight:500; }
-    .dsr-export-divider { height:1px;background:var(--ds-border);margin:6px 0; }
-    .dsr-export-custom-row { padding:10px 12px 4px;display:flex;flex-direction:column;gap:6px; }
-    .dsr-export-custom-row label { font-size:12px;font-weight:500;color:var(--ds-text2); }
-    .dsr-export-custom-inputs { display:flex;gap:6px;align-items:center; }
-    .dsr-card-expanded { border:1px solid var(--ds-primary)!important; }
-    .dsr-expand-btn { height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--ds-border);background:transparent;font-size:12px;font-weight:500;cursor:pointer;color:var(--ds-text2);transition:background 0.15s,color 0.15s;display:flex;align-items:center;gap:4px; }
-    .dsr-expand-btn:hover,.dsr-expand-btn.expanded { background:var(--ds-surface);color:var(--ds-text1);border-color:var(--ds-borderHi); }
-    .dsr-card-detail-section { overflow:hidden;transition:max-height 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.2s ease;max-height:0;opacity:0; }
-    .dsr-card-detail-section.open { max-height:800px;opacity:1; }
-    .dsr-filter-chip { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1px solid var(--ds-border);background:color-mix(in srgb, var(--wash) 3.0%, transparent);font-size:12px;font-weight:600;color:var(--ds-text2);cursor:pointer;transition:all 0.15s;white-space:nowrap; }
-    .dsr-filter-chip:hover { border-color:var(--ds-borderHi);color:var(--ds-text1);background:var(--ds-surface); }
-    .dsr-filter-chip.active { background:var(--ds-primary);color:#1a1408;border-color:var(--ds-primary); }
-    html[data-theme="light"] .dsr-filter-chip.active { background:#171717;color:#fff;border-color:#171717; }
-    .dsr-cust-banner { background:var(--ds-surface);border:1px solid var(--ds-border);border-radius:10px;padding:12px 14px;margin-bottom:14px; }
-    .dsr-cust-banner-title { font-size:12px;font-weight:500;color:var(--ds-text2);margin-bottom:8px;display:flex;align-items:center;gap:5px; }
-    .dsr-cust-banner-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px 14px; }
-    .dsr-cust-banner-item { display:flex;flex-direction:column;gap:1px; }
-    .dsr-cust-banner-key { font-size:12px;color:var(--ds-text3);font-weight:400; }
-    .dsr-cust-banner-val { font-size:13px;font-weight:500;color:var(--ds-text1); }
-    .dsr-last-hint { display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:3px 9px 3px 7px;border-radius:20px;background:var(--ds-surface);border:1px solid var(--ds-border);font-size:12px;color:var(--ds-text2);line-height:1.4;cursor:pointer;transition:background 0.15s;max-width:100%;overflow:hidden; }
-    .dsr-last-hint:hover { background:var(--ds-card); }
-    .dsr-last-hint .hint-text { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-    .dsr-last-hint .hint-use { flex-shrink:0;font-weight:500;color:var(--ds-primary);margin-left:3px; }
-    .dsr-edit-stripe { background:var(--ds-surface);border-bottom:1px solid var(--ds-border);border-radius:10px 10px 0 0;margin:-20px -20px 16px -20px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between; }
-    .dsr-modal-box::-webkit-scrollbar { width:4px; }
-    .dsr-modal-box::-webkit-scrollbar-track { background:var(--ds-surface); }
-    .dsr-modal-box::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
-    .dsr-scroll::-webkit-scrollbar { width:4px; }
-    .dsr-scroll::-webkit-scrollbar-track { background:var(--ds-surface); }
-    .dsr-scroll::-webkit-scrollbar-thumb { background:var(--ds-border);border-radius:2px; }
-        .ei-import-btn:hover { border-color:var(--ds-borderHi)!important; }
-    .ei-input { transition:border-color 0.15s,box-shadow 0.15s;outline:none; }
-    .ei-input:focus { border-color:var(--ds-primary)!important;box-shadow:0 0 0 1px var(--ds-primary)!important; }
-    .ei-row-new { background:rgba(212,175,106,0.05); }
-    .ei-row-dup { background:rgba(245,158,11,0.05); }
-    .ei-check:checked { accent-color:var(--ds-primary); }
-    .ei-btn-primary { background:var(--ds-primary);color:#1a1408;border:none;border-radius:8px;cursor:pointer;font-weight:500;box-shadow:var(--ds-shadow-btn);transition:filter 0.18s,transform 0.18s; }
-    .ei-btn-primary:hover:not(:disabled) { filter:brightness(1.07); }
-    .ei-btn-primary:disabled { opacity:0.5;cursor:not-allowed;box-shadow:none; }
-    .ei-btn-secondary { background:color-mix(in srgb, var(--wash) 5.0%, transparent);color:var(--ds-text1);border:1px solid var(--ds-border);border-radius:8px;cursor:pointer;font-weight:500;transition:background 0.15s; }
-    .ei-btn-secondary:hover { background:color-mix(in srgb, var(--wash) 8.0%, transparent); }
-    .ei-dropzone { border:2px dashed var(--ds-border);border-radius:12px;background:color-mix(in srgb, var(--wash) 2.0%, transparent);transition:border-color 0.2s,background 0.2s;cursor:pointer; }
-    .ei-dropzone.dragover { border-color:var(--ds-primary);background:rgba(212,175,106,0.06); }
-    .ei-table { border-collapse:collapse;width:100%;font-size:12px; }
-    .ei-table th { background:var(--ds-surface);font-size:12px;font-weight:500;color:var(--ds-text2);padding:8px 10px;border-bottom:1px solid var(--ds-border);position:sticky;top:0;z-index:1; }
-    .ei-table td { padding:8px 10px;border-bottom:1px solid color-mix(in srgb, var(--wash) 4.0%, transparent);vertical-align:middle;color:var(--ds-text1); }
-    .ei-badge { display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:500; }
-    .ei-badge-new { background:rgba(212,175,106,0.15);color:var(--ds-primary);border:1px solid rgba(212,175,106,0.3); }
-    .ei-badge-dup { background:var(--ds-surface);color:var(--ds-text2);border:1px solid var(--ds-border); }
-    .ei-toast { position:fixed;top:20px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:var(--ds-shadow-menu);display:flex;align-items:center;gap:8px; }
-    @media(max-width:640px){.ei-desktop-only{display:none!important;}}
-    @media(min-width:768px){
-      .dsr-layout{display:grid!important;grid-template-columns:240px 1fr!important;min-height:100vh!important;}
-      .dsr-sidebar{display:flex!important;}.dsr-mobile-tabbar{display:none!important;}
-      .dsr-main{padding:32px 40px 64px!important;max-width:1180px!important;}
-      .dsr-header{padding:26px 30px!important;margin-bottom:24px!important;}
-      .dsr-metrics-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;}
-      .dsr-grid2{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
-      .dsr-record-detail-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
-      .dsr-cust-banner-grid{grid-template-columns:repeat(3,1fr)!important;}
-      .dsr-card-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:start;gap:14px!important;}
-    }
-    @media(min-width:1300px){.dsr-main{max-width:1320px!important;}}
-    @media(max-width:767px){.dsr-sidebar{display:none!important;}.dsr-mobile-tabbar{display:flex!important;}}
-  `;
-  document.head.appendChild(style);
+// Geist fonts: non-render-blocking stylesheet (the component CSS now lives in features/dsr/dsr.css)
+const injectFonts = () => {
+  if (document.getElementById("dsr-fonts")) return;
+  const fl = document.createElement("link");
+  fl.id = "dsr-fonts";
+  fl.rel = "stylesheet";
+  fl.href =
+    "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap";
+  document.head.appendChild(fl);
 };
 
 const EI_COL_MAP = {
@@ -934,98 +184,6 @@ const EI_COL_LOWER = Object.fromEntries(
 const eiKey = (h) => EI_COL_LOWER[eiNorm(h)];
 
 // ── Customer Excel download / template (same headers the importer reads) ──
-const CUSTOMER_XLSX_COLS = [
-  ["Customer", 28, (n) => n],
-  ["Area", 18, (n, c) => c.area],
-  ["Distributor", 20, (n, c) => c.distributor],
-  ["Project Stage", 34, (n, c) => c.stage],
-  ["Potential - Dyes (Rs L/mth)", 16, (n, c) => toNum(c.potDyes)],
-  ["Potential - Aux (Rs L/mth)", 16, (n, c) => toNum(c.potAux)],
-  ["Existing Bus: Dyes (Rs L/mth)", 16, (n, c) => toNum(c.exDyes)],
-  ["Existing Bus: Aux (Rs L/mth)", 16, (n, c) => toNum(c.exAux)],
-  ["ABP AM26 (Rs L)", 14, (n, c) => toNum(c.abp)],
-  ["Contact Person", 22, (n, c) => c.contactPerson || ""],
-  ["Designation", 18, (n, c) => c.designation || ""],
-  ["Mobile", 15, (n, c) => c.mobile || ""],
-  ["Alternate Mobile", 15, (n, c) => c.altMobile || ""],
-  ["Email", 28, (n, c) => c.email || ""],
-  ["Address", 34, (n, c) => c.address || ""],
-  ["GSTIN", 18, (n, c) => c.gstin || ""],
-  ["Notes", 36, (n, c) => c.notes || ""],
-];
-const XL_HEAD_STYLE = {
-  font: { bold: true, color: { rgb: "0A0B10" }, sz: 11 },
-  fill: { patternType: "solid", fgColor: { rgb: "D4AF6A" } },
-  alignment: { horizontal: "center", vertical: "center", wrapText: true },
-  border: {
-    top: { style: "thin", color: { rgb: "A8823A" } },
-    bottom: { style: "thin", color: { rgb: "A8823A" } },
-    left: { style: "thin", color: { rgb: "A8823A" } },
-    right: { style: "thin", color: { rgb: "A8823A" } },
-  },
-};
-const XL_CELL_STYLE = (zebra) => ({
-  font: { sz: 10.5 },
-  fill: zebra
-    ? { patternType: "solid", fgColor: { rgb: "F6F1E6" } }
-    : undefined,
-  alignment: { vertical: "center", wrapText: true },
-  border: {
-    bottom: { style: "hair", color: { rgb: "CFC7B5" } },
-  },
-});
-const styleSheet = (ws, widths, nRows, nCols) => {
-  ws["!cols"] = widths.map((w) => ({ wch: w }));
-  ws["!rows"] = [{ hpt: 34 }];
-  ws["!autofilter"] = {
-    ref: XLSX.utils.encode_range({
-      s: { r: 0, c: 0 },
-      e: { r: Math.max(nRows, 1), c: nCols - 1 },
-    }),
-  };
-  for (let c = 0; c < nCols; c++) {
-    const a = XLSX.utils.encode_cell({ r: 0, c });
-    if (ws[a]) ws[a].s = XL_HEAD_STYLE;
-    for (let r = 1; r <= nRows; r++) {
-      const b = XLSX.utils.encode_cell({ r, c });
-      if (ws[b]) ws[b].s = XL_CELL_STYLE(r % 2 === 0);
-    }
-  }
-};
-const exportCustomersXlsx = (customers, names, historyMap) => {
-  const head = [
-    ...CUSTOMER_XLSX_COLS.map((c) => c[0]),
-    "Total Visits",
-    "Last Visit",
-  ];
-  const body = names.map((n) => {
-    const c = customers[n] || {};
-    const h = historyMap[n] || [];
-    return [
-      ...CUSTOMER_XLSX_COLS.map((col) => col[2](n, c)),
-      h.length,
-      h[0] ? fmtDate(h[0].date) : "",
-    ];
-  });
-  const ws = XLSX.utils.aoa_to_sheet([head, ...body]);
-  styleSheet(
-    ws,
-    [...CUSTOMER_XLSX_COLS.map((c) => c[1]), 12, 16],
-    body.length,
-    head.length,
-  );
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Customers");
-  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const stamp = new Date().toISOString().slice(0, 10);
-  downloadBlob(
-    new Blob([out], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-    `DSR_Customers_${stamp}.xlsx`,
-  );
-  return body.length;
-};
 const downloadCustomerTemplate = () => {
   const head = CUSTOMER_XLSX_COLS.map((c) => c[0]);
   const ws = XLSX.utils.aoa_to_sheet([head]);
@@ -1092,20 +250,6 @@ const normalizeStage = (val) => {
   const letter = v[0]?.toUpperCase();
   const match = PROJECT_STAGE_OPTIONS.find((s) => s[0] === letter);
   return match || v;
-};
-
-const IS = {
-  width: "100%",
-  height: 38,
-  padding: "0 12px",
-  border: `1px solid var(--ds-border)`,
-  borderRadius: 8,
-  fontSize: 13,
-  color: "var(--ds-text1)",
-  background: "color-mix(in srgb, var(--wash) 4.0%, transparent)",
-  boxSizing: "border-box",
-  outline: "none",
-  transition: "border-color 0.15s, box-shadow 0.15s",
 };
 
 const IH = {
@@ -1338,23 +482,12 @@ const ExcelImporter = ({
   };
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.80)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 300,
-        padding: 16,
-      }}
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[rgba(0,0,0,0.80)]"
     >
       {eiToast.msg && (
         <div
-          className="ei-toast"
-          style={{
-            background: eiToast.type === "error" ? "#BE123C" : "#047857",
-          }}
+          className={`ei-toast ${eiToast.type === "error" ? "bg-[#BE123C]" : "bg-[#047857]"}`}
+
         >
           <Icon
             name={eiToast.type === "error" ? "close" : "check"}
@@ -1365,81 +498,42 @@ const ExcelImporter = ({
         </div>
       )}
       <div
-        className="dsr-modal-box"
-        style={{
-          background: DS.card,
-          border: `1px solid ${DS.border}`,
-          borderRadius: 16,
-          width: "100%",
-          maxWidth: 700,
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "var(--ds-shadow-modal)",
-          overflow: "hidden",
-        }}
+        className="dsr-modal-box flex flex-col w-full max-w-[700px] max-h-[92vh] bg-ds-card rounded-2xl border border-solid border-ds-border [box-shadow:var(--ds-shadow-modal)] overflow-hidden"
+
       >
         <div
-          style={{
-            background: "var(--ds-banner)",
-            padding: "18px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexShrink: 0,
-            borderBottom: `1px solid ${DS.border}`,
-          }}
+          className="flex items-center gap-3 shrink-0 py-4.5 px-5 bg-ds-banner border-b border-solid border-b-ds-border"
         >
           <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: DS.primary,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
+            className="flex items-center justify-center shrink-0 w-10 h-10 bg-ds-primary rounded-[10px]"
           >
             <Icon
               name="upload"
               size={19}
               strokeWidth={2}
-              style={{ color: "#0A0B10" }}
+              className="text-[#0A0B10]"
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: DS.text1 }}>
+          <div className="flex-1">
+            <div className="text-[15px] font-semibold text-ds-text1">
               Import Customers from Excel
             </div>
-            <div style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}>
+            <div className="mt-0.5 text-[12px] text-ds-text2">
               DVR.xlsx or any DSR format
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: `1px solid ${DS.border}`,
-              background: "color-mix(in srgb, var(--wash) 6.0%, transparent)",
-              color: DS.text2,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="flex items-center justify-center w-8 h-8 [background:color-mix(in_srgb,_var(--wash)_6.0%,_transparent)] text-ds-text2 rounded-lg border border-solid border-ds-border cursor-pointer"
           >
             <Icon name="close" size={15} strokeWidth={2.2} />
           </button>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+        <div className="flex-1 p-5 overflow-y-auto">
           {rows.length === 0 && (
             <div
-              className={`ei-dropzone${dragOver ? " dragover" : ""}`}
-              style={{ padding: "40px 20px", textAlign: "center" }}
+              className={`ei-dropzone${dragOver ? " dragover" : ""} py-10 px-5 text-center`}
+
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);
@@ -1449,51 +543,25 @@ const ExcelImporter = ({
               onClick={() => fileInputRef.current?.click()}
             >
               <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: "50%",
-                  background: DS.surface,
-                  border: `1px solid ${DS.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 14px",
-                }}
+                className="flex items-center justify-center w-16 h-16 mt-0 mb-3.5 mx-auto bg-ds-surface rounded-[50%] border border-solid border-ds-border"
               >
                 <Icon
                   name="sheet"
                   size={28}
                   strokeWidth={1.6}
-                  style={{ color: DS.primary }}
+                  className="text-ds-primary"
                 />
               </div>
               <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: DS.text1,
-                  marginBottom: 6,
-                }}
+                className="mb-1.5 text-[15px] font-semibold text-ds-text1"
               >
                 Drop the Excel file here
               </div>
-              <div style={{ fontSize: 13, color: DS.text2, marginBottom: 16 }}>
+              <div className="mb-4 text-[13px] text-ds-text2">
                 or click to select (.xlsx, .xls)
               </div>
               <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "8px 20px",
-                  background: DS.primary,
-                  color: "#0A0B10",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className="inline-flex items-center gap-1.5 py-2 px-5 text-[13px] font-semibold bg-ds-primary text-[#0A0B10] rounded-lg cursor-pointer"
               >
                 <Icon name="upload" size={13} strokeWidth={2.1} /> Browse File
               </div>
@@ -1501,7 +569,7 @@ const ExcelImporter = ({
                 ref={fileInputRef}
                 type="file"
                 accept=".xlsx,.xls"
-                style={{ display: "none" }}
+                className="hidden"
                 onChange={(e) => {
                   if (e.target.files[0]) parseFile(e.target.files[0]);
                 }}
@@ -1510,30 +578,17 @@ const ExcelImporter = ({
           )}
           {rows.length === 0 && (
             <div
-              className="dsr-glass"
-              style={{
-                borderRadius: 14,
-                padding: "14px 16px",
-                marginTop: 14,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
+              className="dsr-glass flex items-center gap-3 flex-wrap py-3.5 px-4 mt-3.5 rounded-[14px]"
+
             >
-              <div style={{ flex: 1, minWidth: 200 }}>
+              <div className="flex-1 min-w-[200px]">
                 <div
-                  style={{ fontSize: 12.5, fontWeight: 600, color: DS.text1 }}
+                  className="text-[12.5px] font-semibold text-ds-text1"
                 >
                   Template chahiye?
                 </div>
                 <div
-                  style={{
-                    fontSize: 12,
-                    color: DS.text2,
-                    marginTop: 2,
-                    lineHeight: 1.45,
-                  }}
+                  className="mt-0.5 text-[12px] leading-[1.45] text-ds-text2"
                 >
                   Customer, Area, Distributor, Stage, numbers + Contact Person,
                   Mobile, Email, Address, GSTIN, Notes columns. A previously
@@ -1551,99 +606,43 @@ const ExcelImporter = ({
           {rows.length > 0 && (
             <>
               <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginBottom: 14,
-                  alignItems: "center",
-                }}
+                className="flex gap-2 flex-wrap items-center mb-3.5"
               >
                 <div
-                  style={{
-                    padding: "6px 14px",
-                    background: "rgba(212,175,106,0.12)",
-                    color: DS.primary,
-                    borderRadius: 20,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    border: "1px solid rgba(212,175,106,0.25)",
-                  }}
+                  className="flex items-center gap-[5px] py-1.5 px-3.5 text-[12px] font-semibold bg-[rgba(212,175,106,0.12)] text-ds-primary rounded-[20px] border border-solid border-[rgba(212,175,106,0.25)]"
                 >
                   <Icon name="sparkle" size={11} />
                   {newCount} Naye
                 </div>
                 {dupCount > 0 && (
                   <div
-                    style={{
-                      padding: "6px 14px",
-                      background: "rgba(233,207,152,0.10)",
-                      color: DS.text1,
-                      borderRadius: 20,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      border: "1px solid rgba(233,207,152,0.25)",
-                    }}
+                    className="flex items-center gap-[5px] py-1.5 px-3.5 text-[12px] font-semibold bg-[rgba(233,207,152,0.10)] text-ds-text1 rounded-[20px] border border-solid border-[rgba(233,207,152,0.25)]"
                   >
                     <Icon name="alert" size={12} strokeWidth={2} />
                     {dupCount} Exist
                   </div>
                 )}
                 <div
-                  style={{ marginLeft: "auto", fontSize: 12, color: DS.text2 }}
+                  className="ml-auto text-[12px] text-ds-text2"
                 >
                   {selectedRows.length} selected
                 </div>
               </div>
               {dupCount > 0 && (
                 <div
-                  style={{
-                    padding: "10px 14px",
-                    background: DS.surface,
-                    border: `1px solid ${DS.border}`,
-                    borderRadius: 10,
-                    marginBottom: 14,
-                    fontSize: 12,
-                  }}
+                  className="py-2.5 px-3.5 mb-3.5 text-[12px] bg-ds-surface rounded-[10px] border border-solid border-ds-border"
                 >
                   <div
-                    style={{
-                      fontWeight: 600,
-                      color: DS.text1,
-                      marginBottom: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                    }}
+                    className="flex items-center gap-[5px] mb-2 font-semibold text-ds-text1"
                   >
                     <Icon name="alert" size={12} strokeWidth={2} /> For
                     duplicates:
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div className="flex gap-2">
                     {["skip", "overwrite"].map((val) => (
                       <label
                         key={val}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          cursor: "pointer",
-                          padding: "5px 12px",
-                          borderRadius: 6,
-                          border: `1px solid ${dupAction === val ? DS.amber : DS.border}`,
-                          background:
-                            dupAction === val
-                              ? "rgba(245,158,11,0.10)"
-                              : "transparent",
-                          fontWeight: dupAction === val ? 700 : 400,
-                          color: dupAction === val ? DS.gold : DS.text2,
-                        }}
+                        className={`flex items-center gap-1.5 py-[5px] px-3 rounded-md cursor-pointer ${dupAction === val ? "bg-[rgba(245,158,11,0.10)]" : "bg-transparent"} ${dupAction === val ? "font-bold" : "font-normal"} ${dupAction === val ? "text-ds-gold" : "text-ds-text2"}`} style={{ border: `1px solid ${dupAction === val ? DS.amber : DS.border}` }}
                       >
                         <input
                           type="radio"
@@ -1659,59 +658,36 @@ const ExcelImporter = ({
                   </div>
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <div className="flex gap-2 mb-2.5">
                 <button
-                  className="ei-btn-secondary"
+                  className="ei-btn-secondary inline-flex items-center gap-1 py-1 px-2.5 text-[12px]"
                   onClick={selectAllNew}
-                  style={{
-                    fontSize: 12,
-                    padding: "4px 10px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+
                 >
                   <Icon name="check" size={11} strokeWidth={2.3} /> New only
                 </button>
                 <button
-                  className="ei-btn-secondary"
+                  className="ei-btn-secondary inline-flex items-center gap-1 py-1 px-2.5 text-[12px]"
                   onClick={selectAll}
-                  style={{
-                    fontSize: 12,
-                    padding: "4px 10px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+
                 >
                   <Icon name="check" size={11} strokeWidth={2.3} /> Sab
                 </button>
                 <button
-                  className="ei-btn-secondary"
+                  className="ei-btn-secondary inline-flex items-center gap-1 py-1 px-2.5 text-[12px]"
                   onClick={deselectAll}
-                  style={{
-                    fontSize: 12,
-                    padding: "4px 10px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+
                 >
                   <Icon name="close" size={11} strokeWidth={2.3} /> Deselect
                 </button>
               </div>
               <div
-                style={{
-                  border: `1px solid ${DS.border}`,
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  overflowX: "auto",
-                }}
+                className="rounded-[10px] border border-solid border-ds-border overflow-hidden overflow-x-auto"
               >
                 <table className="ei-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 36 }}></th>
+                      <th className="w-9"></th>
                       <th>Customer</th>
                       <th>Area</th>
                       <th className="ei-desktop-only">Contact</th>
@@ -1726,13 +702,11 @@ const ExcelImporter = ({
                       return (
                         <tr
                           key={idx}
-                          className={
-                            r._isDup ? "ei-row-dup" : isSel ? "ei-row-new" : ""
-                          }
-                          style={{ cursor: "pointer" }}
+                          className={`${r._isDup ? "ei-row-dup" : isSel ? "ei-row-new" : ""} cursor-pointer`}
+
                           onClick={() => toggleRow(idx)}
                         >
-                          <td style={{ textAlign: "center" }}>
+                          <td className="text-center">
                             <input
                               type="checkbox"
                               className="ei-check"
@@ -1745,13 +719,13 @@ const ExcelImporter = ({
                               }
                             />
                           </td>
-                          <td style={{ fontWeight: 600, color: DS.text1 }}>
+                          <td className="font-semibold text-ds-text1">
                             {r.name}
                           </td>
-                          <td style={{ color: DS.text2 }}>{r.area}</td>
+                          <td className="text-ds-text2">{r.area}</td>
                           <td
-                            className="ei-desktop-only"
-                            style={{ color: DS.text2, fontSize: 12 }}
+                            className="ei-desktop-only text-[12px] text-ds-text2"
+
                           >
                             {r.contactPerson || r.mobile ? (
                               <>
@@ -1764,25 +738,21 @@ const ExcelImporter = ({
                             )}
                           </td>
                           <td
-                            className="ei-desktop-only"
-                            style={{ color: DS.text1 }}
+                            className="ei-desktop-only text-ds-text1"
+
                           >
                             ₹{r.potDyes}L
                           </td>
                           <td
-                            className="ei-desktop-only"
-                            style={{ color: DS.text1 }}
+                            className="ei-desktop-only text-ds-text1"
+
                           >
                             ₹{r.abp}L
                           </td>
                           <td>
                             <span
-                              className={`ei-badge ${r._isDup ? "ei-badge-dup" : "ei-badge-new"}`}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 3,
-                              }}
+                              className={`ei-badge ${r._isDup ? "ei-badge-dup" : "ei-badge-new"} inline-flex items-center gap-[3px]`}
+
                             >
                               {r._isDup ? (
                                 <Icon name="alert" size={9} strokeWidth={2.2} />
@@ -1793,24 +763,14 @@ const ExcelImporter = ({
                             </span>
                             {r._missing.length > 0 && (
                               <div
-                                style={{
-                                  fontSize: 12,
-                                  color: DS.danger,
-                                  marginTop: 4,
-                                  fontWeight: 600,
-                                }}
+                                className="mt-1 text-[12px] font-semibold text-ds-danger"
                               >
                                 Missing: {r._missing.join(", ")}
                               </div>
                             )}
                             {r._issues.length > 0 && (
                               <div
-                                style={{
-                                  fontSize: 12,
-                                  color: DS.amber,
-                                  marginTop: 4,
-                                  fontWeight: 600,
-                                }}
+                                className="mt-1 text-[12px] font-semibold text-ds-amber"
                               >
                                 ⚠ {r._issues.join(", ")} invalid — skip
                               </div>
@@ -1822,22 +782,16 @@ const ExcelImporter = ({
                   </tbody>
                 </table>
               </div>
-              <div style={{ textAlign: "center", marginTop: 12 }}>
+              <div className="mt-3 text-center">
                 <button
-                  className="ei-btn-secondary"
+                  className="ei-btn-secondary inline-flex items-center gap-[5px] py-[5px] px-3.5 text-[12px]"
                   onClick={() => {
                     setRows([]);
                     setSelected({});
                     setDone(false);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
-                  style={{
-                    fontSize: 12,
-                    padding: "5px 14px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
+
                 >
                   <Icon name="refresh" size={12} strokeWidth={2} /> Alag file
                 </button>
@@ -1846,65 +800,35 @@ const ExcelImporter = ({
           )}
         </div>
         <div
-          style={{
-            padding: "14px 20px",
-            borderTop: `1px solid ${DS.border}`,
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            background: DS.surface,
-            flexShrink: 0,
-          }}
+          className="flex gap-2.5 items-center shrink-0 py-3.5 px-5 bg-ds-surface border-t border-solid border-t-ds-border"
         >
           {done ? (
             <button
-              className="ei-btn-primary"
+              className="ei-btn-primary flex flex-1 items-center justify-center gap-1.5 h-[42px] text-[14px]"
               onClick={onClose}
-              style={{
-                flex: 1,
-                height: 42,
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
+
             >
               <Icon name="check" size={14} strokeWidth={2.3} /> Done — Close
             </button>
           ) : (
             <>
               <button
-                className="ei-btn-secondary"
+                className="ei-btn-secondary flex-1 h-[42px] text-[13px]"
                 onClick={onClose}
-                style={{ flex: 1, height: 42, fontSize: 13 }}
+
               >
                 Cancel
               </button>
               <button
-                className="ei-btn-primary"
+                className="ei-btn-primary flex [flex:2] items-center justify-center gap-1.5 h-[42px] text-[14px]"
                 onClick={handleImport}
                 disabled={importing || !selectedRows.length || !rows.length}
-                style={{
-                  flex: 2,
-                  height: 42,
-                  fontSize: 14,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
+
               >
                 {importing ? (
                   <span
-                    className="dsr-spinner"
-                    style={{
-                      width: 14,
-                      height: 14,
-                      border: "2px solid rgba(0,0,0,0.2)",
-                      borderTopColor: "#0A0B10",
-                      margin: 0,
-                    }}
+                    className="dsr-spinner w-[14px] h-[14px] m-0 border-t-2 border-solid border-t-[#0A0B10] border-r-2 border-r-[rgba(0,0,0,0.2)] border-b-2 border-b-[rgba(0,0,0,0.2)] border-l-2 border-l-[rgba(0,0,0,0.2)]"
+
                   />
                 ) : (
                   <Icon name="upload" size={14} strokeWidth={2.1} />
@@ -1956,23 +880,9 @@ const ExportDropdown = ({ records, onExport }) => {
   return (
     <div className="dsr-export-dropdown" ref={ref}>
       <button
-        className="dsr-btn-export"
+        className="dsr-btn-export flex items-center gap-1.5 h-[38px] py-0 px-3.5 text-[12px] font-semibold whitespace-nowrap bg-[#047857] text-[#fff] rounded-lg border-0 cursor-pointer"
         onClick={() => setOpen((p) => !p)}
-        style={{
-          background: "#047857",
-          color: "#fff",
-          border: "none",
-          height: 38,
-          padding: "0 14px",
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          whiteSpace: "nowrap",
-        }}
+
       >
         <Icon name="download" size={14} strokeWidth={2.1} /> Export{" "}
         <Icon
@@ -1984,12 +894,7 @@ const ExportDropdown = ({ records, onExport }) => {
       {open && (
         <div className="dsr-export-menu">
           <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: DS.text3,
-              padding: "2px 12px 6px",
-            }}
+            className="pt-0.5 pb-1.5 px-3 text-[12px] font-semibold text-ds-text3"
           >
             Export range
           </div>
@@ -2002,7 +907,7 @@ const ExportDropdown = ({ records, onExport }) => {
           >
             <Icon name="records" size={13} strokeWidth={2} />
             <span>All records</span>
-            <span style={{ marginLeft: "auto", fontSize: 12, color: DS.text3 }}>
+            <span className="ml-auto text-[12px] text-ds-text3">
               {records.length} records
             </span>
           </button>
@@ -2014,36 +919,16 @@ const ExportDropdown = ({ records, onExport }) => {
                 type="date"
                 value={cs}
                 onChange={(e) => setCs(e.target.value)}
-                className="ei-input"
-                style={{
-                  flex: 1,
-                  height: 32,
-                  padding: "0 8px",
-                  border: `1px solid ${DS.border}`,
-                  borderRadius: 6,
-                  fontSize: 12,
-                  background: DS.surface,
-                  color: DS.text1,
-                  colorScheme: "dark",
-                }}
+                className="ei-input flex-1 h-8 py-0 px-2 text-[12px] bg-ds-surface text-ds-text1 rounded-md border border-solid border-ds-border [color-scheme:dark]"
+
               />
-              <span style={{ fontSize: 12, color: DS.text3 }}>to</span>
+              <span className="text-[12px] text-ds-text3">to</span>
               <input
                 type="date"
                 value={ce}
                 onChange={(e) => setCe(e.target.value)}
-                className="ei-input"
-                style={{
-                  flex: 1,
-                  height: 32,
-                  padding: "0 8px",
-                  border: `1px solid ${DS.border}`,
-                  borderRadius: 6,
-                  fontSize: 12,
-                  background: DS.surface,
-                  color: DS.text1,
-                  colorScheme: "dark",
-                }}
+                className="ei-input flex-1 h-8 py-0 px-2 text-[12px] bg-ds-surface text-ds-text1 rounded-md border border-solid border-ds-border [color-scheme:dark]"
+
               />
             </div>
             <button
@@ -2052,17 +937,7 @@ const ExportDropdown = ({ records, onExport }) => {
                 doExp("custom");
               }}
               disabled={!cs || !ce}
-              style={{
-                marginTop: 4,
-                height: 32,
-                background: cs && ce ? "#047857" : DS.border,
-                color: cs && ce ? "#fff" : DS.text3,
-                border: "none",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: cs && ce ? "pointer" : "not-allowed",
-              }}
+              className={`h-8 mt-1 text-[12px] font-semibold rounded-md border-0 ${cs && ce ? "bg-[#047857]" : "bg-ds-border"} ${cs && ce ? "text-[#fff]" : "text-ds-text3"} ${cs && ce ? "cursor-pointer" : "cursor-not-allowed"}`}
             >
               Export Custom Range
             </button>
@@ -2082,54 +957,31 @@ const CustomerLastRecord = ({ record }) => {
         <Icon name="pin" size={11} strokeWidth={2} />
         <span>{record.customer} — last visit</span>
         <span
-          style={{
-            marginLeft: "auto",
-            fontSize: 12,
-            fontWeight: 400,
-            color: DS.text2,
-          }}
+          className="ml-auto text-[12px] font-normal text-ds-text2"
         >
           {fmtDate(record.date)}
         </span>
       </div>
       {record.objective && (
         <div
-          style={{
-            fontSize: 12,
-            color: DS.text1,
-            marginBottom: 5,
-            lineHeight: 1.4,
-          }}
+          className="mb-[5px] text-[12px] leading-[1.4] text-ds-text1"
         >
-          <span style={{ fontWeight: 600 }}>Objective: </span>
+          <span className="font-semibold">Objective: </span>
           {record.objective}
         </div>
       )}
       {record.outcome && (
         <div
-          style={{
-            fontSize: 12,
-            color: DS.text1,
-            marginBottom: 8,
-            lineHeight: 1.4,
-          }}
+          className="mb-2 text-[12px] leading-[1.4] text-ds-text1"
         >
-          <span style={{ fontWeight: 600 }}>Outcome: </span>
+          <span className="font-semibold">Outcome: </span>
           {record.outcome}
         </div>
       )}
       {record.stage && (
-        <div style={{ marginBottom: 8 }}>
+        <div className="mb-2">
           <span
-            style={{
-              fontSize: 12,
-              padding: "3px 8px",
-              borderRadius: 4,
-              fontWeight: 600,
-              background: sc.bg,
-              color: sc.text,
-              border: `1px solid color-mix(in srgb, ${sc.border} 26.7%, transparent)`,
-            }}
+            className="py-[3px] px-2 text-[12px] font-semibold rounded-sm" style={{ background: sc.bg, color: sc.text, border: `1px solid color-mix(in srgb, ${sc.border} 26.7%, transparent)` }}
           >
             {record.stage}
           </span>
@@ -2162,14 +1014,14 @@ const LastHint = ({ value, onUse }) => {
       onClick={() => onUse(value)}
       title={`Click to reuse: ${value}`}
     >
-      <Icon name="clock" size={11} strokeWidth={2} style={{ flexShrink: 0 }} />
+      <Icon name="clock" size={11} strokeWidth={2} className="shrink-0" />
       <span className="hint-text">
-        <span style={{ fontWeight: 600, marginRight: 3 }}>Last:</span>
+        <span className="mr-[3px] font-semibold">Last:</span>
         {value}
       </span>
       <span
-        className="hint-use"
-        style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+        className="hint-use inline-flex items-center gap-0.5"
+
       >
         <Icon name="arrowUp" size={10} strokeWidth={2.4} /> reuse
       </span>
@@ -2179,40 +1031,22 @@ const LastHint = ({ value, onUse }) => {
 
 const MetricCard = ({ label, value, sub, accent }) => (
   <div
-    style={{
-      background: DS.card,
-      borderRadius: 14,
-      padding: "15px 16px 14px",
-      border: `1px solid ${DS.border}`,
-      boxShadow: "var(--ds-shadow-card)",
-      position: "relative",
-      overflow: "hidden",
-    }}
+    className="relative pt-[15px] pb-3.5 px-4 bg-ds-card rounded-[14px] border border-solid border-ds-border [box-shadow:var(--ds-shadow-card)] overflow-hidden"
   >
     <div
-      style={{
-        fontSize: 12,
-        color: DS.text3,
-        fontWeight: 600,
-        marginBottom: 7,
-      }}
+      className="mb-[7px] text-[12px] font-semibold text-ds-text3"
     >
       {label}
     </div>
     <div
-      className="dsr-mono"
-      style={{ fontSize: 24, fontWeight: 500, color: DS.text1, lineHeight: 1 }}
+      className="dsr-mono text-[24px] font-medium leading-none text-ds-text1"
+
     >
       {value}
     </div>
     {sub && (
       <div
-        style={{
-          fontSize: 12,
-          color: DS.text2,
-          marginTop: 5,
-          fontWeight: 500,
-        }}
+        className="mt-[5px] text-[12px] font-medium text-ds-text2"
       >
         {sub}
       </div>
@@ -2222,30 +1056,13 @@ const MetricCard = ({ label, value, sub, accent }) => (
 
 const FieldLabel = ({ children, required, keyBadge }) => (
   <label
-    style={{
-      display: "block",
-      fontSize: 12,
-      color: DS.text2,
-      marginBottom: 5,
-      fontWeight: 600,
-    }}
+    className="block mb-[5px] text-[12px] font-semibold text-ds-text2"
   >
     {children}
-    {required && <span style={{ color: DS.danger, marginLeft: 2 }}>*</span>}
+    {required && <span className="ml-0.5 text-ds-danger">*</span>}
     {keyBadge && (
       <span
-        style={{
-          marginLeft: 6,
-          fontSize: 12,
-          fontWeight: 600,
-          color: DS.text1,
-          background: "rgba(233,207,152,0.12)",
-          padding: "1px 6px 1px 5px",
-          borderRadius: 4,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 3,
-        }}
+        className="inline-flex items-center gap-[3px] py-[1px] pl-[5px] pr-1.5 ml-1.5 text-[12px] font-semibold text-ds-text1 bg-[rgba(233,207,152,0.12)] rounded-sm"
       >
         <Icon name="sparkle" size={9} /> KEY
       </span>
@@ -2254,7 +1071,7 @@ const FieldLabel = ({ children, required, keyBadge }) => (
 );
 
 const FormInput = ({ label, required, keyBadge, highlight, ...props }) => (
-  <div style={{ marginBottom: 12 }}>
+  <div className="mb-3">
     {label && (
       <FieldLabel required={required} keyBadge={keyBadge}>
         {label}
@@ -2468,13 +1285,7 @@ const CustomSelect = ({
         }}
       >
         <span
-          style={{
-            flex: 1,
-            textAlign: "left",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          className="flex-1 text-left text-ellipsis whitespace-nowrap overflow-hidden"
         >
           {selected?.value ? selected.label : selected?.label || placeholder}
         </span>
@@ -2482,11 +1293,7 @@ const CustomSelect = ({
           name={open ? "chevronUp" : "chevronDown"}
           size={14}
           strokeWidth={2}
-          style={{
-            flexShrink: 0,
-            color: open ? DS.primary : DS.text3,
-            transition: "color 0.15s",
-          }}
+          className={`shrink-0 [transition:color_0.15s] ${open ? "text-ds-primary" : "text-ds-text3"}`}
         />
       </button>
 
@@ -2497,29 +1304,9 @@ const CustomSelect = ({
           <div
             ref={menuRef}
             role="listbox"
-            className="dsr-scroll"
-            style={{
-              position: "fixed",
-              left: pos.left,
-              width: pos.width,
-              top: pos.top,
-              bottom: pos.bottom,
-              zIndex: 1200,
-              background: DS.surface,
-              border: `1px solid ${DS.borderHi}`,
-              borderRadius: 12,
-              padding: 5,
-              maxHeight: pos.maxH,
-              overflowY: "auto",
-              overscrollBehavior: "contain", // don't scroll the page behind at list end
-              WebkitOverflowScrolling: "touch",
-              touchAction: "pan-y",
-              boxShadow: "var(--ds-shadow-pop)",
-              scrollbarWidth: "thin",
-              scrollbarColor: `${DS.border} transparent`,
-              fontFamily:
-                "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-            }}
+            className="dsr-scroll fixed z-[1200] p-[5px] bg-ds-surface rounded-xl border border-solid border-ds-border-hi overflow-y-auto overscroll-contain touch-pan-y [box-shadow:var(--ds-shadow-pop)] [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] [scrollbar-color:var(--ds-border)_transparent]"
+            style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxH, fontFamily:
+                "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
           >
             {options.map((opt, i) => {
               const isSel = opt.value === cur;
@@ -2538,49 +1325,23 @@ const CustomSelect = ({
                   data-i={i}
                   onClick={() => !disabledOpt && pick(opt.value)}
                   onMouseEnter={() => !disabledOpt && setHi(i)}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    cursor: disabledOpt ? "default" : "pointer",
-                    fontSize: 13,
-                    color: disabledOpt
+                  className={`flex items-center gap-2 py-[9px] px-3 text-[13px] rounded-lg select-none ${disabledOpt ? "cursor-default" : "cursor-pointer"} ${isSel ? "font-semibold" : "font-normal"} ${isEmptyOpt && allowEmpty && !isSel ? "opacity-85" : "opacity-100"}`} style={{ color: disabledOpt
                       ? DS.text3
                       : isSel
                         ? DS.primary
-                        : DS.text1,
-                    background: isSel
+                        : DS.text1, background: isSel
                       ? DS.primaryDim
                       : active
                         ? "color-mix(in srgb, var(--wash) 6%, transparent)"
-                        : "transparent",
-                    fontWeight: isSel ? 600 : 400,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    borderLeft: `2px solid ${isSel ? DS.primary : "transparent"}`,
-                    userSelect: "none",
-                    opacity: isEmptyOpt && allowEmpty && !isSel ? 0.85 : 1,
-                  }}
+                        : "transparent", borderLeft: `2px solid ${isSel ? DS.primary : "transparent"}` }}
                 >
                   {sc && (
                     <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 2,
-                        flexShrink: 0,
-                        background: sc.border,
-                      }}
+                      className="shrink-0 w-2 h-2 rounded-xs" style={{ background: sc.border }}
                     />
                   )}
                   <span
-                    style={{
-                      flex: 1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      lineHeight: 1.4,
-                    }}
+                    className="flex-1 text-ellipsis whitespace-nowrap leading-[1.4] overflow-hidden"
                     title={opt.label}
                   >
                     {opt.label}
@@ -2590,7 +1351,7 @@ const CustomSelect = ({
                       name="check"
                       size={13}
                       strokeWidth={2.5}
-                      style={{ color: DS.primary, flexShrink: 0 }}
+                      className="shrink-0 text-ds-primary"
                     />
                   )}
                 </div>
@@ -2611,7 +1372,7 @@ const FormSelect = ({
   children,
   ...props
 }) => (
-  <div style={{ marginBottom: 12 }}>
+  <div className="mb-3">
     {label && (
       <FieldLabel required={required} keyBadge={keyBadge}>
         {label}
@@ -2627,24 +1388,7 @@ const Toast = ({ msg, type }) => {
   if (!msg) return null;
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 20,
-        left: "50%",
-        transform: "translateX(-50%)",
-        color: "#fff",
-        padding: "11px 20px",
-        borderRadius: 12,
-        fontSize: 13,
-        fontWeight: 600,
-        zIndex: 1000,
-        whiteSpace: "nowrap",
-        boxShadow: "var(--ds-shadow-raised)",
-        background: type === "error" ? "#BE123C" : "#047857",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-      }}
+      className={`fixed z-[1000] top-5 left-[50%] flex items-center gap-2 py-[11px] px-5 text-[13px] font-semibold whitespace-nowrap text-[#fff] rounded-xl [box-shadow:var(--ds-shadow-raised)] [transform:translateX(-50%)] ${type === "error" ? "bg-[#BE123C]" : "bg-[#047857]"}`}
     >
       <Icon
         name={type === "error" ? "close" : "check"}
@@ -2785,7 +1529,7 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
           <span className="dsr-rc-dist">{record.distributor}</span>
         )}
       </div>
-      <div style={{ margin: "2px 0 10px" }}>
+      <div className="mt-0.5 mb-2.5 mx-0">
         <StageLadder stage={record.stage} size="sm" />
       </div>
 
@@ -2850,13 +1594,13 @@ const RecordCard = ({ record, onDelete, onEdit, onOpen }) => {
           ))}
           <div className="wide">
             <span>Total potential</span>
-            <b className="dsr-mono" style={{ color: DS.primary }}>
+            <b className="dsr-mono text-ds-primary">
               ₹{recPot(record).toFixed(2)}L/mth
             </b>
           </div>
           <div className="wide">
             <span>Total existing</span>
-            <b className="dsr-mono" style={{ color: DS.info }}>
+            <b className="dsr-mono text-ds-info">
               ₹{(toNum(record.exDyes) + toNum(record.exAux)).toFixed(2)}L/mth
             </b>
           </div>
@@ -2912,8 +1656,8 @@ const RecordRows = ({ rows, onOpen, onEdit, onDelete }) => (
               </em>
             </span>
             <span
-              className="dsr-mono"
-              style={{ color: pctColor(r.pct), fontWeight: 600 }}
+              className="dsr-mono font-semibold"
+              style={{ color: pctColor(r.pct) }}
             >
               {r.pct}%
             </span>
@@ -3046,7 +1790,7 @@ const RecordsLoading = ({ view }) => {
                 className="dsr-rt-r dsr-rise"
                 style={{ animationDelay: `${n * 70}ms` }}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="flex items-center gap-2.5">
                   <Sk w={30} h={30} r={15} />
                   <Sk w={`${52 + ((n * 17) % 36)}%`} h={13} />
                 </span>
@@ -3068,29 +1812,25 @@ const RecordsLoading = ({ view }) => {
               className="dsr-rc dsr-rise"
               style={{ animationDelay: `${n * 80}ms` }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="flex items-center gap-3">
                 <Sk w={42} h={42} r={21} />
-                <div style={{ flex: 1, display: "grid", gap: 8 }}>
+                <div className="grid flex-1 gap-2">
                   <Sk w={`${48 + ((n * 13) % 30)}%`} h={14} />
                   <Sk w="34%" h={11} />
                 </div>
                 <Sk w={46} h={22} r={11} />
               </div>
-              <div style={{ display: "flex", gap: 8, margin: "14px 0 12px" }}>
+              <div className="flex gap-2 mt-3.5 mb-3 mx-0">
                 <Sk w={70} h={22} r={11} />
                 <Sk w={90} h={22} r={11} />
               </div>
               <Sk h={8} r={4} style={{ marginBottom: 14 }} />
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="grid gap-2">
                 <Sk w="92%" />
                 <Sk w="64%" />
               </div>
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginTop: 16,
-                }}
+                className="flex justify-between mt-4"
               >
                 <Sk w={84} h={26} r={8} />
                 <Sk w={140} h={26} r={8} />
@@ -3173,8 +1913,8 @@ const RecordsInsights = ({
       >
         <div className="dsr-ins-t">Follow-ups due</div>
         <div
-          className="dsr-ins-v dsr-mono"
-          style={{ color: followCount ? DS.warning : DS.success }}
+          className={`dsr-ins-v dsr-mono ${followCount ? "text-ds-warning" : "text-ds-success"}`}
+
         >
           {loading ? (
             <Sk w={56} h={30} r={8} />
@@ -3188,7 +1928,7 @@ const RecordsInsights = ({
       </button>
       <div className="dsr-ins-card stat">
         <div className="dsr-ins-t">Visits today</div>
-        <div className="dsr-ins-v dsr-mono" style={{ color: DS.text1 }}>
+        <div className="dsr-ins-v dsr-mono text-ds-text1">
           {loading ? (
             <Sk w={56} h={30} r={8} />
           ) : (
@@ -3222,6 +1962,7 @@ const RecordsToolbar = (p) => {
     p.dist && ["dist", p.dist, () => p.setDist("")],
     p.area && ["area", p.area, () => p.setArea("")],
     p.followOnly && ["follow", "Follow-ups due", () => p.setFollowOnly(false)],
+    p.keyOnly && ["key", "Key customers", () => p.setKeyOnly(false)],
     p.q && ["q", `“${p.q}”`, () => p.setQ("")],
   ].filter(Boolean);
   return (
@@ -3233,8 +1974,8 @@ const RecordsToolbar = (p) => {
           </span>
           <input
             ref={p.searchRef}
-            className="dsr-input"
-            style={{ ...IS, paddingLeft: 36, paddingRight: 64 }}
+            className="dsr-input dsr-field pl-9 pr-16"
+
             placeholder="Search customer, area, distributor, objective…"
             value={p.q}
             onChange={(e) => p.setQ(e.target.value)}
@@ -3264,14 +2005,8 @@ const RecordsToolbar = (p) => {
             {label}{" "}
             {p.loading ? (
               <span
-                className="cnt dsr-skeleton"
-                style={{
-                  display: "inline-block",
-                  width: 16,
-                  height: 10,
-                  borderRadius: 5,
-                  verticalAlign: "middle",
-                }}
+                className="cnt dsr-skeleton inline-block w-4 h-[10px] align-middle rounded-[5px]"
+
               />
             ) : (
               <span className="cnt">{p.counts[id]}</span>
@@ -3284,6 +2019,17 @@ const RecordsToolbar = (p) => {
         >
           <Icon name="calendar" size={12} strokeWidth={2} /> Custom
         </button>
+        {(p.keyCount > 0 || p.keyOnly) && (
+          <button
+            className={`dsr-filter-chip${p.keyOnly ? " active" : ""}`}
+            aria-pressed={!!p.keyOnly}
+            title="Show visits of key customers only"
+            onClick={() => p.setKeyOnly(!p.keyOnly)}
+          >
+            <Icon name="star" size={12} strokeWidth={2} /> Key only{" "}
+            <span className="cnt">{p.keyCount}</span>
+          </button>
+        )}
       </div>
       {p.preset === "custom" && (
         <div className="dsr-tb-custom">
@@ -3292,8 +2038,8 @@ const RecordsToolbar = (p) => {
             type="date"
             value={p.start}
             onChange={(e) => p.setStart(e.target.value)}
-            className="dsr-input"
-            style={{ ...IS, height: 34, flex: 1 }}
+            className="dsr-input dsr-field flex-1 h-[34px]"
+
             aria-label="From date"
           />
           <span>To</span>
@@ -3301,8 +2047,8 @@ const RecordsToolbar = (p) => {
             type="date"
             value={p.end}
             onChange={(e) => p.setEnd(e.target.value)}
-            className="dsr-input"
-            style={{ ...IS, height: 34, flex: 1 }}
+            className="dsr-input dsr-field flex-1 h-[34px]"
+
             aria-label="To date"
           />
         </div>
@@ -3475,13 +2221,8 @@ const MonthAnalysisList = ({ rows, onOpen }) => (
 
 const MonthAnalysisCard = ({ month, delta, onOpen }) => (
   <div
-    className="dsr-record-card dsr-half-card"
-    style={{
-      background: DS.card,
-      border: `1px solid ${DS.border}`,
-      borderRadius: 14,
-      overflow: "hidden",
-    }}
+    className="dsr-record-card dsr-half-card bg-ds-card rounded-[14px] border border-solid border-ds-border overflow-hidden"
+
   >
     <div
       role="button"
@@ -3495,61 +2236,33 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
           onOpen();
         }
       }}
-      style={{ padding: "14px 14px 16px", cursor: "pointer" }}
+      className="pt-3.5 pb-4 px-3.5 cursor-pointer"
     >
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-        }}
+        className="flex justify-between items-center gap-2 mb-3"
       >
         <div
-          className="dsr-display"
-          style={{
-            fontSize: 17,
-            color: DS.text1,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            minWidth: 0,
-          }}
+          className="dsr-display flex items-center gap-2.5 flex-wrap min-w-0 text-[17px] text-ds-text1"
+
         >
           {month.label}
           {delta !== null && delta !== 0 && (
             <span
-              style={{
-                fontFamily: "'Manrope',sans-serif",
-                fontSize: 12,
-                fontWeight: 600,
-                color: delta > 0 ? DS.success : DS.danger,
-              }}
+              className={`text-[12px] font-semibold ${delta > 0 ? "text-ds-success" : "text-ds-danger"}`} style={{ fontFamily: "'Manrope',sans-serif" }}
             >
               {delta > 0 ? `▲ +${delta}` : `▼ ${delta}`} vs last mth
             </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2">
           <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: DS.primary,
-              background: DS.primaryDim,
-              border: "1px solid rgba(212,175,106,0.35)",
-              borderRadius: 20,
-              padding: "5px 12px",
-              whiteSpace: "nowrap",
-            }}
+            className="py-[5px] px-3 text-[12px] font-semibold whitespace-nowrap text-ds-primary bg-ds-primary-dim rounded-[20px] border border-solid border-[rgba(212,175,106,0.35)]"
           >
             Full report ›
           </span>
         </div>
       </div>
-      <div style={{ display: "grid", gap: 8 }}>
+      <div className="grid gap-2">
         {[
           [
             ["Visits", month.totalVisits, DS.info],
@@ -3562,41 +2275,21 @@ const MonthAnalysisCard = ({ month, delta, onOpen }) => (
         ].map((row, ri) => (
           <div
             key={ri}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-              gap: 8,
-            }}
+            className="grid gap-2 grid-cols-2"
           >
             {row.map(([lbl, val, clr]) => (
               <div
                 key={lbl}
-                style={{
-                  textAlign: "center",
-                  padding: ri === 0 ? "12px 6px" : "9px 6px",
-                  background: ri === 0 ? DS.card : DS.surface,
-                  borderRadius: 10,
-                  border: `1px solid ${ri === 0 ? DS.borderHi : DS.border}`,
-                  minWidth: 0,
-                }}
+                className={`min-w-0 text-center rounded-[10px] ${ri === 0 ? "py-3 px-1.5" : "py-[9px] px-1.5"} ${ri === 0 ? "bg-ds-card" : "bg-ds-surface"}`} style={{ border: `1px solid ${ri === 0 ? DS.borderHi : DS.border}` }}
               >
                 <div
-                  style={{
-                    fontSize: 12,
-                    color: DS.text3,
-                    fontWeight: 600,
-                    marginBottom: 4,
-                  }}
+                  className="mb-1 text-[12px] font-semibold text-ds-text3"
                 >
                   {lbl}
                 </div>
                 <div
-                  className="dsr-mono"
-                  style={{
-                    fontSize: ri === 0 ? 22 : 14,
-                    fontWeight: 500,
-                    color: DS.text1,
-                  }}
+                  className={`dsr-mono font-medium text-ds-text1 ${ri === 0 ? "text-[22px]" : "text-[14px]"}`}
+
                 >
                   {val}
                 </div>
@@ -3638,59 +2331,26 @@ const TABS = [
 
 const Sidebar = ({ active, onChange, recordCount }) => (
   <div
-    className="dsr-sidebar"
-    style={{
-      background: DS.sidebar,
-      flexDirection: "column",
-      padding: "0",
-      position: "sticky",
-      top: 0,
-      height: "100vh",
-      overflow: "hidden",
-      borderRight: `1px solid ${DS.border}`,
-    }}
+    className="dsr-sidebar sticky top-0 flex-col h-screen p-0 bg-ds-sidebar border-r border-solid border-r-ds-border overflow-hidden"
+
   >
     <div
-      style={{
-        padding: "22px 20px 20px",
-        borderBottom: `1px solid ${DS.border}`,
-      }}
+      className="pt-5.5 pb-5 px-5 border-b border-solid border-b-ds-border"
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <div className="flex items-center gap-[11px]">
         <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: DS.primary,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 16,
-            fontWeight: 900,
-            color: "#0A0B10",
-            flexShrink: 0,
-          }}
+          className="flex items-center justify-center shrink-0 w-9 h-9 text-[16px] font-black bg-ds-primary text-[#0A0B10] rounded-[10px]"
         >
           D
         </div>
         <div>
           <div
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: DS.text1,
-              letterSpacing: "-0.01em",
-            }}
+            className="text-[14px] font-semibold tracking-[-0.01em] text-ds-text1"
           >
             DSR
           </div>
           <div
-            style={{
-              fontSize: 12,
-              color: DS.text3,
-              fontWeight: 500,
-            }}
+            className="text-[12px] font-medium text-ds-text3"
           >
             Sales Management
           </div>
@@ -3702,15 +2362,12 @@ const Sidebar = ({ active, onChange, recordCount }) => (
       <div className="dsr-nv-lab">Workspace</div>
       <div className="dsr-nv-list">
         <span
-          className="dsr-nv-ind"
+          className={`dsr-nv-ind ${TABS.some((t) => t.id === active) ? "opacity-100" : "opacity-0"}`}
           aria-hidden="true"
-          style={{
-            "--i": Math.max(
+          style={{ "--i": Math.max(
               0,
               TABS.findIndex((t) => t.id === active),
-            ),
-            opacity: TABS.some((t) => t.id === active) ? 1 : 0,
-          }}
+            ) }}
         />
         {TABS.map((t) => (
           <button
@@ -3757,16 +2414,9 @@ const Sidebar = ({ active, onChange, recordCount }) => (
 
 const MobileTabBar = ({ active, onChange, recordCount }) => (
   <nav
-    className="dsr-mobile-tabbar dsr-mtb"
+    className="dsr-mobile-tabbar dsr-mtb fixed z-50 right-0 bottom-0 left-0 justify-around"
     aria-label="DSR sections"
-    style={{
-      position: "fixed",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      zIndex: 50,
-      justifyContent: "space-around",
-    }}
+
   >
     <button onClick={() => window.history.back()} aria-label="Back">
       <span className="ic">
@@ -3803,334 +2453,38 @@ const MobileTabBar = ({ active, onChange, recordCount }) => (
   </nav>
 );
 
-const SectionCard = ({ title, children, style }) => (
-  <div
-    style={{
-      background: DS.card,
-      border: `1px solid ${DS.border}`,
-      borderRadius: 14,
-      padding: "17px",
-      marginBottom: 14,
-      boxShadow: "var(--ds-shadow-card)",
-      ...style,
-    }}
-  >
-    {title && (
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: DS.text3,
-          marginBottom: 14,
-        }}
-      >
-        {title}
-      </div>
-    )}
-    {children}
-  </div>
-);
-
-// ══════════════════════════════════════════════════════════════════════════
-//  PAGES  (popups ab full pages hain)
-//  /DailySalesReport/customer/new
-//  /DailySalesReport/customer/:name/edit
-//  /DailySalesReport/customer/:name/history
-//  /DailySalesReport/visits/:name/:monthKey
-//  /DailySalesReport/analysis/:monthKey/:period/by/:stage|distributor|area[/:value]
-//  /DailySalesReport/record/:id/edit
-// ══════════════════════════════════════════════════════════════════════════
-const BASE = "/DailySalesReport";
-const ROUTES = {
-  base: BASE,
-  newCustomer: `${BASE}/customer/new`,
-  editCustomer: (n) => `${BASE}/customer/${encodeURIComponent(n)}/edit`,
-  history: (n) => `${BASE}/customer/${encodeURIComponent(n)}/history`,
-  visits: (n, monthKey, half) =>
-    `${BASE}/visits/${encodeURIComponent(n)}/${encodeURIComponent(monthKey)}${half ? `?half=${half}` : ""}`,
-  period: (monthKey, period) =>
-    `${BASE}/analysis/${encodeURIComponent(monthKey)}/${period}`,
-  insight: (monthKey, period, kind, value) =>
-    `${BASE}/analysis/${encodeURIComponent(monthKey)}/${period}/by/${kind}${
-      value ? `/${encodeURIComponent(value)}` : ""
-    }`,
-  editRecord: (id) => `${BASE}/record/${encodeURIComponent(id)}/edit`,
-};
-
-const safeDecode = (v) => {
-  try {
-    return decodeURIComponent(v);
-  } catch {
-    return v;
-  }
-};
-
-const parseRoute = (pathname) => {
-  const m = pathname
-    .replace(/\/+$/, "")
-    .match(/^\/dailysalesreport(?:\/(.*))?$/i);
-  const seg = (m && m[1] ? m[1].split("/") : []).map(safeDecode);
-  if (seg[0] === "customer" && seg[1] === "new" && seg.length === 2)
-    return { type: "customerNew" };
-  if (seg[0] === "customer" && seg[1] && seg[2] === "edit")
-    return { type: "customerEdit", name: seg[1] };
-  if (seg[0] === "customer" && seg[1] && seg[2] === "history")
-    return { type: "history", name: seg[1] };
-  if (seg[0] === "visits" && seg[1] && seg[2])
-    return { type: "visits", name: seg[1], monthKey: seg[2] };
-  if (
-    seg[0] === "analysis" &&
-    seg[1] &&
-    seg[2] &&
-    seg[3] === "by" &&
-    INSIGHT_KINDS[seg[4]]
-  )
-    return {
-      type: "insight",
-      monthKey: seg[1],
-      period: seg[2],
-      kind: seg[4],
-      value: seg[5],
-    };
-  if (seg[0] === "analysis" && seg[1] && seg[2] && !seg[3])
-    return { type: "period", monthKey: seg[1], period: seg[2] };
-  if (seg[0] === "record" && seg[1] && seg[2] === "edit")
-    return { type: "recordEdit", id: seg[1] };
-  return { type: "list" };
-};
-
-const daysSince = (d) => {
-  const t = new Date(d).getTime();
-  if (isNaN(t)) return null;
-  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
-};
-const fmtL = (n) => `₹${Math.round((Number(n) || 0) * 10) / 10}L`;
-
-const HOME_PATH = "/";
-const HOME_LABEL = "My Office Workplace";
-
-const HomeLink = ({ compact = false }) => {
-  const navigate = useNavigate();
-  return (
-    <a
-      href={HOME_PATH}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey) return; // new tab still works
-        e.preventDefault();
-        navigate(HOME_PATH);
-      }}
-      title={`${HOME_LABEL} (home page)`}
-      className="dsr-home-link"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: compact ? 26 : 30,
-        padding: compact ? "0 10px 0 8px" : "0 12px 0 10px",
-        borderRadius: 999,
-        border: "1px solid rgba(212,175,106,0.30)",
-        background: "rgba(212,175,106,0.06)",
-        color: DS.primary,
-        fontSize: compact ? 10.5 : 11.5,
-        fontWeight: 600,
-        textDecoration: "none",
-        whiteSpace: "nowrap",
-        marginBottom: compact ? 8 : 0,
-        transition: "background .15s",
-      }}
-    >
-      <Icon name="home" size={compact ? 12 : 13} strokeWidth={2.2} />
-      {HOME_LABEL}
-    </a>
-  );
-};
-
-// ── PageShell — premium full page frame (top bar + hero + content/aside) ───
-const PageShell = ({
-  eyebrow,
-  title,
-  subtitle,
-  avatar,
-  badge,
-  onBack,
-  actions,
-  aside,
-  children,
-  maxWidth = 1180,
-  homeGuard = false,
-}) => {
-  const navigate = useNavigate();
-  const goHome = () => {
-    if (
-      homeGuard &&
-      !window.confirm("You have unsaved changes. Leave this page?")
-    )
-      return;
-    navigate(HOME_PATH);
-  };
-  return (
-    <div
-      className="dsr-pages"
-      style={{ minHeight: "100vh", background: DS.bg, color: DS.text1 }}
-    >
-      <div className="dsr-pagebar">
-        <div
-          style={{
-            maxWidth,
-            margin: "0 auto",
-            padding: "10px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <button className="dsr-back-btn" onClick={onBack}>
-            <Icon name="back" size={14} strokeWidth={2.2} /> Back
-          </button>
-          <button
-            className="dsr-back-btn"
-            onClick={goHome}
-            title={`${HOME_LABEL} (home page)`}
-            aria-label={`${HOME_LABEL} home page`}
-            style={{ padding: "0 12px" }}
-          >
-            <Icon name="home" size={14} strokeWidth={2.2} />
-            <span className="dsr-home-text">{HOME_LABEL}</span>
-          </button>
-          <div
-            style={{
-              minWidth: 0,
-              flex: 1,
-              fontSize: 12,
-              color: DS.text2,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            <button
-              onClick={() => navigate(BASE)}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "inherit",
-                font: "inherit",
-                cursor: "pointer",
-              }}
-            >
-              Daily Sales Report
-            </button>
-            <span style={{ color: DS.text3, margin: "0 7px" }}>/</span>
-            <span style={{ color: DS.primary, fontWeight: 600 }}>
-              {eyebrow}
-            </span>
-          </div>
-          {actions && (
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              {actions}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div
-        className="dsr-page-enter"
-        style={{ maxWidth, margin: "0 auto", padding: "26px 16px 72px" }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 20,
-            flexWrap: "wrap",
-          }}
-        >
-          {avatar && (
-            <div
-              style={{
-                width: 58,
-                height: 58,
-                borderRadius: "50%",
-                background: DS.surface,
-                border: `1px solid ${DS.primary}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                fontWeight: 600,
-                color: DS.primary,
-                flexShrink: 0,
-              }}
-            >
-              {avatar}
-            </div>
-          )}
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h1
-              className="dsr-display"
-              style={{
-                margin: 0,
-                fontSize: "clamp(22px,4.2vw,34px)",
-                lineHeight: 1.15,
-                color: DS.text1,
-                wordBreak: "break-word",
-              }}
-            >
-              {title}
-            </h1>
-            {subtitle && (
-              <div style={{ fontSize: 12.5, color: DS.text2, marginTop: 5 }}>
-                {subtitle}
-              </div>
-            )}
-          </div>
-          {badge}
-        </div>
-        <hr className="dsr-gold-rule" style={{ marginBottom: 22 }} />
-        <div className={`dsr-page-grid${aside ? " has-aside" : ""}`}>
-          <div style={{ minWidth: 0 }}>{children}</div>
-          {aside && <aside className="dsr-aside-sticky">{aside}</aside>}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const PageLoading = ({ onBack, eyebrow = "Loading" }) => (
-  <PageShell eyebrow={eyebrow} title="Loading…" onBack={onBack} maxWidth={900}>
-    <div style={{ display: "grid", gap: 14 }}>
-      <div className="dsr-skeleton" style={{ height: 110 }} />
-      <div className="dsr-skeleton" style={{ height: 220 }} />
-      <div className="dsr-skeleton" style={{ height: 160 }} />
+const PageLoading = ({ onBack }) => (
+  <PageShell title="Loading…" onBack={onBack} maxWidth={900}>
+    <div className="grid gap-3.5">
+      <div className="dsr-skeleton h-[110px]" />
+      <div className="dsr-skeleton h-[220px]" />
+      <div className="dsr-skeleton h-[160px]" />
     </div>
   </PageShell>
 );
 
 const PageNotFound = ({ onBack, what }) => (
   <PageShell
-    eyebrow="Not found"
     title={`${what} not found`}
     onBack={onBack}
     maxWidth={900}
   >
     <div
-      className="dsr-glass"
-      style={{ borderRadius: 16, padding: "44px 20px", textAlign: "center" }}
+      className="dsr-glass py-11 px-5 text-center rounded-2xl"
+
     >
       <div className="dsr-empty-icon">
         <Icon
           name="alert"
           size={26}
           strokeWidth={1.6}
-          style={{ color: DS.primary }}
+          className="text-ds-primary"
         />
       </div>
-      <div style={{ fontSize: 15, fontWeight: 600 }}>
+      <div className="text-[15px] font-semibold">
         {what} is not available
       </div>
-      <div style={{ fontSize: 12.5, color: DS.text2, margin: "6px 0 18px" }}>
+      <div className="mt-1.5 mb-4.5 mx-0 text-[12.5px] text-ds-text2">
         It may have been deleted, or the link is incorrect.
       </div>
       <button className="dsr-ghost-btn" onClick={onBack}>
@@ -4142,49 +2496,29 @@ const PageNotFound = ({ onBack, what }) => (
 
 const StatTile = ({ label, value, sub, accent = DS.primary }) => (
   <div
-    className="dsr-glass"
-    style={{ borderRadius: 14, padding: "14px 15px", minWidth: 0 }}
+    className="dsr-glass min-w-0 py-3.5 px-[15px] rounded-[14px]"
+
   >
     <div
-      style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: DS.text3,
-        marginBottom: 6,
-      }}
+      className="mb-1.5 text-[12px] font-semibold text-ds-text3"
     >
       {label}
     </div>
     <div
-      className="dsr-mono"
-      style={{
-        fontSize: 20,
-        fontWeight: 600,
-        color: accent,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}
+      className="dsr-mono text-[20px] font-semibold text-ellipsis whitespace-nowrap overflow-hidden"
+      style={{ color: accent }}
     >
       {value}
     </div>
     {sub && (
-      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>{sub}</div>
+      <div className="mt-[3px] text-[12px] text-ds-text2">{sub}</div>
     )}
   </div>
 );
 
 const SubHead = ({ icon, children }) => (
   <div
-    style={{
-      fontSize: 12,
-      fontWeight: 600,
-      color: DS.text3,
-      marginBottom: 12,
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-    }}
+    className="flex items-center gap-1.5 mb-3 text-[12px] font-semibold text-ds-text3"
   >
     {icon && <Icon name={icon} size={12} strokeWidth={2} />} {children}
   </div>
@@ -4192,12 +2526,8 @@ const SubHead = ({ icon, children }) => (
 
 const Grid2 = ({ children }) => (
   <div
-    className="dsr-grid2"
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-      gap: 12,
-    }}
+    className="dsr-grid2 grid gap-3 grid-cols-2"
+
   >
     {children}
   </div>
@@ -4205,67 +2535,34 @@ const Grid2 = ({ children }) => (
 
 const SaveBar = ({ onCancel, onSave, saving, label, dirty }) => (
   <div className="dsr-sticky-actions">
-    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+    <div className="flex gap-2.5 items-center">
       {dirty && (
         <span
-          style={{
-            fontSize: 12,
-            color: DS.amber,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            marginRight: "auto",
-          }}
+          className="flex items-center gap-[5px] mr-auto text-[12px] font-semibold text-ds-amber"
         >
           <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: DS.amber,
-            }}
+            className="w-[6px] h-[6px] bg-ds-amber rounded-[50%]"
           />
           Unsaved changes
         </span>
       )}
       <button
-        className="dsr-ghost-btn"
+        className={`dsr-ghost-btn h-[42px] ${dirty ? "ml-0" : "ml-auto"}`}
         onClick={onCancel}
-        style={{ marginLeft: dirty ? 0 : "auto", height: 42 }}
+
       >
         Cancel
       </button>
       <button
-        className="dsr-btn-primary"
+        className="dsr-btn-primary flex items-center justify-center gap-2 h-[42px] min-w-[170px] py-0 px-6.5 text-[13.5px] font-semibold text-[#0A0B10] rounded-[10px] border-0 cursor-pointer"
         onClick={onSave}
         disabled={saving}
-        style={{
-          height: 42,
-          padding: "0 26px",
-          border: "none",
-          borderRadius: 10,
-          fontSize: 13.5,
-          fontWeight: 600,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          color: "#0A0B10",
-          minWidth: 170,
-        }}
+
       >
         {saving ? (
           <span
-            className="dsr-spinner"
-            style={{
-              width: 14,
-              height: 14,
-              border: "2px solid rgba(0,0,0,0.2)",
-              borderTopColor: "#0A0B10",
-              margin: 0,
-            }}
+            className="dsr-spinner w-[14px] h-[14px] m-0 border-t-2 border-solid border-t-[#0A0B10] border-r-2 border-r-[rgba(0,0,0,0.2)] border-b-2 border-b-[rgba(0,0,0,0.2)] border-l-2 border-l-[rgba(0,0,0,0.2)]"
+
           />
         ) : (
           <Icon name="check" size={15} strokeWidth={2.4} />
@@ -4278,41 +2575,18 @@ const SaveBar = ({ onCancel, onSave, saving, label, dirty }) => (
 
 const DangerZone = ({ title, text, label, onClick }) => (
   <div
-    style={{
-      marginTop: 6,
-      border: "1px solid rgba(244,63,94,0.30)",
-      background: "rgba(244,63,94,0.05)",
-      borderRadius: 14,
-      padding: "16px 17px",
-      display: "flex",
-      alignItems: "center",
-      gap: 14,
-      flexWrap: "wrap",
-    }}
+    className="flex items-center gap-3.5 flex-wrap py-4 px-[17px] mt-1.5 bg-[rgba(244,63,94,0.05)] rounded-[14px] border border-solid border-[rgba(244,63,94,0.30)]"
   >
-    <div style={{ flex: 1, minWidth: 200 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: DS.danger }}>
+    <div className="flex-1 min-w-[200px]">
+      <div className="text-[13px] font-semibold text-ds-danger">
         {title}
       </div>
-      <div style={{ fontSize: 12, color: DS.text2, marginTop: 3 }}>{text}</div>
+      <div className="mt-[3px] text-[12px] text-ds-text2">{text}</div>
     </div>
     <button
-      className="dsr-btn-danger"
+      className="dsr-btn-danger flex items-center gap-1.5 h-[38px] py-0 px-4 text-[12.5px] font-semibold bg-[rgba(244,63,94,0.10)] text-ds-danger rounded-[10px] border border-solid border-[rgba(244,63,94,0.35)] cursor-pointer"
       onClick={onClick}
-      style={{
-        height: 38,
-        padding: "0 16px",
-        background: "rgba(244,63,94,0.10)",
-        color: DS.danger,
-        border: "1px solid rgba(244,63,94,0.35)",
-        borderRadius: 10,
-        fontSize: 12.5,
-        fontWeight: 600,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-      }}
+
     >
       <Icon name="trash" size={13} strokeWidth={2} /> {label}
     </button>
@@ -4344,54 +2618,24 @@ const VisitCard = ({ r, index, total, onEdit }) => {
   const isLatest = index === 0;
   const block = (icon, label, text, accent, tint) => (
     <div
-      style={{
-        display: "flex",
-        gap: 12,
-        alignItems: "flex-start",
-        background: tint,
-        border: `1px solid color-mix(in srgb, ${accent} 18.0%, transparent)`,
-        borderRadius: 12,
-        padding: "11px 14px",
-      }}
+      className="flex gap-3 items-start py-[11px] px-3.5 rounded-xl" style={{ background: tint, border: `1px solid color-mix(in srgb, ${accent} 18.0%, transparent)` }}
     >
       <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          background: `color-mix(in srgb, ${accent} 12.2%, transparent)`,
-          color: accent,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          marginTop: 1,
-        }}
+        className="flex items-center justify-center shrink-0 w-7 h-7 mt-[1px] rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 12.2%, transparent)`, color: accent }}
       >
         <Icon name={icon} size={14} strokeWidth={2.1} />
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
+      <div className="flex-1 min-w-0">
         <div
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: accent,
-            marginBottom: 4,
-          }}
+          className="mb-1 text-[12px] font-semibold" style={{ color: accent }}
         >
           {label}
         </div>
         <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: DS.text1,
-            lineHeight: 1.5,
-            wordBreak: "break-word",
-          }}
+          className="text-[13.5px] font-semibold leading-normal [word-break:break-word] text-ds-text1"
         >
           {text || (
-            <span style={{ color: DS.text3, fontWeight: 500 }}>— none —</span>
+            <span className="font-medium text-ds-text3">— none —</span>
           )}
         </div>
       </div>
@@ -4399,81 +2643,42 @@ const VisitCard = ({ r, index, total, onEdit }) => {
   );
   return (
     <div
-      className="dsr-record-card"
-      style={{
-        background: DS.card,
-        border: `1px solid ${isLatest ? DS.primary + "99" : DS.border}`,
-        borderRadius: 16,
-        padding: "15px 16px 16px",
-        boxShadow: isLatest ? `0 0 0 1px ${DS.primaryDim}` : undefined,
-      }}
+      className={`dsr-record-card pt-[15px] pb-4 px-4 bg-ds-card rounded-2xl ${isLatest ? "[box-shadow:0_0_0_1px_var(--ds-primaryDim)]" : ""}`}
+      style={{ border: `1px solid ${isLatest ? DS.primary + "99" : DS.border}` }}
     >
       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          marginBottom: 13,
-          flexWrap: "wrap",
-        }}
+        className="flex items-center justify-between gap-2 flex-wrap mb-[13px]"
       >
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 14,
-            fontWeight: 600,
-          }}
+          className="flex items-center gap-2 text-[14px] font-semibold"
         >
           <Icon
             name="calendar"
             size={15}
             strokeWidth={2}
-            style={{ color: DS.primary }}
+            className="text-ds-primary"
           />
           {fmtDate(r.date) || "Date missing"}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2">
           <span
-            className="dsr-mono"
-            style={{ fontSize: 12, color: DS.text3, fontWeight: 600 }}
+            className="dsr-mono text-[12px] font-semibold text-ds-text3"
+
           >
             #{total - index}
           </span>
           {isLatest && (
             <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#0A0B10",
-                background: DS.primary,
-                padding: "3px 10px",
-                borderRadius: 20,
-              }}
+              className="py-[3px] px-2.5 text-[12px] font-semibold text-[#0A0B10] bg-ds-primary rounded-[20px]"
             >
               LATEST
             </span>
           )}
           {onEdit && (
             <button
-              className="dsr-btn-edit"
+              className="dsr-btn-edit flex items-center gap-[5px] h-[30px] py-0 px-3 text-[12px] font-semibold [background:color-mix(in_srgb,_var(--wash)_3.0%,_transparent)] text-ds-text2 rounded-lg border border-solid border-ds-border cursor-pointer"
               onClick={() => onEdit(r)}
-              style={{
-                height: 30,
-                padding: "0 12px",
-                borderRadius: 8,
-                border: `1px solid ${DS.border}`,
-                background: "color-mix(in srgb, var(--wash) 3.0%, transparent)",
-                color: DS.text2,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
+
             >
               <Icon name="edit" size={12} strokeWidth={2} /> Edit
             </button>
@@ -4481,7 +2686,7 @@ const VisitCard = ({ r, index, total, onEdit }) => {
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 10 }}>
+      <div className="grid gap-2.5">
         {block(
           "pin",
           "Objective",
@@ -4499,16 +2704,6 @@ const VisitCard = ({ r, index, total, onEdit }) => {
       </div>
     </div>
   );
-};
-
-const downloadBlob = (blob, filename) => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
 };
 
 const exportCustomerHistory = (name, customer, records) => {
@@ -4566,50 +2761,30 @@ const PotentialMeter = ({ pot, ex }) => {
   return (
     <div>
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 7,
-        }}
+        className="flex justify-between mb-[7px]"
       >
-        <span style={{ fontSize: 12, color: DS.text2, fontWeight: 600 }}>
+        <span className="text-[12px] font-semibold text-ds-text2">
           Market penetration
         </span>
         <span
-          className="dsr-mono"
-          style={{ fontSize: 12, fontWeight: 600, color: pctColor(pen) }}
+          className="dsr-mono text-[12px] font-semibold"
+          style={{ color: pctColor(pen) }}
         >
           {pen.toFixed(0)}%
         </span>
       </div>
       <div
-        style={{
-          height: 8,
-          borderRadius: 5,
-          background: DS.border,
-          overflow: "hidden",
-        }}
+        className="h-2 bg-ds-border rounded-[5px] overflow-hidden"
       >
         <div
-          style={{
-            width: `${pen}%`,
-            height: "100%",
-            background: DS.primary,
-            transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
-          }}
+          className="h-full bg-ds-primary [transition:width_.5s_cubic-bezier(0.16,1,0.3,1)]" style={{ width: `${pen}%` }}
         />
       </div>
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginTop: 8,
-          fontSize: 12,
-          color: DS.text2,
-        }}
+        className="flex justify-between mt-2 text-[12px] text-ds-text2"
       >
         <span>Existing {fmtL(ex)}</span>
-        <span style={{ color: DS.text1, fontWeight: 600 }}>
+        <span className="font-semibold text-ds-text1">
           Headroom {fmtL(headroom)}
         </span>
       </div>
@@ -4632,15 +2807,8 @@ const ActionLink = ({
     rel={external ? "noopener noreferrer" : undefined}
     onClick={(e) => disabled && e.preventDefault()}
     aria-disabled={disabled}
-    className="dsr-ghost-btn"
-    style={{
-      flex: 1,
-      minWidth: 0,
-      textDecoration: "none",
-      color: disabled ? DS.text3 : color,
-      opacity: disabled ? 0.45 : 1,
-      pointerEvents: disabled ? "none" : "auto",
-    }}
+    className={`dsr-ghost-btn flex-1 min-w-0 no-underline ${disabled ? "opacity-45" : "opacity-100"} ${disabled ? "pointer-events-none" : "pointer-events-auto"}`}
+    style={{ color: disabled ? DS.text3 : color }}
   >
     <Icon name={icon} size={14} strokeWidth={2} /> {label}
   </a>
@@ -4657,15 +2825,15 @@ const ContactCard = ({ data, name, onEdit }) => {
     data.address ||
     data.gstin;
   return (
-    <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+    <div className="dsr-glass p-4.5 rounded-2xl">
       <SubHead icon="user">Contact</SubHead>
       {!has ? (
-        <div style={{ fontSize: 12, color: DS.text2, lineHeight: 1.5 }}>
+        <div className="text-[12px] leading-normal text-ds-text2">
           No contact details yet.
           {onEdit && (
             <button
-              className="dsr-ghost-btn"
-              style={{ width: "100%", marginTop: 12 }}
+              className="dsr-ghost-btn w-full mt-3"
+
               onClick={onEdit}
             >
               <Icon name="addRecord" size={14} /> Add contact
@@ -4675,43 +2843,21 @@ const ContactCard = ({ data, name, onEdit }) => {
       ) : (
         <>
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-              marginBottom: 12,
-            }}
+            className="flex items-center gap-[11px] mb-3"
           >
             <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: DS.primaryDim,
-                border: `1px solid color-mix(in srgb, ${DS.primary} 33%, transparent)`,
-                color: DS.primary,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
+              className="flex items-center justify-center shrink-0 w-10 h-10 bg-ds-primary-dim text-ds-primary rounded-xl border border-solid [border-color:color-mix(in_srgb,_var(--ds-primary)_33%,_transparent)]"
             >
               <Icon name="user" size={18} strokeWidth={1.9} />
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div className="min-w-0">
               <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
+                className="text-[14px] font-semibold text-ellipsis whitespace-nowrap overflow-hidden"
               >
                 {data.contactPerson || name || "—"}
               </div>
               {data.designation && (
-                <div style={{ fontSize: 12, color: DS.text2 }}>
+                <div className="text-[12px] text-ds-text2">
                   {data.designation}
                 </div>
               )}
@@ -4727,21 +2873,13 @@ const ContactCard = ({ data, name, onEdit }) => {
             .map(([ic, v], i) => (
               <div
                 key={i}
-                style={{
-                  display: "flex",
-                  gap: 9,
-                  alignItems: "flex-start",
-                  fontSize: 12,
-                  padding: "6px 0",
-                  borderTop: i ? `1px dashed ${DS.border}` : "none",
-                  wordBreak: "break-word",
-                }}
+                className={`flex gap-[9px] items-start py-1.5 px-0 text-[12px] [word-break:break-word] ${i ? "border-t border-dashed border-t-ds-border" : "border-t-0"}`}
               >
                 <Icon
                   name={ic}
                   size={13}
                   strokeWidth={2}
-                  style={{ color: DS.primary, marginTop: 2 }}
+                  className="mt-0.5 text-ds-primary"
                 />
                 <span className={ic === "phone" ? "dsr-mono" : undefined}>
                   {v}
@@ -4749,17 +2887,17 @@ const ContactCard = ({ data, name, onEdit }) => {
               </div>
             ))}
           {data.gstin && (
-            <div style={{ marginTop: 8, fontSize: 12, color: DS.text2 }}>
+            <div className="mt-2 text-[12px] text-ds-text2">
               GSTIN{" "}
               <span
-                className="dsr-mono"
-                style={{ color: DS.text1, fontWeight: 600 }}
+                className="dsr-mono font-semibold text-ds-text1"
+
               >
                 {data.gstin}
               </span>
             </div>
           )}
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <div className="flex gap-2 mt-3.5">
             <ActionLink
               href={`tel:+91${mob}`}
               icon="phone"
@@ -4777,7 +2915,7 @@ const ContactCard = ({ data, name, onEdit }) => {
             />
           </div>
           {data.email && (
-            <div style={{ display: "flex", marginTop: 8 }}>
+            <div className="flex mt-2">
               <ActionLink
                 href={`mailto:${data.email}`}
                 icon="mail"
@@ -4789,8 +2927,8 @@ const ContactCard = ({ data, name, onEdit }) => {
           )}
           {isValidMobile(mob) && (
             <button
-              className="dsr-ghost-btn"
-              style={{ width: "100%", marginTop: 8 }}
+              className="dsr-ghost-btn w-full mt-2"
+
               onClick={() => navigator.clipboard?.writeText(mob)}
             >
               <Icon name="copy" size={13} /> Copy number
@@ -4805,21 +2943,12 @@ const ContactCard = ({ data, name, onEdit }) => {
 const FieldNote = ({ type = "error", children }) =>
   children ? (
     <div
-      style={{
-        fontSize: 12,
-        marginTop: -6,
-        marginBottom: 10,
-        fontWeight: 600,
-        color:
+      className="flex items-center gap-[5px] -mt-1.5 mb-2.5 text-[12px] font-semibold" style={{ color:
           type === "error"
             ? DS.danger
             : type === "warn"
               ? DS.amber
-              : DS.success,
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-      }}
+              : DS.success }}
     >
       {children}
     </div>
@@ -4835,37 +2964,18 @@ const MobileInput = ({
 }) => {
   const ok = isValidMobile(value);
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div className="mb-3">
       <FieldLabel required={required}>{label}</FieldLabel>
-      <div style={{ position: "relative" }}>
+      <div className="relative">
         <span
-          className="dsr-mono"
-          style={{
-            position: "absolute",
-            left: 1,
-            top: 1,
-            bottom: 1,
-            width: 42,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 12,
-            fontWeight: 600,
-            color: DS.primary,
-            background: DS.primaryDim,
-            borderRadius: "7px 0 0 7px",
-            borderRight: `1px solid ${DS.border}`,
-          }}
+          className="dsr-mono absolute top-[1px] bottom-[1px] left-[1px] flex items-center justify-center w-[42px] text-[12px] font-semibold text-ds-primary bg-ds-primary-dim rounded-[7px_0_0_7px] border-r border-solid border-r-ds-border"
+
         >
           +91
         </span>
         <input
-          className="dsr-input"
-          style={{
-            ...IS,
-            paddingLeft: 54,
-            paddingRight: 34,
-          }}
+          className="dsr-input dsr-field pl-13.5 pr-8.5"
+
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
@@ -4877,12 +2987,7 @@ const MobileInput = ({
         />
         {value && (
           <span
-            style={{
-              position: "absolute",
-              right: 11,
-              top: 11,
-              color: ok ? DS.success : DS.danger,
-            }}
+            className={`absolute top-[11px] right-[11px] ${ok ? "text-ds-success" : "text-ds-danger"}`}
           >
             <Icon name={ok ? "check" : "alert"} size={15} strokeWidth={2.3} />
           </span>
@@ -4890,12 +2995,7 @@ const MobileInput = ({
       </div>
       {value && !ok && (
         <div
-          style={{
-            fontSize: 12,
-            marginTop: 5,
-            color: DS.danger,
-            fontWeight: 600,
-          }}
+          className="mt-[5px] text-[12px] font-semibold text-ds-danger"
         >
           {cleanMobile(value).length < 10
             ? `${10 - cleanMobile(value).length} more digit(s) needed`
@@ -4981,75 +3081,37 @@ const CustomerFormPage = ({
   const sc = stageColor(data.stage);
 
   const aside = (
-    <div style={{ display: "grid", gap: 14 }}>
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+    <div className="grid gap-3.5">
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="sparkle">Live summary</SubHead>
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 11,
-            marginBottom: 14,
-          }}
+          className="flex items-center gap-[11px] mb-3.5"
         >
           <div
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: "50%",
-              background: DS.primaryDim,
-              border: `1px solid ${DS.primary}`,
-              color: DS.primary,
-              fontWeight: 600,
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
+            className="flex items-center justify-center shrink-0 w-[42px] h-[42px] font-semibold text-[13px] bg-ds-primary-dim text-ds-primary rounded-[50%] border border-solid border-ds-primary"
           >
             {getInitials(name || "?")}
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div className="min-w-0">
             <div
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              className="text-[14px] font-semibold text-ellipsis whitespace-nowrap overflow-hidden"
             >
               {name || "Customer name"}
             </div>
-            <div style={{ fontSize: 12, color: DS.text2 }}>
+            <div className="text-[12px] text-ds-text2">
               {data.area || "Area"} · {data.distributor || "Distributor"}
             </div>
           </div>
         </div>
         {data.stage && (
           <span
-            style={{
-              display: "inline-block",
-              fontSize: 12,
-              padding: "3px 9px",
-              borderRadius: 5,
-              fontWeight: 600,
-              background: sc.bg,
-              color: sc.text,
-              border: `1px solid color-mix(in srgb, ${sc.border} 33.3%, transparent)`,
-              marginBottom: 8,
-              maxWidth: "100%",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="inline-block max-w-full py-[3px] px-[9px] mb-2 text-[12px] font-semibold text-ellipsis whitespace-nowrap rounded-[5px] overflow-hidden" style={{ background: sc.bg, color: sc.text, border: `1px solid color-mix(in srgb, ${sc.border} 33.3%, transparent)` }}
           >
             {data.stage}
           </span>
         )}
         <StageLadder stage={data.stage} />
-        <div className="dsr-stat-grid" style={{ margin: "16px 0" }}>
+        <div className="dsr-stat-grid my-4 mx-0">
           <StatTile label="Potential /mth" value={fmtL(pot)} />
           <StatTile
             label="ABP AM26"
@@ -5062,81 +3124,51 @@ const CustomerFormPage = ({
 
       <ContactCard data={data} name={name} />
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="sparkle">Profile completeness</SubHead>
         <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            marginBottom: 8,
-          }}
+          className="flex items-baseline justify-between mb-2"
         >
           <span
-            className="dsr-mono"
-            style={{
-              fontSize: 24,
-              fontWeight: 600,
-              color: profilePct >= 70 ? DS.success : DS.primary,
-            }}
+            className={`dsr-mono text-[24px] font-semibold ${profilePct >= 70 ? "text-ds-success" : "text-ds-primary"}`}
+
           >
             {profilePct}%
           </span>
-          <span style={{ fontSize: 12, color: DS.text2 }}>
+          <span className="text-[12px] text-ds-text2">
             contact · GST · notes
           </span>
         </div>
         <div
-          style={{
-            height: 6,
-            borderRadius: 4,
-            background: DS.border,
-            overflow: "hidden",
-          }}
+          className="h-[6px] bg-ds-border rounded-sm overflow-hidden"
         >
           <div
-            style={{
-              width: `${profilePct}%`,
-              height: "100%",
-              background: DS.primary,
-              transition: "width .4s",
-            }}
+            className="h-full bg-ds-primary [transition:width_.4s]" style={{ width: `${profilePct}%` }}
           />
         </div>
       </div>
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="check">Form checklist</SubHead>
         <div
-          style={{
-            height: 6,
-            borderRadius: 4,
-            background: DS.border,
-            overflow: "hidden",
-            marginBottom: 8,
-          }}
+          className="h-[6px] mb-2 bg-ds-border rounded-sm overflow-hidden"
         >
           <div
-            style={{
-              width: `${(done / required.length) * 100}%`,
-              height: "100%",
-              background: done === required.length ? DS.success : DS.primary,
-              transition: "width .3s",
-            }}
+            className={`h-full [transition:width_.3s] ${done === required.length ? "bg-ds-success" : "bg-ds-primary"}`} style={{ width: `${(done / required.length) * 100}%` }}
           />
         </div>
-        <div style={{ fontSize: 12, color: DS.text2 }}>
+        <div className="text-[12px] text-ds-text2">
           {done}/{required.length} required fields complete
         </div>
       </div>
 
       {isEdit && (
-        <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <div className="dsr-glass p-4.5 rounded-2xl">
           <SubHead icon="clock">Activity</SubHead>
-          <div style={{ fontSize: 12.5, marginBottom: 12 }}>
+          <div className="mb-3 text-[12.5px]">
             <span
-              className="dsr-mono"
-              style={{ color: DS.primary, fontWeight: 600 }}
+              className="dsr-mono font-semibold text-ds-primary"
+
             >
               {visitCount}
             </span>{" "}
@@ -5144,8 +3176,8 @@ const CustomerFormPage = ({
           </div>
           <CustomerLastRecord record={lastRecord} />
           <button
-            className="dsr-ghost-btn"
-            style={{ width: "100%" }}
+            className="dsr-ghost-btn w-full"
+
             onClick={onOpenHistory}
           >
             <Icon name="records" size={14} /> View full visit history
@@ -5157,23 +3189,21 @@ const CustomerFormPage = ({
 
   return (
     <PageShell
-      eyebrow={isEdit ? "Edit customer" : "New customer"}
       title={isEdit ? editName : "Naya customer"}
       subtitle={
         isEdit ? "Update master data" : "Fill in the customer master data"
       }
       avatar={isEdit ? getInitials(editName) : "+"}
       onBack={confirmLeave(dirty, onCancel)}
-      homeGuard={dirty}
       aside={aside}
       maxWidth={1100}
     >
       <SectionCard title="Basic details">
-        <div style={{ marginBottom: 12 }}>
+        <div className="mb-3">
           <FieldLabel required>Customer name</FieldLabel>
           <input
-            className="dsr-input"
-            style={IS}
+            className="dsr-input dsr-field"
+
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -5181,23 +3211,14 @@ const CustomerFormPage = ({
           />
           {dupName && (
             <div
-              style={{
-                fontSize: 12,
-                marginTop: 6,
-                color: DS.amber,
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
+              className="flex items-center gap-2 flex-wrap mt-1.5 text-[12px] font-semibold text-ds-amber"
             >
               <Icon name="alert" size={13} /> A customer named "{dupName}"
               already exists.
               {onOpenOther && (
                 <button
-                  className="dsr-ghost-btn"
-                  style={{ height: 26, padding: "0 10px", fontSize: 12 }}
+                  className="dsr-ghost-btn h-[26px] py-0 px-2.5 text-[12px]"
+
                   onClick={() => onOpenOther(dupName)}
                 >
                   Open ›
@@ -5258,11 +3279,11 @@ const CustomerFormPage = ({
             placeholder="Person name"
             autoComplete="name"
           />
-          <div style={{ marginBottom: 12 }}>
+          <div className="mb-3">
             <FieldLabel>Designation</FieldLabel>
             <input
-              className="dsr-input"
-              style={IS}
+              className="dsr-input dsr-field"
+
               type="text"
               name="designation"
               list="dsr-designations"
@@ -5333,22 +3354,15 @@ const CustomerFormPage = ({
               : `${data.gstin.length}/15 — format incomplete`}
           </FieldNote>
         )}
-        <div style={{ marginBottom: 4 }}>
+        <div className="mb-1">
           <FieldLabel>Notes / remarks</FieldLabel>
           <textarea
-            className="dsr-input"
+            className="dsr-input dsr-field h-21 py-2.5 px-3 leading-normal [font-family:inherit] resize-y"
             name="notes"
             value={data.notes}
             onChange={handleChange}
             placeholder="Preferred time, decision maker, special instructions…"
-            style={{
-              ...IS,
-              height: 84,
-              padding: "10px 12px",
-              resize: "vertical",
-              lineHeight: 1.5,
-              fontFamily: "inherit",
-            }}
+
           />
         </div>
       </SectionCard>
@@ -5478,58 +3492,47 @@ const RecordEditPage = ({
   );
 
   const aside = (
-    <div style={{ display: "grid", gap: 14 }}>
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+    <div className="grid gap-3.5">
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="trending">YTD vs ABP (live)</SubHead>
         <div
-          className="dsr-mono"
-          style={{ fontSize: 30, fontWeight: 600, color: pctColor(livePct) }}
+          className="dsr-mono text-[30px] font-semibold"
+          style={{ color: pctColor(livePct) }}
         >
           {livePct.toFixed(1)}%
         </div>
         <div
-          style={{
-            height: 8,
-            borderRadius: 5,
-            background: DS.border,
-            overflow: "hidden",
-            margin: "10px 0 8px",
-          }}
+          className="h-2 mt-2.5 mb-2 mx-0 bg-ds-border rounded-[5px] overflow-hidden"
         >
           <div
-            style={{
-              width: `${Math.min(100, livePct)}%`,
-              height: "100%",
-              background: pctColor(livePct),
-              transition: "width .4s",
-            }}
+            className="h-full [transition:width_.4s]" style={{ width: `${Math.min(100, livePct)}%`, background: pctColor(livePct) }}
           />
         </div>
-        <div style={{ fontSize: 12, color: DS.text2 }}>
+        <div className="text-[12px] text-ds-text2">
           {fmtL(ytd)} of {fmtL(abp)} ABP
         </div>
-        <div style={{ marginTop: 14 }}>
+        <div className="mt-3.5">
           <StageLadder stage={data.stage} />
         </div>
       </div>
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="clock">Pichli visit</SubHead>
         {prev ? (
           <>
             <CustomerLastRecord record={prev} />
-            <div style={{ fontSize: 12, color: DS.text2 }}>
+            <div className="text-[12px] text-ds-text2">
               Outcome: {prev.outcome || "—"}
             </div>
           </>
         ) : (
-          <div style={{ fontSize: 12, color: DS.text2 }}>
+          <div className="text-[12px] text-ds-text2">
             This is the customer's first visit.
           </div>
         )}
         <button
-          className="dsr-ghost-btn"
-          style={{ width: "100%", marginTop: 12 }}
+          className="dsr-ghost-btn w-full mt-3"
+
           onClick={onOpenHistory}
         >
           <Icon name="records" size={14} /> {otherVisits.length + 1} visits ·
@@ -5541,29 +3544,27 @@ const RecordEditPage = ({
 
   return (
     <PageShell
-      eyebrow="Edit record"
       title={record.customer || "Record"}
       subtitle={`${fmtDate(record.date)} · visit record edit`}
       avatar={getInitials(record.customer || "?")}
       onBack={confirmLeave(dirty, onCancel)}
-      homeGuard={dirty}
       aside={aside}
       maxWidth={1100}
     >
       <SectionCard title="Visit details">
         <Grid2>
-          <div style={{ marginBottom: 12 }}>
+          <div className="mb-3">
             <FieldLabel required>Date</FieldLabel>
             <input
-              className="dsr-input"
-              style={IS}
+              className="dsr-input dsr-field"
+
               type="date"
               name="date"
               value={data.date}
               onChange={handleChange}
             />
           </div>
-          <div style={{ marginBottom: 12 }}>
+          <div className="mb-3">
             <FieldLabel required>Customer</FieldLabel>
             <CustomSelect
               name="customer"
@@ -5775,15 +3776,15 @@ const CustomerHistoryPage = ({
   }, [records, q]);
 
   const aside = (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       <ContactCard
         data={pickContact(customer)}
         name={name}
         onEdit={onEditCustomer}
       />
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="store">Customer master</SubHead>
-        <div className="dsr-stat-grid" style={{ marginBottom: 14 }}>
+        <div className="dsr-stat-grid mb-3.5">
           <StatTile label="Potential /mth" value={fmtL(pot)} />
           <StatTile label="Existing /mth" value={fmtL(ex)} accent={DS.gold} />
           <StatTile
@@ -5796,62 +3797,41 @@ const CustomerHistoryPage = ({
         <PotentialMeter pot={pot} ex={ex} />
       </div>
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <SubHead icon="trending">Stage journey</SubHead>
         {journey.length === 0 ? (
-          <div style={{ fontSize: 12, color: DS.text2 }}>
+          <div className="text-[12px] text-ds-text2">
             No stage records yet.
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 0 }}>
+          <div className="grid gap-0">
             {journey.map((j, i) => {
               const c = stageColor(j.stage);
               const isCur = i === journey.length - 1;
               return (
                 <div
                   key={`${j.stage}-${i}`}
-                  style={{ display: "flex", gap: 11 }}
+                  className="flex gap-[11px]"
                 >
                   <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                    }}
+                    className="flex flex-col items-center"
                   >
                     <span
-                      style={{
-                        width: 11,
-                        height: 11,
-                        borderRadius: "50%",
-                        background: isCur ? c.border : DS.surface,
-                        border: `2px solid ${c.border}`,
-                        marginTop: 4,
-                      }}
+                      className="w-[11px] h-[11px] mt-1 rounded-[50%]" style={{ background: isCur ? c.border : DS.surface, border: `2px solid ${c.border}` }}
                     />
                     {i < journey.length - 1 && (
                       <span
-                        style={{
-                          flex: 1,
-                          width: 2,
-                          background: DS.border,
-                          minHeight: 22,
-                        }}
+                        className="flex-1 w-[2px] min-h-[22px] bg-ds-border"
                       />
                     )}
                   </div>
-                  <div style={{ paddingBottom: 12, minWidth: 0 }}>
+                  <div className="min-w-0 pb-3">
                     <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: isCur ? 700 : 600,
-                        color: isCur ? c.text : DS.text1,
-                        lineHeight: 1.35,
-                      }}
+                      className={`text-[12px] leading-[1.35] ${isCur ? "font-bold" : "font-semibold"}`} style={{ color: isCur ? c.text : DS.text1 }}
                     >
                       {j.stage}
                     </div>
-                    <div style={{ fontSize: 12, color: DS.text3 }}>
+                    <div className="text-[12px] text-ds-text3">
                       {fmtDate(j.date)}
                     </div>
                   </div>
@@ -5866,7 +3846,6 @@ const CustomerHistoryPage = ({
 
   return (
     <PageShell
-      eyebrow="Customer history"
       title={name}
       subtitle={`${customer?.area || latest?.area || "—"} · ${customer?.distributor || latest?.distributor || "—"}`}
       avatar={getInitials(name)}
@@ -5875,19 +3854,7 @@ const CustomerHistoryPage = ({
       badge={
         currentStage ? (
           <span
-            style={{
-              fontSize: 12,
-              padding: "5px 11px",
-              borderRadius: 6,
-              fontWeight: 600,
-              background: sc.bg,
-              color: sc.text,
-              border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
-              maxWidth: 300,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="max-w-[300px] py-[5px] px-[11px] text-[12px] font-semibold text-ellipsis whitespace-nowrap rounded-md overflow-hidden" style={{ background: sc.bg, color: sc.text, border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)` }}
           >
             {currentStage}
           </span>
@@ -5899,28 +3866,16 @@ const CustomerHistoryPage = ({
             <Icon name="edit" size={13} /> Edit
           </button>
           <button
-            className="dsr-btn-primary"
+            className="dsr-btn-primary flex items-center gap-1.5 h-[38px] py-0 px-4 text-[12.5px] font-semibold text-[#0A0B10] rounded-[10px] border-0 cursor-pointer"
             onClick={onAddVisit}
-            style={{
-              height: 38,
-              padding: "0 16px",
-              border: "none",
-              borderRadius: 10,
-              fontSize: 12.5,
-              fontWeight: 600,
-              color: "#0A0B10",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+
           >
             <Icon name="addRecord" size={14} strokeWidth={2.2} /> Add visit
           </button>
         </>
       }
     >
-      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+      <div className="dsr-stat-grid cols4 mb-4.5">
         <StatTile
           label="Total visits"
           value={total}
@@ -5948,25 +3903,25 @@ const CustomerHistoryPage = ({
       </div>
 
       <div
-        style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}
+        className="flex gap-2.5 flex-wrap mb-4"
       >
-        <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+        <div className="relative flex-1 min-w-[200px]">
           <Icon
             name="search"
             size={14}
-            style={{ position: "absolute", left: 12, top: 12, color: DS.text3 }}
+            className="absolute top-3 left-3 text-ds-text3"
           />
           <input
-            className="dsr-input"
-            style={{ ...IS, paddingLeft: 34, height: 40 }}
+            className="dsr-input dsr-field h-10 pl-8.5"
+
             placeholder="Outcome / objective / stage search…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
         <button
-          className="dsr-ghost-btn"
-          style={{ height: 40 }}
+          className="dsr-ghost-btn h-10"
+
           disabled={!total}
           onClick={() => exportCustomerHistory(name, customer, records)}
         >
@@ -5976,81 +3931,52 @@ const CustomerHistoryPage = ({
 
       {total === 0 ? (
         <div
-          className="dsr-glass"
-          style={{
-            borderRadius: 16,
-            textAlign: "center",
-            padding: "44px 16px",
-            color: DS.text2,
-          }}
+          className="dsr-glass py-11 px-4 text-center text-ds-text2 rounded-2xl"
+
         >
           <div className="dsr-empty-icon">
             <Icon
               name="inbox"
               size={26}
               strokeWidth={1.6}
-              style={{ color: DS.primary }}
+              className="text-ds-primary"
             />
           </div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: DS.text1 }}>
+          <div className="text-[14.5px] font-semibold text-ds-text1">
             No visits yet
           </div>
-          <div style={{ fontSize: 12, marginTop: 4 }}>
+          <div className="mt-1 text-[12px]">
             Create this customer's first record with "Add visit"
           </div>
         </div>
       ) : groups.length === 0 ? (
         <div
-          style={{
-            textAlign: "center",
-            padding: 30,
-            color: DS.text2,
-            fontSize: 13,
-          }}
+          className="p-7.5 text-center text-[13px] text-ds-text2"
         >
           No visits match "{q}".
         </div>
       ) : (
         groups.map((g) => (
-          <div key={g.key} style={{ marginBottom: 20 }}>
+          <div key={g.key} className="mb-5">
             <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 10,
-                fontSize: 12,
-                fontWeight: 600,
-                color: DS.text3,
-              }}
+              className="flex items-center gap-2.5 mb-2.5 text-[12px] font-semibold text-ds-text3"
             >
               <span>{g.label}</span>
-              <span style={{ color: DS.primary }}>
+              <span className="text-ds-primary">
                 · {g.items.length} visit{g.items.length > 1 ? "s" : ""}
               </span>
-              <span style={{ flex: 1, height: 1, background: DS.border }} />
+              <span className="flex-1 h-[1px] bg-ds-border" />
               {g.key !== "unknown" && (
                 <button
-                  className="dsr-visits-btn"
+                  className="dsr-visits-btn py-[3px] px-[11px] text-[12px] font-semibold normal-case tracking-[0] text-ds-primary bg-ds-primary-dim rounded-[20px] border border-solid [border-color:color-mix(in_srgb,_var(--ds-primary)_33%,_transparent)] cursor-pointer"
                   onClick={() => onOpenMonth(g.key)}
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: DS.primary,
-                    background: DS.primaryDim,
-                    border: `1px solid color-mix(in srgb, ${DS.primary} 33%, transparent)`,
-                    borderRadius: 20,
-                    padding: "3px 11px",
-                    cursor: "pointer",
-                    textTransform: "none",
-                    letterSpacing: 0,
-                  }}
+
                 >
                   Month view →
                 </button>
               )}
             </div>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="grid gap-3">
               {g.items.map(({ r, i }) => (
                 <VisitCard
                   key={r._id || r.id || i}
@@ -6088,7 +4014,6 @@ const VisitsPage = ({
   const sc = stageColor(latest?.stage);
   return (
     <PageShell
-      eyebrow="Month visits"
       title={name}
       subtitle={`${month} · ${total} visit${total === 1 ? "" : "s"} (latest first)`}
       avatar={getInitials(name)}
@@ -6100,22 +4025,15 @@ const VisitsPage = ({
       }
       aside={
         otherMonths.length > 1 ? (
-          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+          <div className="dsr-glass p-4.5 rounded-2xl">
             <SubHead icon="calendar">Other months</SubHead>
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="grid gap-2">
               {otherMonths.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => onOpenMonth(m.key)}
-                  className="dsr-filter-chip"
-                  style={{
-                    justifyContent: "space-between",
-                    borderRadius: 10,
-                    padding: "9px 12px",
-                    background: m.key === currentKey ? DS.primary : undefined,
-                    color: m.key === currentKey ? "#0A0B10" : undefined,
-                    borderColor: m.key === currentKey ? DS.primary : undefined,
-                  }}
+                  className={`dsr-filter-chip justify-between py-[9px] px-3 rounded-[10px] ${m.key === currentKey ? "bg-ds-primary" : ""} ${m.key === currentKey ? "text-[#0A0B10]" : ""} ${m.key === currentKey ? "border-ds-primary" : ""}`}
+
                 >
                   <span>{m.label}</span>
                   <span className="dsr-mono">{m.visits}</span>
@@ -6126,7 +4044,7 @@ const VisitsPage = ({
         ) : null
       }
     >
-      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+      <div className="dsr-stat-grid cols4 mb-4.5">
         <StatTile label="Visits" value={total} sub={month} />
         <StatTile
           label="Latest visit"
@@ -6146,31 +4064,17 @@ const VisitsPage = ({
       </div>
       {latest?.stage && (
         <div
-          style={{
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
+          className="flex items-center gap-3 flex-wrap mb-4"
         >
           <span
-            style={{
-              fontSize: 12,
-              padding: "4px 10px",
-              borderRadius: 6,
-              fontWeight: 600,
-              background: sc.bg,
-              color: sc.text,
-              border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)`,
-            }}
+            className="py-1 px-2.5 text-[12px] font-semibold rounded-md" style={{ background: sc.bg, color: sc.text, border: `1px solid color-mix(in srgb, ${sc.border} 40.0%, transparent)` }}
           >
             {latest.stage}
           </span>
           <StageLadder stage={latest.stage} size="sm" />
         </div>
       )}
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="grid gap-3">
         {records.map((r, i) => (
           <VisitCard
             key={r._id || r.id || i}
@@ -6191,7 +4095,7 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
   const d = Number(cur) - Number(prev);
   if (!isFinite(d) || Math.abs(d) < 0.05) {
     return (
-      <span style={{ fontSize: 12, color: DS.text3, fontWeight: 600 }}>
+      <span className="text-[12px] font-semibold text-ds-text3">
         — no change
       </span>
     );
@@ -6199,12 +4103,8 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
   const up = d > 0;
   return (
     <span
-      className="dsr-mono"
-      style={{
-        fontSize: 12,
-        fontWeight: 600,
-        color: up ? DS.success : DS.danger,
-      }}
+      className={`dsr-mono text-[12px] font-semibold ${up ? "text-ds-success" : "text-ds-danger"}`}
+
     >
       {up ? "▲ +" : "▼ "}
       {d.toFixed(digits)}
@@ -6215,18 +4115,13 @@ const Delta = ({ cur, prev, suffix = "", digits = 0 }) => {
 
 const PanelHead = ({ icon, children, onOpen }) => (
   <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      gap: 8,
-    }}
+    className="flex justify-between items-start gap-2"
   >
     <SubHead icon={icon}>{children}</SubHead>
     {onOpen && (
       <button className="dsr-viewall" onClick={onOpen}>
         Details
-        <span style={{ transform: "rotate(45deg)", display: "flex" }}>
+        <span className="flex [transform:rotate(45deg)]">
           <Icon name="arrowUp" size={11} strokeWidth={2.2} />
         </span>
       </button>
@@ -6254,47 +4149,25 @@ const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
       : {})}
   >
     <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 8,
-        fontSize: 12,
-        marginBottom: 4,
-      }}
+      className="flex justify-between gap-2 mb-1 text-[12px]"
     >
       <span
-        style={{
-          color: DS.text1,
-          fontWeight: 600,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
+        className="font-semibold text-ellipsis whitespace-nowrap text-ds-text1 overflow-hidden"
       >
         {label}
       </span>
       <span
-        className="dsr-mono"
-        style={{ color, fontWeight: 600, flexShrink: 0 }}
+        className="dsr-mono shrink-0 font-semibold"
+        style={{ color }}
       >
         {right ?? value}
       </span>
     </div>
     <div
-      style={{
-        height: 6,
-        borderRadius: 4,
-        background: DS.border,
-        overflow: "hidden",
-      }}
+      className="h-[6px] bg-ds-border rounded-sm overflow-hidden"
     >
       <div
-        style={{
-          width: `${max > 0 ? (value / max) * 100 : 0}%`,
-          height: "100%",
-          background: color,
-          transition: "width .5s cubic-bezier(0.16,1,0.3,1)",
-        }}
+        className="h-full [transition:width_.5s_cubic-bezier(0.16,1,0.3,1)]" style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, background: color }}
       />
     </div>
   </div>
@@ -6306,15 +4179,6 @@ const BarRow = ({ label, value, max, color = DS.primary, right, onClick }) => (
 //  Period report ke side panels (Stage distribution, Distributor-wise visits,
 //  Top areas) par click karne se yahan aate hain.
 // ══════════════════════════════════════════════════════════════════════════
-const INSIGHT_KINDS = {
-  stage: { label: "Stage distribution", short: "Stage", icon: "sparkle" },
-  distributor: {
-    label: "Distributor-wise visits",
-    short: "Distributor",
-    icon: "store",
-  },
-  area: { label: "Top areas", short: "Area", icon: "pin" },
-};
 
 // customer ko uske LATEST visit ke hisaab se group mein daalte hain
 const insightId = (kind, c) => {
@@ -6519,7 +4383,7 @@ const InsightPage = ({
   };
 
   const withDelta = (text, cur, p, suffix = "", digits = 0) => (
-    <span style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>
+    <span className="inline-flex gap-2 items-baseline">
       <span>{text}</span>
       {pg && <Delta cur={cur} prev={p} suffix={suffix} digits={digits} />}
     </span>
@@ -6527,7 +4391,7 @@ const InsightPage = ({
 
   // ── aside: kind switch + ranked list ────────────────────────────────────
   const aside = (
-    <div className="dsr-glass" style={{ borderRadius: 16, padding: 16 }}>
+    <div className="dsr-glass p-4 rounded-2xl">
       <div className="dsr-seg" role="tablist" aria-label="Breakdown type">
         {Object.entries(INSIGHT_KINDS).map(([k, v]) => (
           <button
@@ -6546,11 +4410,7 @@ const InsightPage = ({
         {groups.length === 1 ? "" : "s"} · {periodTitle}
       </SubHead>
       <div
-        style={{
-          display: "grid",
-          gap: 6,
-          gridTemplateColumns: "minmax(0,1fr)",
-        }}
+        className="grid gap-1.5 grid-cols-[minmax(0,1fr)]"
       >
         {groups.map((g) => {
           const on = active && g.id === active.id;
@@ -6559,14 +4419,14 @@ const InsightPage = ({
           return (
             <button
               key={g.id}
-              className={`dsr-rank-row${on ? " on" : ""}`}
+              className={`dsr-rank-row${on ? " on" : ""} ${g.visits === 0 && !on ? "opacity-55" : "opacity-100"}`}
               onClick={() => onSelect(g.id)}
               aria-pressed={on}
-              style={{ opacity: g.visits === 0 && !on ? 0.55 : 1 }}
+
             >
               <div className="dsr-rank-top">
                 <span className="dsr-rank-name">{g.label}</span>
-                <span className="dsr-mono" style={{ color, fontWeight: 600 }}>
+                <span className="dsr-mono font-semibold" style={{ color }}>
                   {g.visits}
                 </span>
               </div>
@@ -6586,7 +4446,7 @@ const InsightPage = ({
           );
         })}
         {groups.length === 0 && (
-          <div style={{ fontSize: 12, color: DS.text2 }}>No data</div>
+          <div className="text-[12px] text-ds-text2">No data</div>
         )}
       </div>
     </div>
@@ -6596,7 +4456,6 @@ const InsightPage = ({
 
   return (
     <PageShell
-      eyebrow={`${meta.short} insights`}
       title={title.length > 44 ? `${title.slice(0, 43)}…` : title}
       subtitle={`${periodTitle} · ${month.label}${
         active
@@ -6608,8 +4467,8 @@ const InsightPage = ({
       aside={aside}
       actions={
         <button
-          className="dsr-ghost-btn"
-          style={{ height: 36 }}
+          className="dsr-ghost-btn h-9"
+
           disabled={!active || active.n === 0}
           onClick={exportGroup}
         >
@@ -6619,31 +4478,22 @@ const InsightPage = ({
     >
       {!active ? (
         <div
-          className="dsr-glass"
-          style={{ borderRadius: 16, padding: 36, textAlign: "center" }}
+          className="dsr-glass p-9 text-center rounded-2xl"
+
         >
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+          <div className="mb-1.5 font-semibold">
             This {meta.short.toLowerCase()} was not found in this period
           </div>
-          <div style={{ fontSize: 12, color: DS.text2 }}>
+          <div className="text-[12px] text-ds-text2">
             Pick another {meta.short.toLowerCase()} from the list.
           </div>
         </div>
       ) : (
         <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "minmax(0,1fr)",
-          }}
+          className="grid gap-4 grid-cols-[minmax(0,1fr)]"
         >
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit,minmax(min(100%,170px),1fr))",
-              gap: 12,
-            }}
+            className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,170px),1fr))]"
           >
             <MetricCard
               label="Visits"
@@ -6700,7 +4550,7 @@ const InsightPage = ({
             />
           </div>
 
-          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+          <div className="dsr-glass p-4.5 rounded-2xl">
             <SubHead icon="trending">Visit trend · {periodTitle}</SubHead>
             <div className="dsr-trend" role="img" aria-label="Daily visits">
               {daily.map((x) => (
@@ -6719,12 +4569,12 @@ const InsightPage = ({
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: DS.text2, marginTop: 10 }}>
+            <div className="mt-2.5 text-[12px] text-ds-text2">
               {activeDays} active day{activeDays === 1 ? "" : "s"}
               {peak.n > 0 && (
                 <>
                   {" "}
-                  · busiest <b style={{ color: DS.text1 }}>{peak.d}</b> (
+                  · busiest <b className="text-ds-text1">{peak.d}</b> (
                   {peak.n} visit{peak.n === 1 ? "" : "s"})
                 </>
               )}
@@ -6732,18 +4582,13 @@ const InsightPage = ({
           </div>
 
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit,minmax(min(100%,260px),1fr))",
-              gap: 16,
-            }}
+            className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))]"
           >
             {cross.map(({ k, list }) => (
               <div
                 key={k}
-                className="dsr-glass"
-                style={{ borderRadius: 16, padding: 18 }}
+                className="dsr-glass p-4.5 rounded-2xl"
+
               >
                 <SubHead icon={INSIGHT_KINDS[k].icon}>
                   By {INSIGHT_KINDS[k].short.toLowerCase()}
@@ -6771,20 +4616,15 @@ const InsightPage = ({
 
           {(silent.length > 0 || opportunity.length > 0) && (
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit,minmax(min(100%,260px),1fr))",
-                gap: 16,
-              }}
+              className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))]"
             >
               <div
-                className="dsr-glass"
-                style={{ borderRadius: 16, padding: 18 }}
+                className="dsr-glass p-4.5 rounded-2xl"
+
               >
                 <SubHead icon="clock">Follow-up due · 10+ days silent</SubHead>
                 {silent.length === 0 ? (
-                  <div style={{ fontSize: 12, color: DS.text2 }}>
+                  <div className="text-[12px] text-ds-text2">
                     All customers were visited recently 👌
                   </div>
                 ) : (
@@ -6799,8 +4639,8 @@ const InsightPage = ({
                       >
                         <span>{c.name}</span>
                         <span
-                          className="dsr-mono"
-                          style={{ color: DS.warning, fontWeight: 600 }}
+                          className="dsr-mono font-semibold text-ds-warning"
+
                         >
                           {gapOf(c)}d
                         </span>
@@ -6809,12 +4649,12 @@ const InsightPage = ({
                 )}
               </div>
               <div
-                className="dsr-glass"
-                style={{ borderRadius: 16, padding: 18 }}
+                className="dsr-glass p-4.5 rounded-2xl"
+
               >
                 <SubHead icon="lightbulb">Biggest headroom</SubHead>
                 {opportunity.length === 0 ? (
-                  <div style={{ fontSize: 12, color: DS.text2 }}>
+                  <div className="text-[12px] text-ds-text2">
                     No headroom data
                   </div>
                 ) : (
@@ -6826,8 +4666,8 @@ const InsightPage = ({
                     >
                       <span>{c.name}</span>
                       <span
-                        className="dsr-mono"
-                        style={{ color: DS.success, fontWeight: 600 }}
+                        className="dsr-mono font-semibold text-ds-success"
+
                       >
                         {fmtL(custHeadroom(c))}
                       </span>
@@ -6838,24 +4678,18 @@ const InsightPage = ({
             </div>
           )}
 
-          <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+          <div className="dsr-glass p-4.5 rounded-2xl">
             <div
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
-                marginBottom: 12,
-              }}
+              className="flex gap-2.5 items-center flex-wrap mb-3"
             >
               <SubHead icon="users">Customers · {shown.length}</SubHead>
-              <div style={{ flex: 1 }} />
+              <div className="flex-1" />
               <input
-                className="dsr-input"
+                className="dsr-input dsr-field h-[34px] w-[200px] max-w-full"
                 placeholder="Search customer…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                style={{ ...IS, height: 34, width: 200, maxWidth: "100%" }}
+
                 aria-label="Search customers"
               />
               <CustomSelect
@@ -6931,13 +4765,13 @@ const InsightPage = ({
                         {fmtL(toNum(c.latest.ytd))}{" "}
                         <small>{(c.latest.pct || 0).toFixed(0)}%</small>
                       </span>
-                      <span style={{ fontSize: 12 }}>
+                      <span className="text-[12px]">
                         {new Date(c.latest.date).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
                         })}
                         {gap >= 10 && (
-                          <small style={{ color: DS.warning, marginLeft: 6 }}>
+                          <small className="ml-1.5 text-ds-warning">
                             {gap}d
                           </small>
                         )}
@@ -6946,7 +4780,7 @@ const InsightPage = ({
                   );
                 })}
                 {shown.length === 0 && (
-                  <div style={{ padding: 18, fontSize: 12, color: DS.text2 }}>
+                  <div className="p-4.5 text-[12px] text-ds-text2">
                     No customers found
                   </div>
                 )}
@@ -7104,21 +4938,21 @@ const PeriodReportPage = ({
   const pv = prev?.data;
   const navBtn = (label, fn, dir) => (
     <button
-      className="dsr-ghost-btn"
+      className="dsr-ghost-btn h-9"
       disabled={!fn}
       onClick={fn || undefined}
-      style={{ height: 36 }}
+
     >
       {dir === "l" && <Icon name="back" size={13} />} {label}
     </button>
   );
 
   const aside = (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div className="grid gap-3.5">
       {pv && (
-        <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+        <div className="dsr-glass p-4.5 rounded-2xl">
           <SubHead icon="trending">vs previous period</SubHead>
-          <div style={{ fontSize: 12, color: DS.text2, marginBottom: 12 }}>
+          <div className="mb-3 text-[12px] text-ds-text2">
             {prev.label}
           </div>
           {[
@@ -7135,21 +4969,15 @@ const PeriodReportPage = ({
           ].map(([lbl, cur, pr, suf, dg]) => (
             <div
               key={lbl}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "8px 0",
-                borderBottom: `1px dashed ${DS.border}`,
-              }}
+              className="flex justify-between items-center py-2 px-0 border-b border-dashed border-b-ds-border"
             >
-              <span style={{ fontSize: 12, color: DS.text2 }}>{lbl}</span>
+              <span className="text-[12px] text-ds-text2">{lbl}</span>
               <span
-                style={{ display: "flex", gap: 10, alignItems: "baseline" }}
+                className="flex gap-2.5 items-baseline"
               >
                 <span
-                  className="dsr-mono"
-                  style={{ fontSize: 13, fontWeight: 600 }}
+                  className="dsr-mono text-[13px] font-semibold"
+
                 >
                   {cur}
                 </span>
@@ -7160,7 +4988,7 @@ const PeriodReportPage = ({
         </div>
       )}
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <PanelHead icon="sparkle" onOpen={() => onOpenInsight("stage")}>
           Stage distribution
         </PanelHead>
@@ -7177,12 +5005,12 @@ const PeriodReportPage = ({
         ))}
       </div>
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <PanelHead icon="store" onOpen={() => onOpenInsight("distributor")}>
           Distributor-wise visits
         </PanelHead>
         {byDist.length === 0 && (
-          <div style={{ fontSize: 12, color: DS.text2 }}>No data</div>
+          <div className="text-[12px] text-ds-text2">No data</div>
         )}
         {byDist.map(([k, n]) => (
           <BarRow
@@ -7196,7 +5024,7 @@ const PeriodReportPage = ({
         ))}
       </div>
 
-      <div className="dsr-glass" style={{ borderRadius: 16, padding: 18 }}>
+      <div className="dsr-glass p-4.5 rounded-2xl">
         <PanelHead icon="pin" onOpen={() => onOpenInsight("area")}>
           Top areas
         </PanelHead>
@@ -7216,7 +5044,6 @@ const PeriodReportPage = ({
 
   return (
     <PageShell
-      eyebrow="Period report"
       title={month.label}
       subtitle={
         period === "full"
@@ -7230,19 +5057,19 @@ const PeriodReportPage = ({
         <>
           {navBtn("Older", onOlder, "l")}
           <button
-            className="dsr-ghost-btn"
+            className="dsr-ghost-btn h-9"
             disabled={!onNewer}
             onClick={onNewer || undefined}
-            style={{ height: 36 }}
+
           >
             Newer{" "}
-            <span style={{ transform: "rotate(180deg)", display: "flex" }}>
+            <span className="flex [transform:rotate(180deg)]">
               <Icon name="back" size={13} />
             </span>
           </button>
           <button
-            className="dsr-ghost-btn"
-            style={{ height: 36 }}
+            className="dsr-ghost-btn h-9"
+
             onClick={exportPeriod}
           >
             <Icon name="download" size={13} /> Excel
@@ -7251,7 +5078,7 @@ const PeriodReportPage = ({
       }
     >
       <div
-        style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}
+        className="flex gap-2 flex-wrap mb-3.5"
       >
         {[
           ["full", "Full month"],
@@ -7260,16 +5087,16 @@ const PeriodReportPage = ({
         ].map(([id, lbl]) => (
           <button
             key={id}
-            className={`dsr-filter-chip${period === id ? " active" : ""}`}
+            className={`dsr-filter-chip${period === id ? " active" : ""} py-[7px] px-4 text-[12.5px]`}
             onClick={() => period !== id && onSwitch(id)}
-            style={{ padding: "7px 16px", fontSize: 12.5 }}
+
           >
             {lbl}
           </button>
         ))}
       </div>
 
-      <div className="dsr-stat-grid cols4" style={{ marginBottom: 12 }}>
+      <div className="dsr-stat-grid cols4 mb-3">
         <StatTile
           label="Visits"
           value={data.totalVisits}
@@ -7293,7 +5120,7 @@ const PeriodReportPage = ({
           accent={DS.purple}
         />
       </div>
-      <div className="dsr-stat-grid cols4" style={{ marginBottom: 18 }}>
+      <div className="dsr-stat-grid cols4 mb-4.5">
         <StatTile
           label="Total YTD"
           value={fmtL(totalYTD)}
@@ -7317,12 +5144,8 @@ const PeriodReportPage = ({
 
       <SectionCard title={`Month split · 1 – 15 vs 16 – ${lastDay}`}>
         <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 12,
-          }}
+          className="dsr-grid2 grid gap-3 grid-cols-2"
+
         >
           {month.halves.map((h) => {
             const active = period === String(h.id);
@@ -7339,62 +5162,33 @@ const PeriodReportPage = ({
                     if (!active) onSwitch(String(h.id));
                   }
                 }}
-                className="dsr-half-card"
-                style={{
-                  background: active ? DS.primaryDim : DS.surface,
-                  border: `1px solid ${active ? DS.primary : DS.border}`,
-                  borderRadius: 14,
-                  padding: 14,
-                  cursor: active ? "default" : "pointer",
-                  minWidth: 0,
-                }}
+                className={`dsr-half-card min-w-0 p-3.5 rounded-[14px] ${active ? "bg-ds-primary-dim" : "bg-ds-surface"} ${active ? "cursor-default" : "cursor-pointer"}`}
+                style={{ border: `1px solid ${active ? DS.primary : DS.border}` }}
               >
                 <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
+                  className="flex items-center justify-between gap-2 mb-3"
                 >
                   <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#0A0B10",
-                      background: DS.primary,
-                      padding: "3px 9px",
-                      borderRadius: 20,
-                    }}
+                    className="py-[3px] px-[9px] text-[12px] font-semibold text-[#0A0B10] bg-ds-primary rounded-[20px]"
                   >
                     {h.id === 1 ? "FIRST HALF" : "SECOND HALF"}
                   </span>
                   <span
-                    className="dsr-mono"
-                    style={{ fontSize: 13, fontWeight: 600 }}
+                    className="dsr-mono text-[13px] font-semibold"
+
                   >
                     {h.title}
                   </span>
                 </div>
                 {h.totalVisits === 0 ? (
                   <div
-                    style={{
-                      fontSize: 12,
-                      color: DS.text3,
-                      textAlign: "center",
-                      padding: "12px 0",
-                    }}
+                    className="py-3 px-0 text-[12px] text-center text-ds-text3"
                   >
                     No visits in this period
                   </div>
                 ) : (
                   <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                      gap: 8,
-                    }}
+                    className="grid gap-2 grid-cols-2"
                   >
                     {[
                       [
@@ -7434,32 +5228,16 @@ const PeriodReportPage = ({
                     ].map(([lbl, val, oth, clr, suf, dg, raw]) => (
                       <div
                         key={lbl}
-                        style={{
-                          background:
-                            "color-mix(in srgb, var(--wash) 3.0%, transparent)",
-                          border: `1px solid ${DS.border}`,
-                          borderRadius: 9,
-                          padding: "8px 10px",
-                          minWidth: 0,
-                        }}
+                        className="min-w-0 py-2 px-2.5 [background:color-mix(in_srgb,_var(--wash)_3.0%,_transparent)] rounded-[9px] border border-solid border-ds-border"
                       >
                         <div
-                          style={{
-                            fontSize: 12,
-                            color: DS.text3,
-                            fontWeight: 600,
-                          }}
+                          className="text-[12px] font-semibold text-ds-text3"
                         >
                           {lbl}
                         </div>
                         <div
-                          className="dsr-mono"
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 600,
-                            color: clr,
-                            margin: "2px 0",
-                          }}
+                          className="dsr-mono my-0.5 mx-0 text-[15px] font-semibold"
+                          style={{ color: clr }}
                         >
                           {val}
                         </div>
@@ -7476,7 +5254,7 @@ const PeriodReportPage = ({
                   </div>
                 )}
                 {h.id === 2 && h.totalVisits > 0 && (
-                  <div style={{ fontSize: 12, color: DS.text3, marginTop: 8 }}>
+                  <div className="mt-2 text-[12px] text-ds-text3">
                     ▲▼ = compared with the first half
                   </div>
                 )}
@@ -7488,73 +5266,38 @@ const PeriodReportPage = ({
 
       <SectionCard title="Daily visits">
         <div
-          style={{
-            display: "flex",
-            alignItems: "flex-end",
-            gap: period === "full" ? 3 : 6,
-            height: 150,
-            paddingTop: 8,
-          }}
+          className={`flex items-end h-[150px] pt-2 ${period === "full" ? "gap-[3px]" : "gap-1.5"}`}
         >
           {daily.map((x) => (
             <div
               key={x.d}
               title={`${x.d} ${month.label.split(" ")[0]} · ${x.n} visit${x.n === 1 ? "" : "s"}`}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                height: "100%",
-              }}
+              className="flex flex-1 flex-col items-center justify-end min-w-0 h-full"
             >
               <span
-                className="dsr-mono"
-                style={{
-                  fontSize: 12,
-                  color: x.n ? DS.gold : "transparent",
-                  marginBottom: 3,
-                }}
+                className={`dsr-mono mb-[3px] text-[12px] ${x.n ? "text-ds-gold" : "text-transparent"}`}
+
               >
                 {x.n || 0}
               </span>
               <div
-                style={{
-                  width: "100%",
-                  maxWidth: 26,
-                  height: `${(x.n / maxDaily) * 100}%`,
-                  minHeight: x.n ? 4 : 2,
-                  borderRadius: "5px 5px 2px 2px",
-                  background: x.n
+                className={`w-full max-w-[26px] rounded-[5px_5px_2px_2px] ${x.n ? "min-h-[4px]" : "min-h-[2px]"}`} style={{ height: `${(x.n / maxDaily) * 100}%`, background: x.n
                     ? x.d === peak.d
                       ? DS.primary
                       : DS.borderHi
-                    : DS.border,
-                }}
+                    : DS.border }}
               />
             </div>
           ))}
         </div>
         <div
-          style={{
-            display: "flex",
-            gap: period === "full" ? 3 : 6,
-            marginTop: 6,
-          }}
+          className={`flex mt-1.5 ${period === "full" ? "gap-[3px]" : "gap-1.5"}`}
         >
           {daily.map((x) => (
             <div
               key={x.d}
-              className="dsr-mono"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                textAlign: "center",
-                fontSize: 12,
-                color: DS.text3,
-              }}
+              className="dsr-mono flex-1 min-w-0 text-center text-[12px] text-ds-text3"
+
             >
               {period === "full" && x.d % 5 !== 1 ? "" : x.d}
             </div>
@@ -7564,13 +5307,8 @@ const PeriodReportPage = ({
 
       {pv && (notRevisited.length > 0 || newThisPeriod.length > 0) && (
         <div
-          className="dsr-grid2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 12,
-            marginBottom: 14,
-          }}
+          className="dsr-grid2 grid gap-3 grid-cols-2 mb-3.5"
+
         >
           {[
             [
@@ -7588,41 +5326,30 @@ const PeriodReportPage = ({
           ].map(([ttl, sub, list, clr]) => (
             <div
               key={ttl}
-              className="dsr-glass"
-              style={{ borderRadius: 16, padding: 16, minWidth: 0 }}
+              className="dsr-glass min-w-0 p-4 rounded-2xl"
+
             >
               <div
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: clr,
-                  marginBottom: 3,
-                }}
+                className="mb-[3px] text-[12.5px] font-semibold" style={{ color: clr }}
               >
                 {ttl}
               </div>
-              <div style={{ fontSize: 12, color: DS.text2, marginBottom: 10 }}>
+              <div className="mb-2.5 text-[12px] text-ds-text2">
                 {sub}
               </div>
               <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  maxHeight: 130,
-                  overflowY: "auto",
-                }}
-                className="dsr-scroll"
+
+                className="dsr-scroll flex flex-wrap gap-1.5 max-h-[130px] overflow-y-auto"
               >
                 {list.length === 0 && (
-                  <span style={{ fontSize: 12, color: DS.text3 }}>—</span>
+                  <span className="text-[12px] text-ds-text3">—</span>
                 )}
                 {list.map((c) => (
                   <button
                     key={c.name}
                     onClick={() => onOpenCustomer(c.name)}
-                    className="dsr-filter-chip"
-                    style={{ fontSize: 12, padding: "4px 10px" }}
+                    className="dsr-filter-chip py-1 px-2.5 text-[12px]"
+
                   >
                     {c.name}
                   </button>
@@ -7635,33 +5362,23 @@ const PeriodReportPage = ({
 
       <SectionCard title={`Customers · ${shown.length}`}>
         <div
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: 12,
-            flexWrap: "wrap",
-          }}
+          className="flex gap-2.5 flex-wrap mb-3"
         >
-          <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+          <div className="relative flex-1 min-w-[180px]">
             <Icon
               name="search"
               size={14}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: 12,
-                color: DS.text3,
-              }}
+              className="absolute top-3 left-3 text-ds-text3"
             />
             <input
-              className="dsr-input"
-              style={{ ...IS, paddingLeft: 34, height: 40 }}
+              className="dsr-input dsr-field h-10 pl-8.5"
+
               placeholder="Customer / area / distributor…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div className="flex gap-1.5 flex-wrap">
             {[
               ["visits", "Visits"],
               ["pot", "Potential"],
@@ -7678,15 +5395,10 @@ const PeriodReportPage = ({
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div className="grid gap-2">
           {shown.length === 0 && (
             <div
-              style={{
-                textAlign: "center",
-                padding: 24,
-                fontSize: 12.5,
-                color: DS.text2,
-              }}
+              className="p-6 text-center text-[12.5px] text-ds-text2"
             >
               No matching customers.
             </div>
@@ -7697,7 +5409,7 @@ const PeriodReportPage = ({
             return (
               <div
                 key={c.name}
-                className="dsr-customer-row"
+                className="dsr-customer-row flex items-center gap-3 flex-wrap py-[11px] px-[13px] bg-ds-surface rounded-xl border border-solid border-ds-border"
                 role="button"
                 tabIndex={0}
                 onClick={() => onOpenCustomer(c.name)}
@@ -7708,82 +5420,48 @@ const PeriodReportPage = ({
                     onOpenCustomer(c.name);
                   }
                 }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "11px 13px",
-                  background: DS.surface,
-                  border: `1px solid ${DS.border}`,
-                  borderRadius: 12,
-                  flexWrap: "wrap",
-                }}
+
               >
                 <span
-                  className="dsr-mono"
-                  style={{
-                    width: 22,
-                    fontSize: 12,
-                    color: DS.text3,
-                    fontWeight: 600,
-                  }}
+                  className="dsr-mono w-[22px] text-[12px] font-semibold text-ds-text3"
+
                 >
                   {i + 1}
                 </span>
-                <div style={{ flex: 1, minWidth: 150 }}>
+                <div className="flex-1 min-w-[150px]">
                   <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="text-[13px] font-semibold text-ellipsis whitespace-nowrap overflow-hidden"
                   >
                     {c.name}
                   </div>
-                  <div style={{ fontSize: 12, color: DS.text2, marginTop: 2 }}>
+                  <div className="mt-0.5 text-[12px] text-ds-text2">
                     {c.latest.area} · {c.latest.distributor} · last{" "}
                     {fmtDate(c.latest.date)}
                   </div>
                 </div>
                 <StageLadder stage={c.latest.stage} size="sm" />
-                <div style={{ textAlign: "right", minWidth: 62 }}>
+                <div className="min-w-[62px] text-right">
                   <div
-                    className="dsr-mono"
-                    style={{ fontSize: 12, fontWeight: 600, color: DS.text1 }}
+                    className="dsr-mono text-[12px] font-semibold text-ds-text1"
+
                   >
                     {fmtL(pot)}
                   </div>
                   <div
-                    className="dsr-mono"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: pctColor(pct),
-                    }}
+                    className="dsr-mono text-[12px] font-semibold"
+                    style={{ color: pctColor(pct) }}
                   >
                     {pct}%
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="dsr-visits-btn"
+                  className="dsr-visits-btn py-1 px-[11px] text-[12px] font-semibold whitespace-nowrap text-ds-primary bg-ds-primary-dim rounded-[20px] border border-solid border-[rgba(212,175,106,0.35)] cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenVisits(c.name);
                   }}
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: DS.primary,
-                    background: DS.primaryDim,
-                    padding: "4px 11px",
-                    borderRadius: 20,
-                    border: "1px solid rgba(212,175,106,0.35)",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
+
                 >
                   {c.visits}× visit{c.visits > 1 ? "s" : ""} ›
                 </button>
@@ -7799,7 +5477,7 @@ const PeriodReportPage = ({
 // ── Main Component ─────────────────────────────────────────────────────────
 const DailySalesReport = () => {
   useEffect(() => {
-    injectGlobalStyles();
+    injectFonts();
   }, []);
   const [activeTab, setActiveTab] = useState("records");
   const [cached] = useState(readDsrCache); // read once, before first paint
@@ -7830,6 +5508,7 @@ const DailySalesReport = () => {
   const [distFilter, setDistFilter] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [followOnly, setFollowOnly] = useState(false);
+  const [keyOnly, setKeyOnly] = useState(false);
   const [sortBy, setSortBy] = useState("new");
   const [viewMode, setViewMode] = useState(() => {
     try {
@@ -7857,6 +5536,7 @@ const DailySalesReport = () => {
   const [visibleCount, setVisibleCount] = useState(30);
   const searchRef = useRef(null);
   const [customerQuery, setCustomerQuery] = useState("");
+  const [custView, setCustView] = useState("all"); // Customer Master view: "all" | "key"
   const [recordsLoaded, setRecordsLoaded] = useState(recordsCacheOk.current);
   const [customersLoaded, setCustomersLoaded] = useState(
     customersCacheOk.current,
@@ -7871,6 +5551,13 @@ const DailySalesReport = () => {
     () => parseRoute(location.pathname),
     [location.pathname],
   );
+  // old /key-customers link → open the Key view inside the Customers tab
+  useEffect(() => {
+    if (!route.openKeyCustomers) return;
+    setActiveTab("customers");
+    setCustView("key");
+    navigate(BASE, { replace: true });
+  }, [route.openKeyCustomers, navigate]);
   const goBack = useCallback(() => {
     if (location.key !== "default") navigate(-1);
     else navigate(BASE, { replace: true });
@@ -8070,6 +5757,7 @@ const DailySalesReport = () => {
       distFilter,
       areaFilter,
       followOnly,
+      keyOnly,
       sortBy,
       searchQuery,
     ],
@@ -8154,6 +5842,7 @@ const DailySalesReport = () => {
       if (stageFilter && stageLetter(r.stage) !== stageFilter) return false;
       if (distFilter && r.distributor !== distFilter) return false;
       if (areaFilter && r.area !== areaFilter) return false;
+      if (keyOnly && !customers[r.customer]?.isKey) return false;
       if (followOnly && latestAll[r.customer] !== r) return false;
       if (followOnly && (daysSince(r.date) ?? 0) < 14) return false;
       if (!q) return true;
@@ -8181,6 +5870,8 @@ const DailySalesReport = () => {
     distFilter,
     areaFilter,
     followOnly,
+    keyOnly,
+    customers,
     latestAll,
     sortBy,
   ]);
@@ -8191,6 +5882,7 @@ const DailySalesReport = () => {
     setDistFilter("");
     setAreaFilter("");
     setFollowOnly(false);
+    setKeyOnly(false);
     setSearchQuery("");
   };
 
@@ -8596,6 +6288,7 @@ const DailySalesReport = () => {
             exDyes: up.exDyes,
             exAux: up.exAux,
             abp: up.abp,
+            ...pickKeyFields(up),
             ...pickContact(up),
           };
           return n;
@@ -8659,13 +6352,23 @@ const DailySalesReport = () => {
     }
   };
 
+  // Key customers: mark/unmark + visit frequency (see features/keyCustomers)
+  const keyActions = useKeyCustomers({ customers, setCustomers, showToast });
+
   const handleImportDone = (imported) => {
-    setCustomers((p) => ({ ...p, ...imported }));
+    setCustomers((p) => {
+      const n = { ...p };
+      Object.keys(imported).forEach((k) => {
+        n[k] = mergeKeyFields(imported[k], p[k]);
+      });
+      return n;
+    });
     const c = Object.keys(imported).length;
     showToast(`${c} customer${c !== 1 ? "s" : ""} import ho gaye!`);
     setShowImporter(false);
   };
   const customerList = Object.keys(customers).sort();
+  const keyCount = countKeyCustomers(customers);
   const visibleCustomerList = customerList.filter((n) => {
     const q = customerQuery.trim().toLowerCase();
     if (!q) return true;
@@ -8693,7 +6396,7 @@ const DailySalesReport = () => {
     } else if (route.type === "customerEdit") {
       const c = customers[route.name];
       if (!customersLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Edit customer" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!c) page = <PageNotFound what="Customer" onBack={toList} />;
       else
         page = (
@@ -8726,7 +6429,7 @@ const DailySalesReport = () => {
     } else if (route.type === "history") {
       const c = customers[route.name];
       if (!customersLoaded || !recordsLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Customer history" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!c) page = <PageNotFound what="Customer" onBack={toList} />;
       else
         page = (
@@ -8749,7 +6452,7 @@ const DailySalesReport = () => {
         m && (half === "1" || half === "2") ? m.halves[Number(half) - 1] : null;
       const row = (hObj || m)?.customerRows.find((x) => x.name === route.name);
       if (!recordsLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Month visits" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!row) page = <PageNotFound what="Visits" onBack={toList} />;
       else
         page = (
@@ -8780,7 +6483,7 @@ const DailySalesReport = () => {
       const m = monthlyAnalysis[idx];
       const per = route.period;
       if (!recordsLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Period report" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!m || !["1", "2", "full"].includes(per))
         page = <PageNotFound what="Report" onBack={toList} />;
       else {
@@ -8855,7 +6558,7 @@ const DailySalesReport = () => {
       const m = monthlyAnalysis[idx];
       const per = route.period;
       if (!recordsLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Insights" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!m || !["1", "2", "full"].includes(per))
         page = <PageNotFound what="Report" onBack={toList} />;
       else {
@@ -8906,7 +6609,7 @@ const DailySalesReport = () => {
     } else if (route.type === "recordEdit") {
       const rec = records.find((r) => (r._id || r.id) === route.id);
       if (!recordsLoaded)
-        page = <PageLoading onBack={goBack} eyebrow="Edit record" />;
+        page = <PageLoading onBack={goBack} />;
       else if (!rec) page = <PageNotFound what="Record" onBack={toList} />;
       else
         page = (
@@ -8934,13 +6637,9 @@ const DailySalesReport = () => {
 
   return (
     <div
-      className="dsr-layout"
-      style={{
-        background: DS.bg,
-        fontFamily:
-          "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-        color: DS.text1,
-      }}
+      className="dsr-layout bg-ds-bg text-ds-text1"
+      style={{ fontFamily:
+          "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }}
     >
       <Toast msg={toast.msg} type={toast.type} />
       <Sidebar
@@ -8949,13 +6648,8 @@ const DailySalesReport = () => {
         recordCount={records.length}
       />
       <div
-        className="dsr-main"
-        style={{
-          padding: "16px 16px 80px",
-          maxWidth: 520,
-          margin: "0 auto",
-          width: "100%",
-        }}
+        className="dsr-main max-w-[520px] w-full pt-4 pb-[80px] px-4 my-0 mx-auto"
+
       >
         {activeTab === "records" && (
           <>
@@ -8996,6 +6690,9 @@ const DailySalesReport = () => {
               setView={setViewMode}
               followOnly={followOnly}
               setFollowOnly={setFollowOnly}
+              keyOnly={keyOnly}
+              setKeyOnly={setKeyOnly}
+              keyCount={keyCount}
               shown={filteredRecords.length}
               total={records.length}
               onClear={clearAllFilters}
@@ -9007,37 +6704,28 @@ const DailySalesReport = () => {
               <RecordsLoading view={viewMode} />
             ) : filteredRecords.length === 0 ? (
               <div
-                style={{
-                  textAlign: "center",
-                  padding: "56px 16px",
-                  color: DS.text2,
-                }}
+                className="py-14 px-4 text-center text-ds-text2"
               >
                 <div className="dsr-empty-icon">
                   <Icon
                     name="inbox"
                     size={26}
                     strokeWidth={1.6}
-                    style={{ color: DS.primary }}
+                    className="text-ds-primary"
                   />
                 </div>
                 <div
-                  style={{
-                    fontSize: 14.5,
-                    fontWeight: 600,
-                    color: DS.text1,
-                    letterSpacing: "-0.01em",
-                  }}
+                  className="text-[14.5px] font-semibold tracking-[-0.01em] text-ds-text1"
                 >
                   No records found
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
+                <div className="mt-1 text-[12px] text-ds-text2">
                   Try a different filter or search
                 </div>
                 {filteredRecords.length < records.length && (
                   <button
-                    className="dsr-ghost-btn"
-                    style={{ marginTop: 14 }}
+                    className="dsr-ghost-btn mt-3.5"
+
                     onClick={clearAllFilters}
                   >
                     Clear all filters
@@ -9086,31 +6774,21 @@ const DailySalesReport = () => {
             <CustomerLastRecord record={selectedCustomerLastRecord} />
             <SectionCard
               title={
-                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span className="flex items-center gap-[5px]">
                   <Icon name="calendar" size={12} strokeWidth={2} /> Visit
                   details
                 </span>
               }
             >
               <div
-                className="dsr-grid2"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                  gap: 10,
-                }}
+                className="dsr-grid2 grid gap-2.5 grid-cols-2"
+
               >
-                <div style={{ marginBottom: 12 }}>
+                <div className="mb-3">
                   <FieldLabel required>Date</FieldLabel>
                   <input
-                    className="dsr-input"
-                    style={{
-                      ...IS,
-                      borderColor: !newRecord.date ? DS.amber : DS.border,
-                      background: !newRecord.date
-                        ? "rgba(245,158,11,0.06)"
-                        : "color-mix(in srgb, var(--wash) 4.0%, transparent)",
-                    }}
+                    className={`dsr-input dsr-field ${!newRecord.date ? "border-ds-amber" : "border-ds-border"} ${!newRecord.date ? "bg-[rgba(245,158,11,0.06)]" : "[background:color-mix(in_srgb,_var(--wash)_4.0%,_transparent)]"}`}
+
                     type="date"
                     name="date"
                     value={newRecord.date}
@@ -9118,21 +6796,14 @@ const DailySalesReport = () => {
                   />
                   {!newRecord.date && (
                     <div
-                      style={{
-                        fontSize: 12,
-                        color: DS.amber,
-                        marginTop: 3,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
+                      className="flex items-center gap-1 mt-[3px] text-[12px] text-ds-amber"
                     >
                       <Icon name="calendar" size={11} strokeWidth={2} />
                       <span>Select date manually</span>
                     </div>
                   )}
                 </div>
-                <div style={{ marginBottom: 12 }}>
+                <div className="mb-3">
                   <FieldLabel required>Customer</FieldLabel>
                   <CustomSelect
                     name="customer"
@@ -9151,12 +6822,8 @@ const DailySalesReport = () => {
                 </div>
               </div>
               <div
-                className="dsr-grid2"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                  gap: 10,
-                }}
+                className="dsr-grid2 grid gap-2.5 grid-cols-2"
+
               >
                 <FormInput
                   label="Area"
@@ -9188,7 +6855,7 @@ const DailySalesReport = () => {
                   ))}
                 </FormSelect>
               </div>
-              <div style={{ marginBottom: 12 }}>
+              <div className="mb-3">
                 <FieldLabel keyBadge>
                   Objective / Project description
                 </FieldLabel>
@@ -9223,7 +6890,7 @@ const DailySalesReport = () => {
                   </option>
                 ))}
               </FormSelect>
-              <div style={{ marginBottom: 12 }}>
+              <div className="mb-3">
                 <FieldLabel keyBadge>Visit outcome</FieldLabel>
                 <input
                   className="dsr-input dsr-input-highlight"
@@ -9244,19 +6911,15 @@ const DailySalesReport = () => {
             </SectionCard>
             <SectionCard
               title={
-                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span className="flex items-center gap-[5px]">
                   <Icon name="wallet" size={12} strokeWidth={2} /> Numbers (₹
                   Lakhs)
                 </span>
               }
             >
               <div
-                className="dsr-grid2"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                  gap: 10,
-                }}
+                className="dsr-grid2 grid gap-2.5 grid-cols-2"
+
               >
                 <FormInput
                   label="Potential Dyes /mth"
@@ -9298,7 +6961,7 @@ const DailySalesReport = () => {
                   onChange={handleRecordChange}
                   placeholder="0"
                 />
-                <div style={{ marginBottom: 12 }}>
+                <div className="mb-3">
                   <FieldLabel keyBadge>YTD sale prev. mth</FieldLabel>
                   <input
                     className="dsr-input dsr-input-highlight"
@@ -9320,24 +6983,13 @@ const DailySalesReport = () => {
                 </div>
               </div>
               <div
-                style={{
-                  fontSize: 12,
-                  color: DS.info,
-                  background: DS.surface,
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  marginTop: 4,
-                  lineHeight: 1.5,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 7,
-                }}
+                className="flex items-start gap-[7px] py-[9px] px-3 mt-1 text-[12px] leading-normal text-ds-info bg-ds-surface rounded-lg"
               >
                 <Icon
                   name="lightbulb"
                   size={13}
                   strokeWidth={2}
-                  style={{ marginTop: 1, color: DS.info }}
+                  className="mt-[1px] text-ds-info"
                 />
                 <span>
                   Select a saved customer and the fields will auto-fill.
@@ -9345,35 +6997,15 @@ const DailySalesReport = () => {
               </div>
             </SectionCard>
             <button
-              className="dsr-btn-primary"
+              className="dsr-btn-primary flex items-center justify-center gap-2 w-full h-[46px] mb-3 text-[14px] font-semibold text-inherit rounded-xl border-0 cursor-pointer"
               onClick={addRecord}
               disabled={loading}
-              style={{
-                width: "100%",
-                height: 46,
-                border: "none",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                marginBottom: 12,
-                color: "inherit",
-              }}
+
             >
               {loading ? (
                 <span
-                  className="dsr-spinner"
-                  style={{
-                    width: 15,
-                    height: 15,
-                    border: "2px solid rgba(0,0,0,0.2)",
-                    borderTopColor: "#0A0B10",
-                    margin: 0,
-                  }}
+                  className="dsr-spinner w-[15px] h-[15px] m-0 border-t-2 border-solid border-t-[#0A0B10] border-r-2 border-r-[rgba(0,0,0,0.2)] border-b-2 border-b-[rgba(0,0,0,0.2)] border-l-2 border-l-[rgba(0,0,0,0.2)]"
+
                 />
               ) : (
                 <Icon name="addRecord" size={16} strokeWidth={2.1} />
@@ -9386,40 +7018,22 @@ const DailySalesReport = () => {
         {activeTab === "customers" && (
           <SectionCard>
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 14,
-                gap: 8,
-                flexWrap: "wrap",
-              }}
+              className="flex justify-between items-center gap-2 flex-wrap mb-3.5"
             >
               <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: DS.text1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                }}
+                className="flex items-center gap-[7px] text-[14px] font-semibold text-ds-text1"
               >
                 <Icon name="store" size={15} strokeWidth={2} /> Customer Master{" "}
                 <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 400,
-                    color: DS.text2,
-                    marginLeft: 8,
-                  }}
+                  className="ml-2 text-[12px] font-normal text-ds-text2"
                 >
                   {customerList.length} total
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {custView === "all" && (
+              <div className="flex gap-2 flex-wrap">
                 <button
-                  className="dsr-ghost-btn"
+                  className="dsr-ghost-btn h-[34px] text-[12px]"
                   disabled={visibleCustomerList.length === 0}
                   title="Full customer details in Excel"
                   onClick={() => {
@@ -9430,7 +7044,7 @@ const DailySalesReport = () => {
                     );
                     showToast(`Downloading Excel! (${n} customers)`);
                   }}
-                  style={{ height: 34, fontSize: 12 }}
+
                 >
                   <Icon name="download" size={13} strokeWidth={2.1} /> Download
                   {customerQuery.trim()
@@ -9438,62 +7052,54 @@ const DailySalesReport = () => {
                     : ""}
                 </button>
                 <button
-                  className="ei-import-btn"
+                  className="ei-import-btn flex items-center gap-[5px] h-[34px] py-0 px-3.5 text-[12px] font-semibold bg-ds-surface text-ds-text1 rounded-lg border border-solid border-ds-border cursor-pointer"
                   onClick={() => setShowImporter(true)}
-                  style={{
-                    height: 34,
-                    padding: "0 14px",
-                    background: DS.surface,
-                    color: DS.text1,
-                    border: `1px solid ${DS.border}`,
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
+
                 >
                   <Icon name="upload" size={13} strokeWidth={2.1} /> Excel
                   Upload
                 </button>
                 <button
                   onClick={openAddCustomer}
-                  style={{
-                    height: 34,
-                    padding: "0 14px",
-                    background: "rgba(212,175,106,0.10)",
-                    color: DS.primary,
-                    border: "1px solid rgba(212,175,106,0.25)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+                  className="flex items-center gap-1 h-[34px] py-0 px-3.5 text-[12px] font-semibold bg-[rgba(212,175,106,0.10)] text-ds-primary rounded-lg border border-solid border-[rgba(212,175,106,0.25)] cursor-pointer"
                 >
                   <Icon name="addRecord" size={13} strokeWidth={2} /> Add
                 </button>
               </div>
+              )}
             </div>
             {customerList.length > 0 && (
-              <div style={{ position: "relative", marginBottom: 12 }}>
+              <div className="mb-3.5">
+                <KeyViewSwitch
+                  view={custView}
+                  onChange={setCustView}
+                  total={customerList.length}
+                  keyCount={keyCount}
+                />
+              </div>
+            )}
+            {custView === "key" && customerList.length > 0 ? (
+              <KeyCustomersPanel
+                customers={customers}
+                historyMap={customerHistoryMap}
+                actions={keyActions}
+                showToast={showToast}
+                onOpenCustomer={(n) => navigate(ROUTES.history(n))}
+                onAddVisit={startVisitFor}
+                onNewCustomer={openAddCustomer}
+              />
+            ) : (
+              <>
+            {customerList.length > 0 && (
+              <div className="relative mb-3">
                 <Icon
                   name="search"
                   size={14}
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    top: 12,
-                    color: DS.text3,
-                  }}
+                  className="absolute top-3 left-3 text-ds-text3"
                 />
                 <input
-                  className="dsr-input"
-                  style={{ ...IS, paddingLeft: 34, height: 40 }}
+                  className="dsr-input dsr-field h-10 pl-8.5"
+
                   placeholder="Naam, area, contact person, mobile, GSTIN…"
                   value={customerQuery}
                   onChange={(e) => setCustomerQuery(e.target.value)}
@@ -9502,43 +7108,29 @@ const DailySalesReport = () => {
             )}
             {customerList.length > 0 && visibleCustomerList.length === 0 && (
               <div
-                style={{
-                  textAlign: "center",
-                  padding: 24,
-                  fontSize: 12.5,
-                  color: DS.text2,
-                }}
+                className="p-6 text-center text-[12.5px] text-ds-text2"
               >
                 No customers match "{customerQuery}".
               </div>
             )}
             {customerList.length === 0 ? (
               <div
-                style={{
-                  textAlign: "center",
-                  padding: "40px 16px",
-                  color: DS.text2,
-                }}
+                className="py-10 px-4 text-center text-ds-text2"
               >
                 <div className="dsr-empty-icon">
                   <Icon
                     name="store"
                     size={26}
                     strokeWidth={1.6}
-                    style={{ color: DS.primary }}
+                    className="text-ds-primary"
                   />
                 </div>
                 <div
-                  style={{
-                    fontSize: 14.5,
-                    fontWeight: 600,
-                    color: DS.text1,
-                    letterSpacing: "-0.01em",
-                  }}
+                  className="text-[14.5px] font-semibold tracking-[-0.01em] text-ds-text1"
                 >
                   No customers yet
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
+                <div className="mt-1 text-[12px] text-ds-text2">
                   Import from Excel or add manually
                 </div>
               </div>
@@ -9549,7 +7141,7 @@ const DailySalesReport = () => {
                 return (
                   <div
                     key={name}
-                    className="dsr-customer-row"
+                    className="dsr-customer-row flex items-center gap-2.5 py-2.5 px-2 rounded-lg border-b border-solid border-b-ds-border"
                     role="button"
                     tabIndex={0}
                     title="Visit history dekhein"
@@ -9561,52 +7153,36 @@ const DailySalesReport = () => {
                         navigate(ROUTES.history(name));
                       }
                     }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 8px",
-                      borderRadius: 8,
-                      borderBottom: `1px solid ${DS.border}`,
-                    }}
+
                   >
                     <div
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        background: DS.surface,
-                        border: `1px solid ${DS.border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: DS.text2,
-                        flexShrink: 0,
-                      }}
+                      className="flex items-center justify-center shrink-0 w-[38px] h-[38px] text-[12px] font-medium bg-ds-surface text-ds-text2 rounded-[50%] border border-solid border-ds-border"
                     >
                       {getInitials(name)}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1 min-w-0">
                       <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          color: DS.text1,
-                        }}
+                        className="flex items-center gap-1.5 min-w-0"
                       >
-                        {name}
+                        <span
+                          className="text-[13px] font-semibold text-ellipsis whitespace-nowrap text-ds-text1 overflow-hidden"
+                        >
+                          {name}
+                        </span>
+                        <KeyStarButton
+                          name={name}
+                          isKey={!!c.isKey}
+                          size="sm"
+                          disabled={keyActions.saving}
+                          onToggle={(next) => keyActions.setKey([name], next)}
+                        />
                       </div>
                       <div
-                        style={{ fontSize: 12, color: DS.text2, marginTop: 1 }}
+                        className="mt-[1px] text-[12px] text-ds-text2"
                       >
                         {c.area} · {c.distributor}
                         {(c.contactPerson || c.mobile) && (
-                          <span style={{ marginLeft: 5, color: DS.text1 }}>
+                          <span className="ml-[5px] text-ds-text1">
                             · {c.contactPerson}
                             {c.contactPerson && c.mobile ? " · " : ""}
                             {c.mobile && (
@@ -9615,11 +7191,11 @@ const DailySalesReport = () => {
                           </span>
                         )}
                         {lastR && (
-                          <span style={{ marginLeft: 5, color: DS.text3 }}>
+                          <span className="ml-[5px] text-ds-text3">
                             · {fmtDate(lastR.date)}
                           </span>
                         )}
-                        <span style={{ marginLeft: 5, color: DS.primary }}>
+                        <span className="ml-[5px] text-ds-primary">
                           · {(customerHistoryMap[name] || []).length} visit
                           {(customerHistoryMap[name] || []).length !== 1
                             ? "s"
@@ -9639,60 +7215,29 @@ const DailySalesReport = () => {
                           href={`tel:+91${c.mobile}`}
                           aria-label={`Call ${name}`}
                           title={`Call ${fmtMobile(c.mobile)}`}
-                          style={{
-                            height: 30,
-                            width: 30,
-                            borderRadius: 6,
-                            border: "1px solid rgba(34,197,94,0.30)",
-                            color: DS.success,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
+                          className="flex items-center justify-center h-[30px] w-[30px] text-ds-success rounded-md border border-solid border-[rgba(34,197,94,0.30)]"
                         >
                           <Icon name="phone" size={13} strokeWidth={2} />
                         </a>
                       ) : (
                         <span
-                          style={{ width: 30, height: 30 }}
+                          className="w-[30px] h-[30px]"
                           aria-hidden="true"
                         />
                       )}
                       <button
-                        className="dsr-btn-edit"
+                        className="dsr-btn-edit flex items-center justify-center h-[30px] w-[30px] bg-transparent text-ds-info rounded-md border border-solid border-[rgba(59,130,246,0.25)] cursor-pointer"
                         onClick={() => openEditCustomer(name)}
                         aria-label={`Edit ${name}`}
-                        style={{
-                          height: 30,
-                          width: 30,
-                          borderRadius: 6,
-                          border: "1px solid rgba(59,130,246,0.25)",
-                          background: "transparent",
-                          color: DS.info,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
+
                       >
                         <Icon name="edit" size={13} strokeWidth={2} />
                       </button>
                       <button
-                        className="dsr-btn-danger"
+                        className="dsr-btn-danger flex items-center justify-center h-[30px] w-[30px] bg-transparent text-ds-danger rounded-md border border-solid border-[rgba(244,63,94,0.25)] cursor-pointer"
                         onClick={() => handleDeleteCustomer(name)}
                         aria-label={`Delete ${name}`}
-                        style={{
-                          height: 30,
-                          width: 30,
-                          borderRadius: 6,
-                          border: "1px solid rgba(244,63,94,0.25)",
-                          background: "transparent",
-                          color: DS.danger,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
+
                       >
                         <Icon name="trash" size={13} strokeWidth={2} />
                       </button>
@@ -9701,36 +7246,24 @@ const DailySalesReport = () => {
                 );
               })
             )}
+              </>
+            )}
           </SectionCard>
         )}
 
         {activeTab === "analysis" && (
           <>
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 14,
-                gap: 8,
-                flexWrap: "wrap",
-              }}
+              className="flex justify-between items-center gap-2 flex-wrap mb-3.5"
             >
               <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: DS.text1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                }}
+                className="flex items-center gap-[7px] text-[14px] font-semibold text-ds-text1"
               >
                 <Icon name="trending" size={15} strokeWidth={2} /> Monthly Visit
                 Analysis
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 13, color: DS.text2 }}>
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] text-ds-text2">
                   {monthlyAnalysis.length} month
                   {monthlyAnalysis.length !== 1 ? "s" : ""} tracked
                 </span>
@@ -9764,31 +7297,22 @@ const DailySalesReport = () => {
             </div>
             {monthlyAnalysis.length === 0 ? (
               <div
-                style={{
-                  textAlign: "center",
-                  padding: "56px 16px",
-                  color: DS.text2,
-                }}
+                className="py-14 px-4 text-center text-ds-text2"
               >
                 <div className="dsr-empty-icon">
                   <Icon
                     name="trending"
                     size={26}
                     strokeWidth={1.6}
-                    style={{ color: DS.primary }}
+                    className="text-ds-primary"
                   />
                 </div>
                 <div
-                  style={{
-                    fontSize: 14.5,
-                    fontWeight: 600,
-                    color: DS.text1,
-                    letterSpacing: "-0.01em",
-                  }}
+                  className="text-[14.5px] font-semibold tracking-[-0.01em] text-ds-text1"
                 >
                   No data available
                 </div>
-                <div style={{ fontSize: 12, marginTop: 4, color: DS.text2 }}>
+                <div className="mt-1 text-[12px] text-ds-text2">
                   Add records and the monthly analysis will appear here
                 </div>
               </div>
@@ -9805,8 +7329,8 @@ const DailySalesReport = () => {
               />
             ) : (
               <div
-                className="dsr-card-list"
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                className="dsr-card-list flex flex-col gap-2.5"
+
               >
                 {monthlyAnalysis.map((m, idx) => {
                   const prev = monthlyAnalysis[idx + 1];

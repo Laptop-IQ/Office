@@ -203,23 +203,23 @@ html.has-appnav .Toastify__toast-container--top-right {
 }
 
 /* ── Page offsets ──────────────────────────────────────────────────── */
-/* Daily Sales Report */
-html.has-appnav .dsr-pagebar {
-  top: var(--app-nav-h);
-}
+/* Daily Sales Report
+   In the same "components" layer as features/dsr/dsr.css, so these app-shell offsets keep beating the
+   DSR component rules by specificity (a layered !important would otherwise beat an unlayered one). */
+@layer components {
+  html.has-appnav .dsr-sidebar {
+    top: var(--app-nav-h) !important;
+    height: calc(100vh - var(--app-nav-h)) !important;
+  }
 
-html.has-appnav .dsr-sidebar {
-  top: var(--app-nav-h) !important;
-  height: calc(100vh - var(--app-nav-h)) !important;
-}
+  html.has-appnav .dsr-aside-sticky {
+    top: calc(var(--app-nav-h) + 16px);
+  }
 
-html.has-appnav .dsr-aside-sticky {
-  top: calc(var(--app-nav-h) + 84px);
-}
-
-html.has-appnav .dsr-pages,
-html.has-appnav .dsr-layout {
-  min-height: calc(100vh - var(--app-nav-h)) !important;
+  html.has-appnav .dsr-pages,
+  html.has-appnav .dsr-layout {
+    min-height: calc(100vh - var(--app-nav-h)) !important;
+  }
 }
 
 /* Overdues */
